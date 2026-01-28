@@ -1,0 +1,128 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Kalam', 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.daisy-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+#daisySVG {
+    width: 90%;
+    max-width: 400px;
+    height: auto;
+    cursor: pointer;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Hand-drawn style for SVG elements */
+#daisySVG * {
+    stroke: #1a1a5e;
+    stroke-width: 2;
+    fill: none;
+}
+
+#daisySVG .disc {
+    fill: #1a1a5e;
+    stroke: #1a1a5e;
+}
+
+#daisySVG .petal {
+    fill: none;
+    stroke: #1a1a5e;
+    stroke-width: 2.5;
+}
+
+#daisySVG .stem {
+    stroke: #1a1a5e;
+    stroke-width: 3;
+    fill: none;
+}
+
+#daisySVG .leaf {
+    stroke: #1a1a5e;
+    stroke-width: 2.5;
+    fill: none;
+}
+
+.instructions {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #1a1a5e;
+    text-align: left;
+    font-size: 18px;
+    font-weight: normal;
+    pointer-events: none;
+    transform: rotate(-2deg);
+    font-style: italic;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.9; }
+}
+
+/* Petal falling animation */
+.petal {
+    transition: transform 0.1s ease-out;
+    pointer-events: auto;
+}
+
+.petal.fallen {
+    pointer-events: none;
+}
+
+.petal.falling {
+    transition: transform 2s ease-in, opacity 2s ease-in;
+    pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    #daisySVG {
+        width: 85%;
+    }
+    
+    .instructions {
+        font-size: 14px;
+        bottom: 15px;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    .instructions {
+        display: none;
+    }
+}
