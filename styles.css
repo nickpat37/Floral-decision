@@ -56,8 +56,8 @@ body {
 
 .flower-disc {
     position: absolute;
-    width: 120px;
-    height: 120px;
+    width: 120px !important;
+    height: 120px !important;
     cursor: move;
     touch-action: none;
     z-index: 2;
@@ -68,7 +68,7 @@ body {
 .flower-petal {
     position: absolute;
     width: auto;
-    height: 80px;
+    height: 80px !important;
     max-height: 100px;
     cursor: grab;
     touch-action: none;
@@ -121,16 +121,7 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 480px) {
-    .flower-disc {
-        width: 100px;
-        height: 100px;
-    }
-    
-    .flower-petal {
-        height: 60px;
-        max-height: 80px;
-    }
-    
+    /* Disc and petal sizes remain fixed - no scaling */
     .instructions {
         font-size: 14px;
     }

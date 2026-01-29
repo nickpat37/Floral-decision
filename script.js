@@ -74,6 +74,26 @@ class FlowerComponent {
         this.createPetals();
         this.setupEventListeners();
         this.updateStem();
+        
+        // Ensure disc size is set correctly after a short delay (in case image loads late)
+        setTimeout(() => {
+            if (this.discElement) {
+                this.discSize = this.originalDiscSize;
+                this.discElement.style.width = `${this.discSize}px`;
+                this.discElement.style.height = `${this.discSize}px`;
+                this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+                this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            }
+            
+            // Ensure all petals maintain fixed size
+            this.petals.forEach(petal => {
+                if (petal.attached && petal.element) {
+                    petal.element.style.height = '80px';
+                    petal.element.style.width = 'auto';
+                }
+            });
+        }, 100);
+        
         this.startPhysicsLoop();
     }
     
@@ -566,8 +586,17 @@ class FlowerComponent {
         disc.className = 'flower-disc';
         disc.id = 'flowerDisc';
         
+        // Set explicit size immediately to prevent initial smaller size
+        disc.style.width = `${this.discSize}px`;
+        disc.style.height = `${this.discSize}px`;
         disc.style.left = `${this.discX - this.discSize / 2}px`;
         disc.style.top = `${this.discY - this.discSize / 2}px`;
+        
+        // Ensure size is set after image loads (in case image hasn't loaded yet)
+        disc.addEventListener('load', () => {
+            disc.style.width = `${this.discSize}px`;
+            disc.style.height = `${this.discSize}px`;
+        });
         
         this.discElement = disc;
         this.container.appendChild(disc);
@@ -753,6 +782,17 @@ class FlowerComponent {
         petalElement.setAttribute('data-index', index);
         petalElement.setAttribute('data-angle', angle);
         
+        // Set explicit fixed petal size (maintains ratio with disc)
+        // Petal height: 80px (fixed, maintains ratio with 120px disc)
+        petalElement.style.height = '80px';
+        petalElement.style.width = 'auto'; // Maintain aspect ratio
+        
+        // Ensure size is set after image loads
+        petalElement.addEventListener('load', () => {
+            petalElement.style.height = '80px';
+            petalElement.style.width = 'auto';
+        });
+        
         this.container.appendChild(petalElement);
         
         // Base length should be the petal radius (distance from disc edge)
@@ -923,6 +963,9 @@ class FlowerComponent {
         petal.element.style.userSelect = 'none';
         petal.element.style.willChange = 'transform';
         petal.element.style.transition = 'none';
+        // Ensure fixed petal size
+        petal.element.style.height = '80px';
+        petal.element.style.width = 'auto';
         petal.element.style.transform = `translate(-50%, -50%) rotate(${petal.currentRotation}deg)`;
         petal.element.style.left = `${petal.x}px`;
         petal.element.style.top = `${petal.y}px`;
@@ -1137,6 +1180,22 @@ class FlowerComponent {
             this.updateStem();
             
             // Update all petals (they will follow disc position)
+            // Ensure all petals maintain fixed size
+            this.petals.forEach(petal => {
+                if (petal.attached && petal.element) {
+                    petal.element.style.height = '80px';
+                    petal.element.style.width = 'auto';
+                }
+            });
+            
+            // Update detached petals size as well
+            this.detachedPetals.forEach(petal => {
+                if (petal.element) {
+                    petal.element.style.height = '80px';
+                    petal.element.style.width = 'auto';
+                }
+            });
+            
             this.updatePetals();
             
             // Update SVG viewBox to match viewport
