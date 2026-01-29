@@ -21,9 +21,18 @@ class FlowerComponent {
         // Spring physics for disc bounce-back
         this.discSpringVelocity = { x: 0, y: 0 };
         this.discSpringActive = false;
-        this.springStrength = 0.15; // How strong the spring pulls back
-        this.springDamping = 0.92; // Damping factor for bounce (increased for 50% less bounce)
+        this.springStrength = 0.05; // Reduced to 5% for less sensitive bouncing
+        this.springDamping = 0.98; // Higher damping for minimal bounce
         this.discPullStrength = 0.3; // How much disc moves when petal is pulled
+        
+        // Fixed stem length
+        this.fixedStemLength = null; // Will be calculated on init
+        
+        // Stem stiffness (0-1, lower = stiffer/less flexible)
+        this.stemStiffness = 0.05; // 5% flexibility (95% stiffness)
+        
+        // Maximum disc movement from original position (due to stem hardness)
+        this.maxDiscMovement = null; // Will be calculated on init
         
         // Petal properties
         this.numPetals = 13; // 12-14 petals as in reference image
@@ -43,12 +52,64 @@ class FlowerComponent {
     }
     
     init() {
+        // Calculate fixed stem length based on original positions
+        const dx = this.originalDiscX - this.stemBottomX;
+        const dy = this.originalDiscY - this.stemBottomY;
+        this.fixedStemLength = Math.sqrt(dx * dx + dy * dy);
+        
+        // Maximum disc movement from original position (due to stem hardness)
+        this.maxDiscMovement = this.fixedStemLength * 0.15; // 15% of stem length max movement
+        
         this.createStem();
         this.createDisc();
         this.createPetals();
         this.setupEventListeners();
         this.updateStem();
         this.startPhysicsLoop();
+    }
+    
+    constrainDiscPosition() {
+        // Constrain disc position to maintain FIXED STEM LENGTH
+        // The stem must maintain exact fixed length, so constrain disc accordingly
+        const startX = this.stemBottomX;
+        const startY = this.stemBottomY;
+        
+        // Calculate current straight-line distance from stem bottom to disc
+        const dx = this.discX - startX;
+        const dy = this.discY - startY;
+        const currentDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        // For a quadratic bezier with bend at 1/3, the arc length is always >= straight-line distance
+        // To maintain fixed length, the straight-line distance must be <= fixedLength
+        // However, we can bend to achieve fixed length even if straight distance is slightly less
+        // Conservative estimate: max straight distance is about 1.1x fixed length with maximum bending
+        // But to be safe and prevent ANY stretching, limit to fixedLength itself
+        const maxAllowedDistance = this.fixedStemLength * 1.05; // 5% tolerance for bending
+        
+        if (currentDistance > maxAllowedDistance) {
+            // Constrain disc to maintain stem length - scale back
+            const scale = maxAllowedDistance / currentDistance;
+            this.discX = startX + dx * scale;
+            this.discY = startY + dy * scale;
+        }
+        
+        // Also apply movement constraint due to stem hardness (5% response)
+        const movementDx = this.discX - this.originalDiscX;
+        const movementDy = this.discY - this.originalDiscY;
+        const movementDistance = Math.sqrt(movementDx * movementDx + movementDy * movementDy);
+        
+        if (movementDistance > this.maxDiscMovement) {
+            // Scale back to max movement
+            const scale = this.maxDiscMovement / movementDistance;
+            this.discX = this.originalDiscX + movementDx * scale;
+            this.discY = this.originalDiscY + movementDy * scale;
+        }
+        
+        // Extra constraint: prevent dragging down too much
+        const maxDownwardMovement = this.maxDiscMovement * 0.5;
+        if (this.discY > this.originalDiscY + maxDownwardMovement) {
+            this.discY = this.originalDiscY + maxDownwardMovement;
+        }
     }
     
     startPhysicsLoop() {
@@ -66,38 +127,33 @@ class FlowerComponent {
         // Calculate distance from original position
         const dx = this.originalDiscX - this.discX;
         const dy = this.originalDiscY - this.discY;
-        
-        // Apply spring force
-        this.discSpringVelocity.x += dx * this.springStrength;
-        this.discSpringVelocity.y += dy * this.springStrength;
-        
-        // Apply damping
-        this.discSpringVelocity.x *= this.springDamping;
-        this.discSpringVelocity.y *= this.springDamping;
-        
-        // Update position
-        this.discX += this.discSpringVelocity.x;
-        this.discY += this.discSpringVelocity.y;
-        
-        // Update visual position
-        this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-        this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-        
-        // Update stem
-        this.updateStem();
-        
-        // Update petals
-        this.updatePetals();
-        
-        // Stop spring when velocity is very small and close to original position
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const velocity = Math.sqrt(this.discSpringVelocity.x * this.discSpringVelocity.x + this.discSpringVelocity.y * this.discSpringVelocity.y);
         
-        if (distance < 0.5 && velocity < 0.1) {
-            // Snap to original position
+        // Smooth linear return without bouncing
+        // Use easing factor for smooth return
+        const returnSpeed = 0.08; // Speed of return (higher = faster)
+        
+        if (distance > 0.1) {
+            // Move towards original position smoothly
+            this.discX += dx * returnSpeed;
+            this.discY += dy * returnSpeed;
+            
+            // Constrain disc position to maintain fixed stem length
+            this.constrainDiscPosition();
+            
+            // Update visual position
+            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            
+            // Update stem
+            this.updateStem();
+            
+            // Update petals
+            this.updatePetals();
+        } else {
+            // Snap to original position when close enough
             this.discX = this.originalDiscX;
             this.discY = this.originalDiscY;
-            this.discSpringVelocity = { x: 0, y: 0 };
             this.discSpringActive = false;
             
             // Final update
@@ -110,8 +166,6 @@ class FlowerComponent {
     
     startDiscSpring() {
         this.discSpringActive = true;
-        // Reset velocity to allow natural bounce
-        this.discSpringVelocity = { x: 0, y: 0 };
     }
     
     pullDiscToward(x, y, strength = null) {
@@ -126,6 +180,9 @@ class FlowerComponent {
         // Move disc from original position toward the pull direction
         this.discX = this.originalDiscX + dx * pullStrength;
         this.discY = this.originalDiscY + dy * pullStrength;
+        
+        // Constrain disc position due to stem hardness
+        this.constrainDiscPosition();
         
         // Update visual position
         this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
@@ -148,29 +205,169 @@ class FlowerComponent {
         this.updateStem();
     }
     
+    // Calculate approximate arc length of a cubic bezier curve
+    calculateBezierLength(x0, y0, x1, y1, x2, y2, x3, y3) {
+        // Use numerical integration with multiple points
+        let length = 0;
+        const steps = 50;
+        let prevX = x0;
+        let prevY = y0;
+        
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const mt3 = mt2 * mt;
+            const t2 = t * t;
+            const t3 = t2 * t;
+            
+            const x = mt3 * x0 + 3 * mt2 * t * x1 + 3 * mt * t2 * x2 + t3 * x3;
+            const y = mt3 * y0 + 3 * mt2 * t * y1 + 3 * mt * t2 * y2 + t3 * y3;
+            
+            const dx = x - prevX;
+            const dy = y - prevY;
+            length += Math.sqrt(dx * dx + dy * dy);
+            
+            prevX = x;
+            prevY = y;
+        }
+        
+        return length;
+    }
+    
     updateStem() {
-        // Create flexible curved path from bottom to disc
+        // Create hard stem that bends ONLY at 1/3 point with FIXED ARC LENGTH
+        // Stem cannot be stretched or distorted, only bent at single point
+        // IMPORTANT: Disc position should already be constrained before calling this
         const startX = this.stemBottomX;
         const startY = this.stemBottomY;
         const endX = this.discX;
         const endY = this.discY;
         
-        // Calculate control points for smooth curve
-        const midX = (startX + endX) / 2;
-        const midY = (startY + endY) / 2;
+        // Calculate current straight-line distance
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const currentDistance = Math.sqrt(dx * dx + dy * dy);
         
-        // Add some curvature based on horizontal distance
-        const horizontalDistance = Math.abs(endX - startX);
-        const curvature = Math.min(horizontalDistance * 0.3, 100);
+        // If distance is 0, use original position
+        if (currentDistance === 0) {
+            const pathData = `M ${startX} ${startY} L ${this.originalDiscX} ${this.originalDiscY}`;
+            this.stemPath.setAttribute('d', pathData);
+            return;
+        }
         
-        const cp1X = midX + (endX > startX ? -curvature : curvature);
-        const cp1Y = midY;
-        const cp2X = midX + (endX > startX ? curvature : -curvature);
-        const cp2Y = midY;
+        // Apply stiffness - reduce how much movement affects bending (5% response)
+        // Calculate deviation from original position
+        const origDx = this.originalDiscX - startX;
+        const origDy = this.originalDiscY - startY;
         
-        // Create smooth bezier curve path
-        const pathData = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
+        // Calculate movement from original
+        const movementDx = dx - origDx;
+        const movementDy = dy - origDy;
+        
+        // Apply stiffness factor - only 5% of movement causes bending
+        const effectiveDx = origDx + movementDx * this.stemStiffness;
+        const effectiveDy = origDy + movementDy * this.stemStiffness;
+        const effectiveDistance = Math.sqrt(effectiveDx * effectiveDx + effectiveDy * effectiveDy);
+        
+        // Single bend point at EXACTLY 1/3 of stem length
+        const bendT = 0.333333; // Exactly 1/3
+        
+        // Base position of bend point (along straight line from start to effective end)
+        const bendBaseX = startX + effectiveDx * bendT;
+        const bendBaseY = startY + effectiveDy * bendT;
+        
+        // Perpendicular direction for curvature (normalized)
+        const perpX = effectiveDistance > 0 ? -effectiveDy / effectiveDistance : 0;
+        const perpY = effectiveDistance > 0 ? effectiveDx / effectiveDistance : 0;
+        
+        // Calculate effective end position for arc length calculation
+        const effectiveEndX = startX + effectiveDx;
+        const effectiveEndY = startY + effectiveDy;
+        
+        // Binary search for curvature that gives EXACTLY the fixed arc length
+        // Using quadratic bezier for single bend point
+        let minCurvature = 0;
+        let maxCurvature = 400; // Increased max for more flexibility
+        let bestCurvature = 0;
+        let bestDiff = Infinity;
+        
+        // If straight line distance is already close to fixed length, use minimal curvature
+        if (Math.abs(effectiveDistance - this.fixedStemLength) < 0.05) {
+            bestCurvature = 0;
+        } else {
+            // Binary search for correct curvature with high precision
+            for (let iter = 0; iter < 50; iter++) {
+                const curvature = (minCurvature + maxCurvature) / 2;
+                
+                // Single control point at bend position (1/3)
+                const cpX = bendBaseX + perpX * curvature;
+                const cpY = bendBaseY + perpY * curvature;
+                
+                // Calculate arc length using quadratic bezier
+                const arcLength = this.calculateQuadraticBezierLength(startX, startY, cpX, cpY, effectiveEndX, effectiveEndY);
+                const diff = Math.abs(arcLength - this.fixedStemLength);
+                
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestCurvature = curvature;
+                }
+                
+                if (arcLength < this.fixedStemLength) {
+                    // Need more curvature to increase length
+                    minCurvature = curvature;
+                } else {
+                    // Need less curvature to decrease length
+                    maxCurvature = curvature;
+                }
+                
+                if (diff < 0.05) break; // Very precise (within 0.05 pixel)
+            }
+        }
+        
+        // Final control point - positioned at actual 1/3 point of current path
+        const actualBendBaseX = startX + dx * bendT;
+        const actualBendBaseY = startY + dy * bendT;
+        
+        // Scale curvature to account for stiffness and actual vs effective distance
+        // This ensures the stem connects to actual disc but maintains fixed arc length
+        const curvatureScale = currentDistance > 0 ? (effectiveDistance / currentDistance) * this.stemStiffness : this.stemStiffness;
+        const scaledCurvature = bestCurvature * curvatureScale;
+        
+        const cpX = actualBendBaseX + perpX * scaledCurvature;
+        const cpY = actualBendBaseY + perpY * scaledCurvature;
+        
+        // Create quadratic bezier curve path (single bend at EXACTLY 1/3 point)
+        // Q = quadratic bezier with single control point
+        const pathData = `M ${startX} ${startY} Q ${cpX} ${cpY}, ${endX} ${endY}`;
         this.stemPath.setAttribute('d', pathData);
+    }
+    
+    // Calculate approximate arc length of a quadratic bezier curve
+    calculateQuadraticBezierLength(x0, y0, x1, y1, x2, y2) {
+        let length = 0;
+        const steps = 50;
+        let prevX = x0;
+        let prevY = y0;
+        
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const t2 = t * t;
+            
+            const x = mt2 * x0 + 2 * mt * t * x1 + t2 * x2;
+            const y = mt2 * y0 + 2 * mt * t * y1 + t2 * y2;
+            
+            const dx = x - prevX;
+            const dy = y - prevY;
+            length += Math.sqrt(dx * dx + dy * dy);
+            
+            prevX = x;
+            prevY = y;
+        }
+        
+        return length;
     }
     
     createDisc() {
@@ -229,6 +426,9 @@ class FlowerComponent {
         
         this.discX = Math.max(minX, Math.min(maxX, this.discX));
         this.discY = Math.max(minY, Math.min(maxY, this.discY));
+        
+        // Constrain disc position due to stem hardness
+        this.constrainDiscPosition();
         
         // Update disc visual position
         this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
