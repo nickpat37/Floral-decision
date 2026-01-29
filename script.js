@@ -135,11 +135,6 @@ class FlowerComponent {
     
     // Update disc position to follow swipe (called during swipe movement)
     updateDiscFollowSwipe(fingerX, fingerY) {
-        // Calculate distance from finger to disc center
-        const dx = fingerX - this.discX;
-        const dy = fingerY - this.discY;
-        const distanceToDisc = Math.sqrt(dx * dx + dy * dy);
-        
         // Calculate distance from finger to original disc center (for string length)
         const dxFromOriginal = fingerX - this.originalDiscX;
         const dyFromOriginal = fingerY - this.originalDiscY;
@@ -147,6 +142,8 @@ class FlowerComponent {
         
         // Check if finger is within swipe area
         if (distanceFromOriginal > this.swipeAreaRadius) {
+            // Finger moved out of swipe radius - return disc to original position
+            this.startDiscSpring();
             return false;
         }
         
@@ -1278,7 +1275,11 @@ class FlowerComponent {
         this.container.addEventListener('touchmove', (e) => {
             // Only handle if not dragging disc or stretching petal
             if (this.isDraggingDisc || this.stretchingPetal) {
-                this.isSwiping = false;
+                if (this.isSwiping) {
+                    // If was swiping, return disc to original
+                    this.startDiscSpring();
+                    this.isSwiping = false;
+                }
                 return;
             }
             
@@ -1290,12 +1291,22 @@ class FlowerComponent {
             this.swipeCurrentPosition.x = currentX;
             this.swipeCurrentPosition.y = currentY;
             
-            // If swipe is active, make disc follow
+            // Check if finger is still in swipe area
+            const inSwipeArea = this.isInSwipeArea(currentX, currentY);
+            
+            // If swipe is active
             if (this.isSwiping) {
-                this.updateDiscFollowSwipe(currentX, currentY);
+                if (!inSwipeArea) {
+                    // Finger moved out of swipe radius - return disc to original
+                    this.startDiscSpring();
+                    this.isSwiping = false;
+                } else {
+                    // Make disc follow
+                    this.updateDiscFollowSwipe(currentX, currentY);
+                }
             } else {
                 // Check if finger moved into swipe area
-                if (this.isInSwipeArea(currentX, currentY)) {
+                if (inSwipeArea) {
                     this.isSwiping = true;
                     this.updateDiscFollowSwipe(currentX, currentY);
                 }
@@ -1303,15 +1314,19 @@ class FlowerComponent {
         }, { passive: true });
         
         this.container.addEventListener('touchend', (e) => {
-            if (!this.isSwiping) return;
+            if (this.isSwiping) {
+                const touch = e.changedTouches[0];
+                const endX = touch.clientX;
+                const endY = touch.clientY;
+                
+                // Handle swipe end
+                this.handleSwipeEnd(touchStartX, touchStartY, endX, endY);
+            }
             
-            const touch = e.changedTouches[0];
-            const endX = touch.clientX;
-            const endY = touch.clientY;
-            
-            // Handle swipe end
-            this.handleSwipeEnd(touchStartX, touchStartY, endX, endY);
-            
+            // Always ensure disc returns to original when touch ends
+            if (this.isSwiping) {
+                this.startDiscSpring();
+            }
             this.isSwiping = false;
         }, { passive: true });
         
@@ -1341,6 +1356,10 @@ class FlowerComponent {
         this.container.addEventListener('mousemove', (e) => {
             // Only handle if not dragging disc or stretching petal
             if (this.isDraggingDisc || this.stretchingPetal) {
+                if (isMouseSwiping || this.isSwiping) {
+                    // If was swiping, return disc to original
+                    this.startDiscSpring();
+                }
                 isMouseSwiping = false;
                 this.isSwiping = false;
                 return;
@@ -1353,12 +1372,23 @@ class FlowerComponent {
             this.swipeCurrentPosition.x = currentX;
             this.swipeCurrentPosition.y = currentY;
             
-            // If swipe is active, make disc follow
+            // Check if mouse is still in swipe area
+            const inSwipeArea = this.isInSwipeArea(currentX, currentY);
+            
+            // If swipe is active
             if (isMouseSwiping && this.isSwiping) {
-                this.updateDiscFollowSwipe(currentX, currentY);
+                if (!inSwipeArea) {
+                    // Mouse moved out of swipe radius - return disc to original
+                    this.startDiscSpring();
+                    isMouseSwiping = false;
+                    this.isSwiping = false;
+                } else {
+                    // Make disc follow
+                    this.updateDiscFollowSwipe(currentX, currentY);
+                }
             } else {
                 // Check if mouse moved into swipe area
-                if (this.isInSwipeArea(currentX, currentY)) {
+                if (inSwipeArea) {
                     isMouseSwiping = true;
                     this.isSwiping = true;
                     this.updateDiscFollowSwipe(currentX, currentY);
@@ -1367,18 +1397,18 @@ class FlowerComponent {
         });
         
         this.container.addEventListener('mouseup', (e) => {
-            if (!isMouseSwiping || !this.isSwiping) {
-                isMouseSwiping = false;
-                this.isSwiping = false;
-                return;
+            if (isMouseSwiping || this.isSwiping) {
+                const endX = e.clientX;
+                const endY = e.clientY;
+                
+                // Handle swipe end
+                this.handleSwipeEnd(mouseStartX, mouseStartY, endX, endY);
             }
             
-            const endX = e.clientX;
-            const endY = e.clientY;
-            
-            // Handle swipe end
-            this.handleSwipeEnd(mouseStartX, mouseStartY, endX, endY);
-            
+            // Always ensure disc returns to original when mouse is released
+            if (isMouseSwiping || this.isSwiping) {
+                this.startDiscSpring();
+            }
             isMouseSwiping = false;
             this.isSwiping = false;
         });
