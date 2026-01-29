@@ -530,7 +530,9 @@ class FlowerComponent {
             currentLength: baseLength,
             baseRotation: (angle * 180) / Math.PI,
             attached: true, // Whether petal is still attached to disc
-            maxLength: baseLength * this.maxStretchFactor // Max length before detachment
+            maxLength: baseLength * this.maxStretchFactor, // Max length before detachment
+            swingAngle: 0, // Current swing angle in degrees (up to ±20 degrees)
+            maxSwingAngle: 20 // Maximum swing angle in degrees
         };
         
         // Petal stretch handlers
@@ -586,6 +588,24 @@ class FlowerComponent {
         const dx = clientX - this.discX;
         const dy = clientY - this.discY;
         const currentDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate angle from disc center to pull point
+        const pullAngle = Math.atan2(dy, dx);
+        
+        // Calculate swing angle: difference between pull direction and original petal angle
+        let angleDiff = pullAngle - this.stretchingPetal.angle;
+        
+        // Normalize angle difference to [-π, π]
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+        
+        // Convert to degrees and limit to max swing angle (±20 degrees)
+        let swingAngleDeg = (angleDiff * 180) / Math.PI;
+        swingAngleDeg = Math.max(-this.stretchingPetal.maxSwingAngle, 
+                                 Math.min(this.stretchingPetal.maxSwingAngle, swingAngleDeg));
+        
+        // Update petal swing angle
+        this.stretchingPetal.swingAngle = swingAngleDeg;
         
         // Calculate stretch factor
         const stretchFactor = currentDistance / this.stretchStartDistance;
@@ -759,6 +779,9 @@ class FlowerComponent {
                 // If still attached, remove stretching class
                 this.stretchingPetal.element.classList.remove('stretching');
                 
+                // Reset swing angle smoothly when released
+                this.stretchingPetal.swingAngle = 0;
+                
                 // Start spring animation to bounce disc back to original position
                 this.startDiscSpring();
             }
@@ -784,27 +807,32 @@ class FlowerComponent {
         // Double-check petal is still attached
         if (!petal || !petal.attached) return;
         
-        // Calculate petal position - petals should be at the edge of the disc, radiating outward
-        // The petal's base (where it connects to disc) should be at disc edge
+        // Calculate attachment point (tip closer to disc) - this is the anchor point for swinging
+        // Distance = 0 means petal tip is exactly at disc edge
         const discRadius = this.discSize / 2;
+        const attachmentX = this.discX + Math.cos(petal.angle) * discRadius;
+        const attachmentY = this.discY + Math.sin(petal.angle) * discRadius;
         
-        // Petal extends from disc edge outward
-        // Position petal so its base is at disc edge and it extends outward
-        const petalBaseDistance = discRadius; // Where petal connects to disc
-        const petalCenterDistance = petalBaseDistance + (petal.currentLength / 2);
+        // Calculate angle including swing (swing happens around attachment point)
+        const currentAngle = petal.angle + (petal.swingAngle * Math.PI / 180);
         
-        // Position petal center along the radial line from disc center
-        const petalX = this.discX + Math.cos(petal.angle) * petalCenterDistance;
-        const petalY = this.discY + Math.sin(petal.angle) * petalCenterDistance;
+        // Position petal so its bottom (attachment point) is exactly at anchor point
+        // Petal extends outward from attachment point
+        // Since transform-origin is 'center bottom', we position the element so bottom is at attachment point
+        petal.element.style.left = `${attachmentX}px`;
+        petal.element.style.top = `${attachmentY}px`;
         
-        // Position petal element (center of petal image)
-        petal.element.style.left = `${petalX}px`;
-        petal.element.style.top = `${petalY}px`;
+        // Set transform origin to bottom center (attachment point) so rotation happens around it
+        petal.element.style.transformOrigin = 'center bottom';
         
-        // Rotate petal to point outward from disc
-        // The petal should be perpendicular to the radius line (pointing outward)
-        const rotation = (petal.angle * 180) / Math.PI + 90;
-        petal.element.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+        // Rotate petal to point outward from attachment point (including swing angle)
+        // The petal should be perpendicular to the direction (pointing outward)
+        const baseRotation = (petal.angle * 180) / Math.PI + 90;
+        const rotation = baseRotation + petal.swingAngle;
+        
+        // Translate to center bottom at attachment point, then rotate around it
+        // translate(-50%, -100%) positions bottom center of petal at the point
+        petal.element.style.transform = `translate(-50%, -100%) rotate(${rotation}deg)`;
         
         // Scale petal length based on stretch (scaleY stretches along the petal's length)
         const lengthScale = petal.currentLength / petal.baseLength;
