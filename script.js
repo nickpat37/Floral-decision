@@ -20,9 +20,15 @@ class FlowerComponent {
         this.numPetals = 13; // 12-14 petals as in reference image
         this.petalRadius = 70; // Distance from disc center to petal center
         this.petals = [];
+        this.detachedPetals = []; // Petals that have fallen off
         this.stretchingPetal = null;
         this.stretchStartDistance = 0;
         this.stretchStartLength = 0;
+        this.maxStretchFactor = 1.15; // 15% max stretch before detachment
+        
+        // Physics properties
+        this.gravity = 0.5;
+        this.animationFrameId = null;
         
         this.init();
     }
@@ -33,6 +39,22 @@ class FlowerComponent {
         this.createPetals();
         this.setupEventListeners();
         this.updateStem();
+        this.startPhysicsLoop();
+    }
+    
+    startPhysicsLoop() {
+        const animate = () => {
+            this.updateFallingPetals();
+            this.animationFrameId = requestAnimationFrame(animate);
+        };
+        animate();
+    }
+    
+    stopPhysicsLoop() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
     }
     
     createStem() {
@@ -173,7 +195,9 @@ class FlowerComponent {
             index: index,
             baseLength: baseLength,
             currentLength: baseLength,
-            baseRotation: (angle * 180) / Math.PI
+            baseRotation: (angle * 180) / Math.PI,
+            attached: true, // Whether petal is still attached to disc
+            maxLength: baseLength * this.maxStretchFactor // Max length before detachment
         };
         
         // Petal stretch handlers
@@ -202,7 +226,7 @@ class FlowerComponent {
         document.addEventListener('mousemove', this.handlePetalStretch);
         document.addEventListener('mouseup', this.stopPetalStretch);
         document.addEventListener('touchmove', this.handlePetalStretch, { passive: false });
-        document.addEventListener('touchend', this.stopPetalStretch);
+        document.addEventListener('touchend', (e) => this.stopPetalStretch(e));
     }
     
     handlePetalStretch = (e) => {
@@ -219,31 +243,156 @@ class FlowerComponent {
         
         // Calculate stretch factor
         const stretchFactor = currentDistance / this.stretchStartDistance;
-        this.stretchingPetal.currentLength = this.stretchStartLength * stretchFactor;
+        let newLength = this.stretchStartLength * stretchFactor;
         
-        // Limit stretch range
-        this.stretchingPetal.currentLength = Math.max(30, Math.min(300, this.stretchingPetal.currentLength));
+        // If petal is still attached, limit stretch to 15% max
+        if (this.stretchingPetal.attached) {
+            if (newLength > this.stretchingPetal.maxLength) {
+                // Detach petal
+                this.detachPetal(this.stretchingPetal, clientX, clientY);
+                return;
+            }
+            // Limit to max stretch while attached
+            newLength = Math.min(newLength, this.stretchingPetal.maxLength);
+        }
+        
+        this.stretchingPetal.currentLength = newLength;
         
         // Update petal position and scale
         this.updatePetal(this.stretchingPetal);
     }
     
-    stopPetalStretch = () => {
+    detachPetal(petal, releaseX, releaseY) {
+        if (!petal.attached) return;
+        
+        petal.attached = false;
+        
+        // Remove from attached petals array
+        const index = this.petals.indexOf(petal);
+        if (index > -1) {
+            this.petals.splice(index, 1);
+        }
+        
+        // Add to detached petals array
+        this.detachedPetals.push(petal);
+        
+        // Change petal class
+        petal.element.classList.remove('flower-petal', 'stretching');
+        petal.element.classList.add('detached-petal');
+        
+        // Get current position
+        const rect = petal.element.getBoundingClientRect();
+        petal.x = rect.left + rect.width / 2;
+        petal.y = rect.top + rect.height / 2;
+        
+        // Calculate release velocity based on drag direction
+        const dx = releaseX - this.discX;
+        const dy = releaseY - this.discY;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+        
+        // Initial velocity based on how far it was stretched
+        const stretchRatio = petal.currentLength / petal.baseLength;
+        const velocityScale = Math.max(0.5, (stretchRatio - 1) * 2); // Scale velocity based on stretch
+        
+        petal.velocityX = (dx / distance) * velocityScale * 2;
+        petal.velocityY = (dy / distance) * velocityScale * 2;
+        petal.velocityRotation = (Math.random() - 0.5) * 10; // Random rotation velocity
+        petal.currentRotation = (petal.angle * 180) / Math.PI + 90;
+        
+        // Make element non-interactive
+        petal.element.style.pointerEvents = 'none';
+    }
+    
+    updateFallingPetals() {
+        this.detachedPetals.forEach(petal => {
+            // Apply gravity
+            petal.velocityY += this.gravity;
+            
+            // Apply air resistance (damping)
+            petal.velocityX *= 0.98;
+            petal.velocityY *= 0.98;
+            petal.velocityRotation *= 0.98;
+            
+            // Update position
+            petal.x += petal.velocityX;
+            petal.y += petal.velocityY;
+            
+            // Update rotation
+            petal.currentRotation = (petal.currentRotation || 0) + petal.velocityRotation;
+            
+            // Update element position
+            petal.element.style.left = `${petal.x}px`;
+            petal.element.style.top = `${petal.y}px`;
+            petal.element.style.transform = `translate(-50%, -50%) rotate(${petal.currentRotation}deg)`;
+            
+            // Remove if fallen off screen
+            if (petal.y > window.innerHeight + 100) {
+                const index = this.detachedPetals.indexOf(petal);
+                if (index > -1) {
+                    this.detachedPetals.splice(index, 1);
+                    petal.element.remove();
+                }
+            }
+        });
+    }
+    
+    stopPetalStretch = (e) => {
         if (this.stretchingPetal) {
-            this.stretchingPetal.element.classList.remove('stretching');
+            // If petal was detached during stretch, initialize falling physics
+            if (!this.stretchingPetal.attached) {
+                // Get current position for falling start
+                const rect = this.stretchingPetal.element.getBoundingClientRect();
+                this.stretchingPetal.x = rect.left + rect.width / 2;
+                this.stretchingPetal.y = rect.top + rect.height / 2;
+                
+                // Get release position if available
+                let clientX = this.discX;
+                let clientY = this.discY;
+                if (e) {
+                    if (e.touches && e.touches.length > 0) {
+                        clientX = e.touches[0].clientX;
+                        clientY = e.touches[0].clientY;
+                    } else if (e.clientX !== undefined) {
+                        clientX = e.clientX;
+                        clientY = e.clientY;
+                    } else if (e.changedTouches && e.changedTouches.length > 0) {
+                        clientX = e.changedTouches[0].clientX;
+                        clientY = e.changedTouches[0].clientY;
+                    }
+                }
+                
+                // Calculate release velocity based on drag direction
+                const dx = clientX - this.discX;
+                const dy = clientY - this.discY;
+                const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+                
+                const stretchRatio = this.stretchingPetal.currentLength / this.stretchingPetal.baseLength;
+                const velocityScale = Math.max(0.5, (stretchRatio - 1) * 2);
+                
+                this.stretchingPetal.velocityX = (dx / distance) * velocityScale * 2;
+                this.stretchingPetal.velocityY = (dy / distance) * velocityScale * 2;
+                this.stretchingPetal.velocityRotation = (Math.random() - 0.5) * 10;
+                this.stretchingPetal.currentRotation = (this.stretchingPetal.angle * 180) / Math.PI + 90;
+            } else {
+                // If still attached, remove stretching class
+                this.stretchingPetal.element.classList.remove('stretching');
+            }
             this.stretchingPetal = null;
         }
         document.removeEventListener('mousemove', this.handlePetalStretch);
         document.removeEventListener('mouseup', this.stopPetalStretch);
         document.removeEventListener('touchmove', this.handlePetalStretch);
-        document.removeEventListener('touchend', this.stopPetalStretch);
+        document.removeEventListener('touchend', (e) => this.stopPetalStretch(e));
     }
     
     updatePetals() {
-        this.petals.forEach(petal => this.updatePetal(petal));
+        // Only update attached petals
+        this.petals.filter(p => p.attached).forEach(petal => this.updatePetal(petal));
     }
     
     updatePetal(petal) {
+        if (!petal.attached) return;
+        
         // Calculate petal position - petals should be at the edge of the disc, radiating outward
         // The petal's base (where it connects to disc) should be at disc edge
         const discRadius = this.discSize / 2;

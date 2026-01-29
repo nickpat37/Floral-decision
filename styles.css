@@ -85,6 +85,17 @@ body {
     transition: none;
 }
 
+.detached-petal {
+    position: absolute;
+    width: auto;
+    height: 80px;
+    max-height: 100px;
+    pointer-events: none;
+    z-index: 2;
+    transform-origin: center center;
+    transition: none;
+}
+
 .instructions {
     position: absolute;
     top: 20px;
