@@ -5,8 +5,10 @@ class FlowerComponent {
         this.stemPath = document.getElementById('stemPath');
         
         // Initial positions
-        this.discX = window.innerWidth / 2;
-        this.discY = window.innerHeight * 0.3;
+        this.originalDiscX = window.innerWidth / 2;
+        this.originalDiscY = window.innerHeight * 0.3;
+        this.discX = this.originalDiscX;
+        this.discY = this.originalDiscY;
         this.stemBottomX = window.innerWidth / 2;
         this.stemBottomY = window.innerHeight * 0.9;
         
@@ -15,6 +17,13 @@ class FlowerComponent {
         this.discElement = null;
         this.isDraggingDisc = false;
         this.dragOffset = { x: 0, y: 0 };
+        
+        // Spring physics for disc bounce-back
+        this.discSpringVelocity = { x: 0, y: 0 };
+        this.discSpringActive = false;
+        this.springStrength = 0.15; // How strong the spring pulls back
+        this.springDamping = 0.92; // Damping factor for bounce (increased for 50% less bounce)
+        this.discPullStrength = 0.3; // How much disc moves when petal is pulled
         
         // Petal properties
         this.numPetals = 13; // 12-14 petals as in reference image
@@ -45,9 +54,86 @@ class FlowerComponent {
     startPhysicsLoop() {
         const animate = () => {
             this.updateFallingPetals();
+            this.updateDiscSpring();
             this.animationFrameId = requestAnimationFrame(animate);
         };
         animate();
+    }
+    
+    updateDiscSpring() {
+        if (!this.discSpringActive) return;
+        
+        // Calculate distance from original position
+        const dx = this.originalDiscX - this.discX;
+        const dy = this.originalDiscY - this.discY;
+        
+        // Apply spring force
+        this.discSpringVelocity.x += dx * this.springStrength;
+        this.discSpringVelocity.y += dy * this.springStrength;
+        
+        // Apply damping
+        this.discSpringVelocity.x *= this.springDamping;
+        this.discSpringVelocity.y *= this.springDamping;
+        
+        // Update position
+        this.discX += this.discSpringVelocity.x;
+        this.discY += this.discSpringVelocity.y;
+        
+        // Update visual position
+        this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+        this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+        
+        // Update stem
+        this.updateStem();
+        
+        // Update petals
+        this.updatePetals();
+        
+        // Stop spring when velocity is very small and close to original position
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const velocity = Math.sqrt(this.discSpringVelocity.x * this.discSpringVelocity.x + this.discSpringVelocity.y * this.discSpringVelocity.y);
+        
+        if (distance < 0.5 && velocity < 0.1) {
+            // Snap to original position
+            this.discX = this.originalDiscX;
+            this.discY = this.originalDiscY;
+            this.discSpringVelocity = { x: 0, y: 0 };
+            this.discSpringActive = false;
+            
+            // Final update
+            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            this.updateStem();
+            this.updatePetals();
+        }
+    }
+    
+    startDiscSpring() {
+        this.discSpringActive = true;
+        // Reset velocity to allow natural bounce
+        this.discSpringVelocity = { x: 0, y: 0 };
+    }
+    
+    pullDiscToward(x, y, strength = null) {
+        if (this.isDraggingDisc) return; // Don't pull if disc is being dragged
+        
+        const pullStrength = strength || this.discPullStrength;
+        
+        // Calculate pull direction from original position
+        const dx = x - this.originalDiscX;
+        const dy = y - this.originalDiscY;
+        
+        // Move disc from original position toward the pull direction
+        this.discX = this.originalDiscX + dx * pullStrength;
+        this.discY = this.originalDiscY + dy * pullStrength;
+        
+        // Update visual position
+        this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+        this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+        
+        // Update stem and petals
+        this.updateStem();
+        this.updatePetals();
     }
     
     stopPhysicsLoop() {
@@ -125,6 +211,9 @@ class FlowerComponent {
         if (!this.isDraggingDisc) return;
         e.preventDefault();
         
+        // Stop spring animation while dragging
+        this.discSpringActive = false;
+        
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
@@ -154,6 +243,10 @@ class FlowerComponent {
     
     stopDiscDrag = () => {
         this.isDraggingDisc = false;
+        
+        // Start spring animation to bounce back to original position
+        this.startDiscSpring();
+        
         document.removeEventListener('mousemove', this.handleDiscDrag);
         document.removeEventListener('mouseup', this.stopDiscDrag);
         document.removeEventListener('touchmove', this.handleDiscDrag);
@@ -240,8 +333,14 @@ class FlowerComponent {
         
         e.preventDefault();
         
+        // Stop spring animation while stretching
+        this.discSpringActive = false;
+        
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Pull disc toward the stretch direction
+        this.pullDiscToward(clientX, clientY);
         
         // Calculate current distance from disc center
         const dx = clientX - this.discX;
@@ -329,6 +428,9 @@ class FlowerComponent {
         
         // Remove scaleY transform that was applied during stretching
         petal.element.style.transform = `translate(-50%, -50%) rotate(${petal.currentRotation}deg)`;
+        
+        // Immediately start disc bounce-back when petal detaches
+        this.startDiscSpring();
     }
     
     updateFallingPetals() {
@@ -412,6 +514,9 @@ class FlowerComponent {
             } else {
                 // If still attached, remove stretching class
                 this.stretchingPetal.element.classList.remove('stretching');
+                
+                // Start spring animation to bounce disc back to original position
+                this.startDiscSpring();
             }
             this.stretchingPetal = null;
         }
@@ -465,6 +570,18 @@ class FlowerComponent {
     setupEventListeners() {
         // Handle window resize
         window.addEventListener('resize', () => {
+            // Update original position on resize
+            this.originalDiscX = window.innerWidth / 2;
+            this.originalDiscY = window.innerHeight * 0.3;
+            
+            // If not dragging, reset to original position
+            if (!this.isDraggingDisc && !this.stretchingPetal) {
+                this.discX = this.originalDiscX;
+                this.discY = this.originalDiscY;
+                this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+                this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            }
+            
             this.stemBottomX = window.innerWidth / 2;
             this.stemBottomY = window.innerHeight * 0.9;
             this.updateStem();
