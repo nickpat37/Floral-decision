@@ -137,10 +137,10 @@ class FlowerComponent {
         }
         
         // Calculate follow strength based on distance (closer = stronger follow)
-        // When finger is at disc center (distance = 0), follow strength = 1.0
-        // When finger is at swipe area edge (distance = swipeAreaRadius), follow strength = 0.1
+        // When finger is at disc center (distance = 0), follow strength = 1.5
+        // When finger is at swipe area edge (distance = swipeAreaRadius), follow strength = 0.4
         const normalizedDistance = Math.min(distanceFromOriginal / this.swipeAreaRadius, 1.0);
-        const followStrength = 1.0 - (normalizedDistance * 0.9); // Range from 1.0 (close) to 0.1 (far)
+        const followStrength = 1.5 - (normalizedDistance * 1.1); // Range from 1.5 (close) to 0.4 (far)
         
         // Calculate target position: disc should move towards finger
         // The closer the finger, the more the disc follows
