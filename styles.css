@@ -7,13 +7,13 @@
 
 body {
     font-family: 'Kalam', 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
-    background: #ffffff;
+    background: #000000;
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    touch-action: manipulation;
+    touch-action: none;
     -webkit-user-select: none;
     user-select: none;
 }
@@ -28,96 +28,91 @@ body {
     position: relative;
 }
 
-.daisy-container {
+.flower-container {
     width: 100%;
     height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     position: relative;
     overflow: hidden;
 }
 
-#daisySVG {
-    width: 90%;
-    max-width: 400px;
-    height: auto;
-    cursor: pointer;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+.stem-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
 }
 
-/* Hand-drawn style for SVG elements */
-#daisySVG * {
-    stroke: #1a1a5e;
-    stroke-width: 2;
+.stem-path {
+    stroke: #2d5016;
+    stroke-width: 12;
     fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 2px rgba(45, 80, 22, 0.5));
 }
 
-#daisySVG .disc {
-    fill: #1a1a5e;
-    stroke: #1a1a5e;
+.flower-disc {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    cursor: move;
+    touch-action: none;
+    z-index: 3;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
-#daisySVG .petal {
-    fill: none;
-    stroke: #1a1a5e;
-    stroke-width: 2.5;
+.flower-petal {
+    position: absolute;
+    width: auto;
+    height: 80px;
+    max-height: 100px;
+    cursor: grab;
+    touch-action: none;
+    z-index: 2;
+    transform-origin: center center;
+    transition: transform 0.1s ease-out;
 }
 
-#daisySVG .stem {
-    stroke: #1a1a5e;
-    stroke-width: 3;
-    fill: none;
+.flower-petal:active {
+    cursor: grabbing;
 }
 
-#daisySVG .leaf {
-    stroke: #1a1a5e;
-    stroke-width: 2.5;
-    fill: none;
+.flower-petal.stretching {
+    transition: none;
 }
 
 .instructions {
     position: absolute;
     top: 20px;
     left: 20px;
-    color: #1a1a5e;
+    color: #ffffff;
     text-align: left;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: normal;
     pointer-events: none;
     transform: rotate(-2deg);
     font-style: italic;
-}
-
-@keyframes fadeInOut {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 0.9; }
-}
-
-/* Petal falling animation */
-.petal {
-    transition: transform 0.1s ease-out;
-    pointer-events: auto;
-}
-
-.petal.fallen {
-    pointer-events: none;
-}
-
-.petal.falling {
-    transition: transform 2s ease-in, opacity 2s ease-in;
-    pointer-events: none;
+    z-index: 10;
 }
 
 /* Responsive adjustments */
 @media (max-width: 480px) {
-    #daisySVG {
-        width: 85%;
+    .flower-disc {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .flower-petal {
+        height: 60px;
+        max-height: 80px;
     }
     
     .instructions {
         font-size: 14px;
-        bottom: 15px;
     }
 }
 
