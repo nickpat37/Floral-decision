@@ -346,6 +346,12 @@ class FlowerComponent {
     
     createStem() {
         // Stem SVG is already in HTML, just update the path
+        // Set SVG viewBox to match viewport
+        if (this.stemSVG) {
+            this.stemSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+            this.stemSVG.setAttribute('width', window.innerWidth);
+            this.stemSVG.setAttribute('height', window.innerHeight);
+        }
         this.updateStem();
     }
     
@@ -1084,21 +1090,61 @@ class FlowerComponent {
     setupEventListeners() {
         // Handle window resize
         window.addEventListener('resize', () => {
-            // Update original position on resize
+            // Keep disc size fixed (120px) - never changes
+            this.discSize = 120;
+            this.originalDiscSize = 120;
+            
+            // Keep petal radius fixed (70px) - maintains ratio with disc
+            this.petalRadius = 70;
+            
+            // Center everything horizontally
             this.originalDiscX = window.innerWidth / 2;
             this.originalDiscY = window.innerHeight * 0.3;
             
-            // If not dragging, reset to original position
-            if (!this.isDraggingDisc && !this.stretchingPetal) {
-                this.discX = this.originalDiscX;
-                this.discY = this.originalDiscY;
-                this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-                this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-            }
-            
+            // Center stem bottom horizontally
             this.stemBottomX = window.innerWidth / 2;
             this.stemBottomY = window.innerHeight * 0.9;
+            
+            // Recalculate fixed stem length based on new positions
+            const dx = this.originalDiscX - this.stemBottomX;
+            const dy = this.originalDiscY - this.stemBottomY;
+            this.fixedStemLength = Math.sqrt(dx * dx + dy * dy);
+            
+            // Recalculate max disc movement
+            this.maxDiscMovement = this.fixedStemLength * 0.15;
+            
+            // Update disc position (center horizontally, maintain relative vertical position)
+            if (!this.isDraggingDisc && !this.stretchingPetal && !this.tapAnimationActive) {
+                // If not interacting, reset to centered position
+                this.discX = this.originalDiscX;
+                this.discY = this.originalDiscY;
+            } else {
+                // If interacting, maintain relative horizontal position but ensure centered
+                // Keep current Y position, but center X
+                const relativeX = this.discX - (window.innerWidth / 2);
+                this.discX = window.innerWidth / 2 + relativeX;
+            }
+            
+            // Update disc visual position and size
+            if (this.discElement) {
+                this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+                this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+                this.discElement.style.width = `${this.discSize}px`;
+                this.discElement.style.height = `${this.discSize}px`;
+            }
+            
+            // Update stem (will recalculate based on new positions)
             this.updateStem();
+            
+            // Update all petals (they will follow disc position)
+            this.updatePetals();
+            
+            // Update SVG viewBox to match viewport
+            if (this.stemSVG) {
+                this.stemSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+                this.stemSVG.setAttribute('width', window.innerWidth);
+                this.stemSVG.setAttribute('height', window.innerHeight);
+            }
         });
     }
 }
