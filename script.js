@@ -1,3 +1,17 @@
+/**
+ * Flower Component
+ * 
+ * The Flower Component handles the entire interactive flower and all its interactions:
+ * - Disc: Draggable center of the flower, can be tapped to detach petals
+ * - Stem: Flexible stem that connects disc to bottom, maintains fixed length, bends at 1/3 point
+ * - Petals: Can be stretched, shrunk, swung, and detached
+ * 
+ * Interactions:
+ * - Tap on disc: Detaches 1-3 petals (based on force), increases disc size, swings petals
+ * - Drag disc: Moves disc, stem follows with fixed length
+ * - Stretch petal: Pull petal to stretch (up to 25%) or shrink (down to 90%)
+ * - Swipe near disc: Disc follows swipe direction, detaches petals
+ */
 class FlowerComponent {
     constructor() {
         this.container = document.getElementById('flowerContainer');
