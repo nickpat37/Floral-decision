@@ -28,6 +28,7 @@ class FlowerComponent {
         this.isSwiping = false;
         this.swipeThreshold = 30; // Minimum distance for a swipe
         this.swipeAreaRadius = null; // Will be calculated (disc radius * 1.5)
+        this.swipeCurrentPosition = { x: 0, y: 0 }; // Current swipe position for real-time following
         
         // Spring physics for disc bounce-back
         this.discSpringVelocity = { x: 0, y: 0 };
@@ -118,38 +119,38 @@ class FlowerComponent {
         return distance <= this.swipeAreaRadius;
     }
     
-    // Handle swipe gesture
-    handleSwipe(startX, startY, endX, endY) {
-        // Check if swipe started near disc area
-        if (!this.isInSwipeArea(startX, startY)) {
+    // Update disc position to follow swipe (called during swipe movement)
+    updateDiscFollowSwipe(fingerX, fingerY) {
+        // Calculate distance from finger to disc center
+        const dx = fingerX - this.discX;
+        const dy = fingerY - this.discY;
+        const distanceToDisc = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate distance from finger to original disc center (for string length)
+        const dxFromOriginal = fingerX - this.originalDiscX;
+        const dyFromOriginal = fingerY - this.originalDiscY;
+        const distanceFromOriginal = Math.sqrt(dxFromOriginal * dxFromOriginal + dyFromOriginal * dyFromOriginal);
+        
+        // Check if finger is within swipe area
+        if (distanceFromOriginal > this.swipeAreaRadius) {
             return false;
         }
         
-        // Calculate swipe distance and direction
-        const dx = endX - startX;
-        const dy = endY - startY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Calculate follow strength based on distance (closer = stronger follow)
+        // When finger is at disc center (distance = 0), follow strength = 1.0
+        // When finger is at swipe area edge (distance = swipeAreaRadius), follow strength = 0.1
+        const normalizedDistance = Math.min(distanceFromOriginal / this.swipeAreaRadius, 1.0);
+        const followStrength = 1.0 - (normalizedDistance * 0.9); // Range from 1.0 (close) to 0.1 (far)
         
-        // Check if it's a valid swipe (minimum distance)
-        if (distance < this.swipeThreshold) {
-            return false;
-        }
+        // Calculate target position: disc should move towards finger
+        // The closer the finger, the more the disc follows
+        const targetX = this.originalDiscX + (fingerX - this.originalDiscX) * followStrength;
+        const targetY = this.originalDiscY + (fingerY - this.originalDiscY) * followStrength;
         
-        // Calculate swipe direction (normalized)
-        const dirX = dx / distance;
-        const dirY = dy / distance;
-        
-        // Move disc slightly in swipe direction
-        // Use a fixed movement amount based on stem length (more visible)
-        const moveDistance = this.fixedStemLength * 0.08; // 8% of stem length (more visible)
-        
-        // Calculate new disc position relative to original position
-        const newDiscX = this.originalDiscX + dirX * moveDistance;
-        const newDiscY = this.originalDiscY + dirY * moveDistance;
-        
-        // Update disc position
-        this.discX = newDiscX;
-        this.discY = newDiscY;
+        // Smoothly move disc towards target (like a string pulling)
+        const pullSpeed = 0.3; // How fast disc follows (higher = faster)
+        this.discX += (targetX - this.discX) * pullSpeed;
+        this.discY += (targetY - this.discY) * pullSpeed;
         
         // Constrain to maintain stem length
         this.constrainDiscPosition();
@@ -166,6 +167,31 @@ class FlowerComponent {
         // Update stem and petals
         this.updateStem();
         this.updatePetals();
+        
+        return true;
+    }
+    
+    // Handle swipe gesture end
+    handleSwipeEnd(startX, startY, endX, endY) {
+        // Check if swipe started or ended near disc area
+        const startInArea = this.isInSwipeArea(startX, startY);
+        const endInArea = this.isInSwipeArea(endX, endY);
+        
+        if (!startInArea && !endInArea) {
+            return false;
+        }
+        
+        // Calculate swipe distance
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Check if it's a valid swipe (minimum distance)
+        if (distance < this.swipeThreshold) {
+            // Still return disc to original if swipe was too short
+            this.startDiscSpring();
+            return false;
+        }
         
         // Detach 1-2 petals randomly (similar to tap interaction)
         const numToDetach = Math.random() > 0.5 ? 1 : 2;
@@ -1217,14 +1243,8 @@ class FlowerComponent {
         let touchStartTime = 0;
         
         // Swipe detection for touch devices
-        // Use capture phase to detect before disc/petal handlers
+        // Allow swiping even when touching disc/petal (as long as not dragging/stretching)
         this.container.addEventListener('touchstart', (e) => {
-            // Skip if touching disc or petal directly
-            const target = e.target;
-            if (target.closest('.flower-disc') || target.closest('.flower-petal')) {
-                return;
-            }
-            
             // Only handle if not already handling disc drag or petal stretch
             if (this.isDraggingDisc || this.stretchingPetal) return;
             
@@ -1232,36 +1252,51 @@ class FlowerComponent {
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
             touchStartTime = Date.now();
-            this.isSwiping = true;
-        }, { passive: true, capture: true });
+            this.swipeCurrentPosition.x = touch.clientX;
+            this.swipeCurrentPosition.y = touch.clientY;
+            
+            // Check if swipe starts within swipe area
+            if (this.isInSwipeArea(touch.clientX, touch.clientY)) {
+                this.isSwiping = true;
+            }
+        }, { passive: true });
         
         this.container.addEventListener('touchmove', (e) => {
-            if (!this.isSwiping || this.isDraggingDisc || this.stretchingPetal) return;
+            // Only handle if not dragging disc or stretching petal
+            if (this.isDraggingDisc || this.stretchingPetal) {
+                this.isSwiping = false;
+                return;
+            }
             
-            // Update swipe position
             const touch = e.touches[0];
             const currentX = touch.clientX;
             const currentY = touch.clientY;
             
-            // Check if swipe is still in swipe area
-            if (!this.isInSwipeArea(touchStartX, touchStartY)) {
-                this.isSwiping = false;
-                return;
+            // Update current swipe position
+            this.swipeCurrentPosition.x = currentX;
+            this.swipeCurrentPosition.y = currentY;
+            
+            // If swipe is active, make disc follow
+            if (this.isSwiping) {
+                this.updateDiscFollowSwipe(currentX, currentY);
+            } else {
+                // Check if finger moved into swipe area
+                if (this.isInSwipeArea(currentX, currentY)) {
+                    this.isSwiping = true;
+                    this.updateDiscFollowSwipe(currentX, currentY);
+                }
             }
         }, { passive: true });
         
         this.container.addEventListener('touchend', (e) => {
-            if (!this.isSwiping || this.isDraggingDisc || this.stretchingPetal) {
-                this.isSwiping = false;
-                return;
-            }
+            if (!this.isSwiping) return;
             
             const touch = e.changedTouches[0];
             const endX = touch.clientX;
             const endY = touch.clientY;
             
-            // Handle swipe
-            this.handleSwipe(touchStartX, touchStartY, endX, endY);
+            // Handle swipe end
+            this.handleSwipeEnd(touchStartX, touchStartY, endX, endY);
             
             this.isSwiping = false;
         }, { passive: true });
@@ -1273,44 +1308,65 @@ class FlowerComponent {
         let isMouseSwiping = false;
         
         this.container.addEventListener('mousedown', (e) => {
-            // Skip if clicking disc or petal directly
-            const target = e.target;
-            if (target.closest('.flower-disc') || target.closest('.flower-petal')) {
-                return;
-            }
-            
             // Only handle if not already handling disc drag or petal stretch
             if (this.isDraggingDisc || this.stretchingPetal) return;
             
             mouseStartX = e.clientX;
             mouseStartY = e.clientY;
             mouseStartTime = Date.now();
-            isMouseSwiping = true;
-        }, { capture: true });
+            this.swipeCurrentPosition.x = e.clientX;
+            this.swipeCurrentPosition.y = e.clientY;
+            
+            // Check if swipe starts within swipe area
+            if (this.isInSwipeArea(e.clientX, e.clientY)) {
+                isMouseSwiping = true;
+                this.isSwiping = true;
+            }
+        });
         
         this.container.addEventListener('mousemove', (e) => {
-            if (!isMouseSwiping || this.isDraggingDisc || this.stretchingPetal) return;
-            
-            // Check if swipe is still in swipe area
-            if (!this.isInSwipeArea(mouseStartX, mouseStartY)) {
+            // Only handle if not dragging disc or stretching petal
+            if (this.isDraggingDisc || this.stretchingPetal) {
                 isMouseSwiping = false;
+                this.isSwiping = false;
                 return;
+            }
+            
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+            
+            // Update current swipe position
+            this.swipeCurrentPosition.x = currentX;
+            this.swipeCurrentPosition.y = currentY;
+            
+            // If swipe is active, make disc follow
+            if (isMouseSwiping && this.isSwiping) {
+                this.updateDiscFollowSwipe(currentX, currentY);
+            } else {
+                // Check if mouse moved into swipe area
+                if (this.isInSwipeArea(currentX, currentY)) {
+                    isMouseSwiping = true;
+                    this.isSwiping = true;
+                    this.updateDiscFollowSwipe(currentX, currentY);
+                }
             }
         });
         
         this.container.addEventListener('mouseup', (e) => {
-            if (!isMouseSwiping || this.isDraggingDisc || this.stretchingPetal) {
+            if (!isMouseSwiping || !this.isSwiping) {
                 isMouseSwiping = false;
+                this.isSwiping = false;
                 return;
             }
             
             const endX = e.clientX;
             const endY = e.clientY;
             
-            // Handle swipe
-            this.handleSwipe(mouseStartX, mouseStartY, endX, endY);
+            // Handle swipe end
+            this.handleSwipeEnd(mouseStartX, mouseStartY, endX, endY);
             
             isMouseSwiping = false;
+            this.isSwiping = false;
         });
         
         // Handle window resize
