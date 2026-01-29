@@ -236,84 +236,116 @@ class FlowerComponent {
     }
     
     updateStem() {
-        // Create hard stem that bends ONLY at 1/3 point with FIXED ARC LENGTH
-        // Stem cannot be stretched or distorted, only bent at single point
-        // IMPORTANT: Disc position should already be constrained before calling this
+        // Create stem with rigid bottom third and flexible top two-thirds
+        // Bottom 1/3: rigid, straight, cannot move
+        // Top 2/3: can bend, but maintains fixed total length
         const startX = this.stemBottomX;
         const startY = this.stemBottomY;
         const endX = this.discX;
         const endY = this.discY;
         
-        // Calculate current straight-line distance
-        const dx = endX - startX;
-        const dy = endY - startY;
-        const currentDistance = Math.sqrt(dx * dx + dy * dy);
+        // Calculate original direction (for rigid bottom third)
+        const origDx = this.originalDiscX - startX;
+        const origDy = this.originalDiscY - startY;
+        const origDistance = Math.sqrt(origDx * origDx + origDy * origDy);
         
-        // If distance is 0, use original position
-        if (currentDistance === 0) {
-            const pathData = `M ${startX} ${startY} L ${this.originalDiscX} ${this.originalDiscY}`;
+        // Bend point is at 1/3 of fixed stem length from bottom
+        const bendT = 0.333333; // Exactly 1/3
+        const bottomThirdLength = this.fixedStemLength * bendT; // Length of rigid bottom third
+        const topTwoThirdsLength = this.fixedStemLength * (1 - bendT); // Length of flexible top 2/3
+        
+        // Calculate rigid bottom third endpoint (always straight, follows original direction)
+        // This point is fixed relative to the original stem direction
+        const bottomThirdDx = origDx * (bottomThirdLength / origDistance);
+        const bottomThirdDy = origDy * (bottomThirdLength / origDistance);
+        const bendPointX = startX + bottomThirdDx;
+        const bendPointY = startY + bottomThirdDy;
+        
+        // Calculate direction from bend point to disc
+        const topDx = endX - bendPointX;
+        const topDy = endY - bendPointY;
+        const topDistance = Math.sqrt(topDx * topDx + topDy * topDy);
+        
+        // If top distance is 0, use straight line
+        if (topDistance < 0.1) {
+            const pathData = `M ${startX} ${startY} L ${bendPointX} ${bendPointY} L ${endX} ${endY}`;
             this.stemPath.setAttribute('d', pathData);
             return;
         }
         
         // Apply stiffness - reduce how much movement affects bending (5% response)
-        // Calculate deviation from original position
-        const origDx = this.originalDiscX - startX;
-        const origDy = this.originalDiscY - startY;
-        
-        // Calculate movement from original
-        const movementDx = dx - origDx;
-        const movementDy = dy - origDy;
+        // Calculate movement from original disc position
+        const movementDx = endX - this.originalDiscX;
+        const movementDy = endY - this.originalDiscY;
         
         // Apply stiffness factor - only 5% of movement causes bending
-        const effectiveDx = origDx + movementDx * this.stemStiffness;
-        const effectiveDy = origDy + movementDy * this.stemStiffness;
-        const effectiveDistance = Math.sqrt(effectiveDx * effectiveDx + effectiveDy * effectiveDy);
+        const effectiveMovementDx = movementDx * this.stemStiffness;
+        const effectiveMovementDy = movementDy * this.stemStiffness;
         
-        // Single bend point at EXACTLY 1/3 of stem length
-        const bendT = 0.333333; // Exactly 1/3
+        // Effective disc position (with stiffness applied)
+        const effectiveEndX = this.originalDiscX + effectiveMovementDx;
+        const effectiveEndY = this.originalDiscY + effectiveMovementDy;
         
-        // Base position of bend point (along straight line from start to effective end)
-        const bendBaseX = startX + effectiveDx * bendT;
-        const bendBaseY = startY + effectiveDy * bendT;
+        // Calculate effective direction from bend point to effective disc
+        const effectiveTopDx = effectiveEndX - bendPointX;
+        const effectiveTopDy = effectiveEndY - bendPointY;
+        const effectiveTopDistance = Math.sqrt(effectiveTopDx * effectiveTopDx + effectiveTopDy * effectiveTopDy);
         
         // Perpendicular direction for curvature (normalized)
-        const perpX = effectiveDistance > 0 ? -effectiveDy / effectiveDistance : 0;
-        const perpY = effectiveDistance > 0 ? effectiveDx / effectiveDistance : 0;
+        const perpX = effectiveTopDistance > 0 ? -effectiveTopDy / effectiveTopDistance : 0;
+        const perpY = effectiveTopDistance > 0 ? effectiveTopDx / effectiveTopDistance : 0;
         
-        // Calculate effective end position for arc length calculation
-        const effectiveEndX = startX + effectiveDx;
-        const effectiveEndY = startY + effectiveDy;
+        // Direction of bottom half (for smooth transition)
+        const bottomDirX = origDx / origDistance;
+        const bottomDirY = origDy / origDistance;
         
-        // Binary search for curvature that gives EXACTLY the fixed arc length
-        // Using quadratic bezier for single bend point
+        // Curve point is at 1/2 of the upper 2/3 = 2/3 of total stem length
+        // Top 2/3 starts at 1/3, curve point at 1/3 + (2/3 * 0.5) = 2/3
+        const curvePointT = 0.666667; // 2/3 of total stem = 1/2 of upper 2/3
+        const curvePointDist = this.fixedStemLength * curvePointT;
+        const curvePointX = startX + origDx * (curvePointDist / origDistance);
+        const curvePointY = startY + origDy * (curvePointDist / origDistance);
+        
+        // Binary search for curvature that gives EXACTLY the fixed top 2/3 length
+        // Use cubic bezier for smooth curved bending with more pronounced curve
         let minCurvature = 0;
-        let maxCurvature = 400; // Increased max for more flexibility
+        let maxCurvature = 400; // Increased max curvature for more obvious curve
         let bestCurvature = 0;
         let bestDiff = Infinity;
         
-        // If straight line distance is already close to fixed length, use minimal curvature
-        if (Math.abs(effectiveDistance - this.fixedStemLength) < 0.05) {
+        // If straight line distance is already close to top 2/3 length, use minimal curvature
+        if (Math.abs(effectiveTopDistance - topTwoThirdsLength) < 0.05) {
             bestCurvature = 0;
         } else {
-            // Binary search for correct curvature with high precision
-            for (let iter = 0; iter < 50; iter++) {
+            // Binary search for correct curvature
+            for (let iter = 0; iter < 40; iter++) {
                 const curvature = (minCurvature + maxCurvature) / 2;
                 
-                // Single control point at bend position (1/3)
-                const cpX = bendBaseX + perpX * curvature;
-                const cpY = bendBaseY + perpY * curvature;
+                // First control point: very close to bend point (1/3) for smooth transition
+                // Positioned to create a smooth curve right at the transition
+                const cp1Dist = topTwoThirdsLength * 0.08; // 8% along top 2/3, very close to bend point
+                // Increase curvature multiplier for smoother transition
+                const transitionCurvature = curvature * 0.8; // Strong curve at transition
+                const cp1X = bendPointX + bottomDirX * cp1Dist + perpX * transitionCurvature;
+                const cp1Y = bendPointY + bottomDirY * cp1Dist + perpY * transitionCurvature;
                 
-                // Calculate arc length using quadratic bezier
-                const arcLength = this.calculateQuadraticBezierLength(startX, startY, cpX, cpY, effectiveEndX, effectiveEndY);
-                const diff = Math.abs(arcLength - this.fixedStemLength);
+                // Second control point: positioned at curve point (1/2 of upper 2/3 = 2/3 total)
+                // This creates the most pronounced curve at this point
+                const curvePointOffset = curvePointDist - bottomThirdLength; // Distance from bend point to curve point
+                const cp2X = bendPointX + effectiveTopDx * (curvePointOffset / effectiveTopDistance) + perpX * curvature * 1.5;
+                const cp2Y = bendPointY + effectiveTopDy * (curvePointOffset / effectiveTopDistance) + perpY * curvature * 1.5;
+                
+                // Calculate arc length of top 2/3 using cubic bezier
+                const topArcLength = this.calculateBezierLength(bendPointX, bendPointY, cp1X, cp1Y, cp2X, cp2Y, effectiveEndX, effectiveEndY);
+                const totalLength = bottomThirdLength + topArcLength;
+                const diff = Math.abs(totalLength - this.fixedStemLength);
                 
                 if (diff < bestDiff) {
                     bestDiff = diff;
                     bestCurvature = curvature;
                 }
                 
-                if (arcLength < this.fixedStemLength) {
+                if (totalLength < this.fixedStemLength) {
                     // Need more curvature to increase length
                     minCurvature = curvature;
                 } else {
@@ -321,25 +353,33 @@ class FlowerComponent {
                     maxCurvature = curvature;
                 }
                 
-                if (diff < 0.05) break; // Very precise (within 0.05 pixel)
+                if (diff < 0.1) break; // Close enough
             }
         }
         
-        // Final control point - positioned at actual 1/3 point of current path
-        const actualBendBaseX = startX + dx * bendT;
-        const actualBendBaseY = startY + dy * bendT;
+        // Final control points - scale to actual disc position
+        const actualTopDirX = topDx / topDistance;
+        const actualTopDirY = topDy / topDistance;
         
-        // Scale curvature to account for stiffness and actual vs effective distance
-        // This ensures the stem connects to actual disc but maintains fixed arc length
-        const curvatureScale = currentDistance > 0 ? (effectiveDistance / currentDistance) * this.stemStiffness : this.stemStiffness;
+        // Scale curvature to account for stiffness, but increase multiplier for more obvious curve
+        const curvatureScale = topDistance > 0 ? (effectiveTopDistance / topDistance) * this.stemStiffness * 2.0 : this.stemStiffness * 2.0;
         const scaledCurvature = bestCurvature * curvatureScale;
         
-        const cpX = actualBendBaseX + perpX * scaledCurvature;
-        const cpY = actualBendBaseY + perpY * scaledCurvature;
+        // First control point: smooth transition from bottom third at 1/3 point
+        // Positioned very close to bend point with increased curvature for natural transition
+        const cp1Dist = topTwoThirdsLength * 0.08; // Very close to bend point (8% along top 2/3)
+        const transitionCurvature = scaledCurvature * 0.8; // Strong curve at transition point
+        const cp1X = bendPointX + bottomDirX * cp1Dist + perpX * transitionCurvature;
+        const cp1Y = bendPointY + bottomDirY * cp1Dist + perpY * transitionCurvature;
         
-        // Create quadratic bezier curve path (single bend at EXACTLY 1/3 point)
-        // Q = quadratic bezier with single control point
-        const pathData = `M ${startX} ${startY} Q ${cpX} ${cpY}, ${endX} ${endY}`;
+        // Second control point: positioned at curve point (1/2 of upper 2/3) for maximum curve
+        const curvePointOffset = curvePointDist - bottomThirdLength;
+        const cp2X = bendPointX + actualTopDirX * curvePointOffset + perpX * scaledCurvature * 1.5;
+        const cp2Y = bendPointY + actualTopDirY * curvePointOffset + perpY * scaledCurvature * 1.5;
+        
+        // Create path: straight line (rigid bottom) + smooth curved line (flexible top)
+        // L = line, C = cubic bezier (smooth curve with pronounced bend at 1/2 of upper half)
+        const pathData = `M ${startX} ${startY} L ${bendPointX} ${bendPointY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
         this.stemPath.setAttribute('d', pathData);
     }
     
