@@ -591,8 +591,12 @@ class FlowerComponent {
         const stretchFactor = currentDistance / this.stretchStartDistance;
         let newLength = this.stretchStartLength * stretchFactor;
         
-        // If petal is still attached, limit stretch to 25% max
+        // If petal is still attached, limit stretch to 25% max and allow shrinking up to 10%
         if (this.stretchingPetal.attached) {
+            // Allow shrinking up to 10% (minimum 90% of original length)
+            const minLength = this.stretchingPetal.baseLength * 0.9; // 90% of original
+            newLength = Math.max(newLength, minLength);
+            
             if (newLength > this.stretchingPetal.maxLength) {
                 // Detach petal immediately and stop handling
                 this.detachPetal(this.stretchingPetal, clientX, clientY);
@@ -803,8 +807,15 @@ class FlowerComponent {
         petal.element.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
         
         // Scale petal length based on stretch (scaleY stretches along the petal's length)
-        const scale = petal.currentLength / petal.baseLength;
-        petal.element.style.transform += ` scaleY(${scale})`;
+        const lengthScale = petal.currentLength / petal.baseLength;
+        
+        // Calculate width scale: when length shrinks, width increases proportionally
+        // Example: length 100% -> 90% (10% reduction), width 100% -> 110% (10% increase)
+        // Formula: widthScale = 2 - lengthScale (only when shrinking)
+        // When stretching (lengthScale > 1.0), keep width at 1.0
+        const widthScale = lengthScale < 1.0 ? (2 - lengthScale) : 1.0;
+        
+        petal.element.style.transform += ` scaleY(${lengthScale}) scaleX(${widthScale})`;
     }
     
     setupEventListeners() {
