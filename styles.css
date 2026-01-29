@@ -60,7 +60,7 @@ body {
     height: 120px;
     cursor: move;
     touch-action: none;
-    z-index: 3;
+    z-index: 2;
     user-select: none;
     -webkit-user-drag: none;
 }
@@ -72,7 +72,7 @@ body {
     max-height: 100px;
     cursor: grab;
     touch-action: none;
-    z-index: 2;
+    z-index: 4;
     transform-origin: center center;
     transition: transform 0.1s ease-out;
 }
@@ -90,10 +90,19 @@ body {
     width: auto;
     height: 80px;
     max-height: 100px;
-    pointer-events: none;
-    z-index: 2;
+    pointer-events: none !important;
+    touch-action: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-touch-callout: none !important;
+    z-index: 5;
     transform-origin: center center;
-    transition: none;
+    transition: none !important;
+    will-change: transform;
+    /* Ensure petals can overlay everything without collision */
+    isolation: isolate;
+    /* Prevent any layout shifts */
+    contain: layout style paint;
 }
 
 .instructions {

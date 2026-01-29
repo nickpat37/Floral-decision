@@ -24,10 +24,10 @@ class FlowerComponent {
         this.stretchingPetal = null;
         this.stretchStartDistance = 0;
         this.stretchStartLength = 0;
-        this.maxStretchFactor = 1.15; // 15% max stretch before detachment
+        this.maxStretchFactor = 1.25; // 25% max stretch before detachment
         
         // Physics properties
-        this.gravity = 0.5;
+        this.gravity = 0.4; // 20% lighter (reduced from 0.5)
         this.animationFrameId = null;
         
         this.init();
@@ -231,6 +231,13 @@ class FlowerComponent {
     
     handlePetalStretch = (e) => {
         if (!this.stretchingPetal) return;
+        
+        // If petal was detached, stop handling
+        if (!this.stretchingPetal.attached) {
+            this.stopPetalStretch(e);
+            return;
+        }
+        
         e.preventDefault();
         
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -245,11 +252,12 @@ class FlowerComponent {
         const stretchFactor = currentDistance / this.stretchStartDistance;
         let newLength = this.stretchStartLength * stretchFactor;
         
-        // If petal is still attached, limit stretch to 15% max
+        // If petal is still attached, limit stretch to 25% max
         if (this.stretchingPetal.attached) {
             if (newLength > this.stretchingPetal.maxLength) {
-                // Detach petal
+                // Detach petal immediately and stop handling
                 this.detachPetal(this.stretchingPetal, clientX, clientY);
+                this.stopPetalStretch(e);
                 return;
             }
             // Limit to max stretch while attached
@@ -258,8 +266,10 @@ class FlowerComponent {
         
         this.stretchingPetal.currentLength = newLength;
         
-        // Update petal position and scale
-        this.updatePetal(this.stretchingPetal);
+        // Update petal position and scale (only if still attached)
+        if (this.stretchingPetal.attached) {
+            this.updatePetal(this.stretchingPetal);
+        }
     }
     
     detachPetal(petal, releaseX, releaseY) {
@@ -267,7 +277,7 @@ class FlowerComponent {
         
         petal.attached = false;
         
-        // Remove from attached petals array
+        // Remove from attached petals array immediately
         const index = this.petals.indexOf(petal);
         if (index > -1) {
             this.petals.splice(index, 1);
@@ -276,14 +286,17 @@ class FlowerComponent {
         // Add to detached petals array
         this.detachedPetals.push(petal);
         
-        // Change petal class
+        // Change petal class and remove all transitions
         petal.element.classList.remove('flower-petal', 'stretching');
         petal.element.classList.add('detached-petal');
         
-        // Get current position
-        const rect = petal.element.getBoundingClientRect();
-        petal.x = rect.left + rect.width / 2;
-        petal.y = rect.top + rect.height / 2;
+        // Get container position for relative positioning
+        const containerRect = this.container.getBoundingClientRect();
+        const petalRect = petal.element.getBoundingClientRect();
+        
+        // Calculate position relative to container (not viewport)
+        petal.x = petalRect.left - containerRect.left + petalRect.width / 2;
+        petal.y = petalRect.top - containerRect.top + petalRect.height / 2;
         
         // Calculate release velocity based on drag direction
         const dx = releaseX - this.discX;
@@ -299,12 +312,30 @@ class FlowerComponent {
         petal.velocityRotation = (Math.random() - 0.5) * 10; // Random rotation velocity
         petal.currentRotation = (petal.angle * 180) / Math.PI + 90;
         
-        // Make element non-interactive
+        // Remove all event listeners by cloning (cleanest way)
+        const newElement = petal.element.cloneNode(true);
+        petal.element.parentNode.replaceChild(newElement, petal.element);
+        petal.element = newElement;
+        
+        // Apply all styles to ensure no interactions or transitions
         petal.element.style.pointerEvents = 'none';
+        petal.element.style.touchAction = 'none';
+        petal.element.style.userSelect = 'none';
+        petal.element.style.willChange = 'transform';
+        petal.element.style.transition = 'none';
+        petal.element.style.transform = `translate(-50%, -50%) rotate(${petal.currentRotation}deg)`;
+        petal.element.style.left = `${petal.x}px`;
+        petal.element.style.top = `${petal.y}px`;
+        
+        // Remove scaleY transform that was applied during stretching
+        petal.element.style.transform = `translate(-50%, -50%) rotate(${petal.currentRotation}deg)`;
     }
     
     updateFallingPetals() {
         this.detachedPetals.forEach(petal => {
+            // Double-check petal is detached
+            if (petal.attached) return;
+            
             // Apply gravity
             petal.velocityY += this.gravity;
             
@@ -313,17 +344,22 @@ class FlowerComponent {
             petal.velocityY *= 0.98;
             petal.velocityRotation *= 0.98;
             
-            // Update position
+            // Update position (no collision detection - petals pass through everything)
             petal.x += petal.velocityX;
             petal.y += petal.velocityY;
             
             // Update rotation
             petal.currentRotation = (petal.currentRotation || 0) + petal.velocityRotation;
             
-            // Update element position
+            // Update element position - ensure no transitions interfere
+            petal.element.style.transition = 'none';
             petal.element.style.left = `${petal.x}px`;
             petal.element.style.top = `${petal.y}px`;
             petal.element.style.transform = `translate(-50%, -50%) rotate(${petal.currentRotation}deg)`;
+            
+            // Ensure no interaction can happen
+            petal.element.style.pointerEvents = 'none';
+            petal.element.style.touchAction = 'none';
             
             // Remove if fallen off screen
             if (petal.y > window.innerHeight + 100) {
@@ -386,12 +422,18 @@ class FlowerComponent {
     }
     
     updatePetals() {
-        // Only update attached petals
-        this.petals.filter(p => p.attached).forEach(petal => this.updatePetal(petal));
+        // Only update attached petals - filter out any that might have been detached
+        this.petals = this.petals.filter(p => p.attached);
+        this.petals.forEach(petal => {
+            if (petal.attached) {
+                this.updatePetal(petal);
+            }
+        });
     }
     
     updatePetal(petal) {
-        if (!petal.attached) return;
+        // Double-check petal is still attached
+        if (!petal || !petal.attached) return;
         
         // Calculate petal position - petals should be at the edge of the disc, radiating outward
         // The petal's base (where it connects to disc) should be at disc edge
@@ -437,9 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
     flowerInstance = new FlowerComponent();
 });
 
-// Prevent default touch behaviors
+// Prevent default touch behaviors (only for attached elements)
 document.addEventListener('touchmove', (e) => {
-    if (e.target.closest('.flower-disc') || e.target.closest('.flower-petal')) {
+    // Only prevent for attached elements, not detached petals
+    if (e.target.closest('.flower-disc') || (e.target.closest('.flower-petal') && !e.target.closest('.detached-petal'))) {
         e.preventDefault();
     }
 }, { passive: false });
