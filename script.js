@@ -14,9 +14,13 @@ class FlowerComponent {
         
         // Disc properties
         this.discSize = 120;
+        this.originalDiscSize = 120; // Store original disc size for tap animation
         this.discElement = null;
         this.isDraggingDisc = false;
         this.dragOffset = { x: 0, y: 0 };
+        this.tapStartTime = 0;
+        this.tapStartPosition = { x: 0, y: 0 };
+        this.isTap = false;
         
         // Spring physics for disc bounce-back
         this.discSpringVelocity = { x: 0, y: 0 };
@@ -47,6 +51,11 @@ class FlowerComponent {
         // Physics properties
         this.gravity = 0.4; // 20% lighter (reduced from 0.5)
         this.animationFrameId = null;
+        
+        // Tap animation properties
+        this.tapAnimationActive = false;
+        this.tapAnimationStartTime = 0;
+        this.tapAnimationDuration = 400; // Animation duration in ms
         
         this.init();
     }
@@ -116,9 +125,131 @@ class FlowerComponent {
         const animate = () => {
             this.updateFallingPetals();
             this.updateDiscSpring();
+            this.updateTapAnimation();
             this.animationFrameId = requestAnimationFrame(animate);
         };
         animate();
+    }
+    
+    triggerTapAnimation() {
+        // If animation is already active, reset it first to prevent accumulation
+        if (this.tapAnimationActive) {
+            // Reset disc size immediately to original before starting new animation
+            this.discSize = this.originalDiscSize;
+            this.discX = this.originalDiscX;
+            this.discY = this.originalDiscY;
+            
+            // Reset petals
+            this.petals.forEach(petal => {
+                if (petal.attached) {
+                    petal.currentLength = petal.baseLength;
+                    petal.swingAngle = 0;
+                    petal.tapSizeMultiplier = null;
+                    petal.tapSwingAngle = null;
+                }
+            });
+        }
+        
+        // Start tap animation
+        this.tapAnimationActive = true;
+        this.tapAnimationStartTime = Date.now();
+        
+        // Always use the true original disc size (never use current size)
+        // Ensure disc size is reset to original before starting animation
+        this.discSize = this.originalDiscSize;
+        
+        // Calculate random direction for disc movement (5% distance)
+        const randomAngle = Math.random() * Math.PI * 2;
+        const moveDistance = this.fixedStemLength * 0.05; // 5% of stem length
+        
+        // Store target position for disc
+        this.tapDiscTargetX = this.originalDiscX + Math.cos(randomAngle) * moveDistance;
+        this.tapDiscTargetY = this.originalDiscY + Math.sin(randomAngle) * moveDistance;
+        
+        // Increase all attached petals' size by 15%
+        this.petals.forEach(petal => {
+            if (petal.attached) {
+                petal.tapSizeMultiplier = 1.15; // 15% increase
+                // Add random swing to each petal (±10 degrees)
+                petal.tapSwingAngle = (Math.random() - 0.5) * 20; // Random swing ±10 degrees
+            }
+        });
+    }
+    
+    updateTapAnimation() {
+        if (!this.tapAnimationActive) return;
+        
+        const elapsed = Date.now() - this.tapAnimationStartTime;
+        const progress = Math.min(elapsed / this.tapAnimationDuration, 1.0);
+        
+        // Easing function (ease out)
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        
+        if (progress < 1.0) {
+            // Animate disc size: increase then decrease (max 10% increase)
+            const discSizeProgress = progress < 0.5 ? progress * 2 : 1 - (progress - 0.5) * 2;
+            const discSizeMultiplier = 1 + 0.10 * discSizeProgress; // 10% increase (reduced from 15%)
+            this.discSize = this.originalDiscSize * discSizeMultiplier;
+            
+            // Animate disc movement
+            const discProgress = progress < 0.3 ? progress / 0.3 : 1 - (progress - 0.3) / 0.7;
+            const discEase = discProgress < 0.5 ? 2 * discProgress * discProgress : 1 - Math.pow(-2 * discProgress + 2, 2) / 2;
+            
+            this.discX = this.originalDiscX + (this.tapDiscTargetX - this.originalDiscX) * discEase;
+            this.discY = this.originalDiscY + (this.tapDiscTargetY - this.originalDiscY) * discEase;
+            
+            // Update disc visual position and size
+            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            this.discElement.style.width = `${this.discSize}px`;
+            this.discElement.style.height = `${this.discSize}px`;
+            
+            // Update stem
+            this.updateStem();
+            
+            // Animate petals: size and swing
+            this.petals.forEach(petal => {
+                if (petal.attached && petal.tapSizeMultiplier) {
+                    // Size animation: increase then decrease
+                    const sizeProgress = progress < 0.5 ? progress * 2 : 1 - (progress - 0.5) * 2;
+                    const currentSizeMultiplier = 1 + (petal.tapSizeMultiplier - 1) * sizeProgress;
+                    petal.currentLength = petal.baseLength * currentSizeMultiplier;
+                    
+                    // Swing animation: swing then return
+                    const swingProgress = progress < 0.5 ? progress * 2 : 1 - (progress - 0.5) * 2;
+                    petal.swingAngle = petal.tapSwingAngle * swingProgress;
+                }
+            });
+            
+            // Update petals
+            this.updatePetals();
+        } else {
+            // Animation complete, reset everything
+            this.tapAnimationActive = false;
+            
+            // Reset disc size and position
+            this.discSize = this.originalDiscSize;
+            this.discX = this.originalDiscX;
+            this.discY = this.originalDiscY;
+            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
+            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            this.discElement.style.width = `${this.discSize}px`;
+            this.discElement.style.height = `${this.discSize}px`;
+            
+            // Reset petals
+            this.petals.forEach(petal => {
+                if (petal.attached) {
+                    petal.currentLength = petal.baseLength;
+                    petal.swingAngle = 0;
+                    petal.tapSizeMultiplier = null;
+                    petal.tapSwingAngle = null;
+                }
+            });
+            
+            // Final updates
+            this.updateStem();
+            this.updatePetals();
+        }
     }
     
     updateDiscSpring() {
@@ -141,9 +272,14 @@ class FlowerComponent {
             // Constrain disc position to maintain fixed stem length
             this.constrainDiscPosition();
             
+            // Ensure disc size is at original (in case tap animation changed it)
+            this.discSize = this.originalDiscSize;
+            
             // Update visual position
             this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
             this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            this.discElement.style.width = `${this.discSize}px`;
+            this.discElement.style.height = `${this.discSize}px`;
             
             // Update stem
             this.updateStem();
@@ -154,11 +290,14 @@ class FlowerComponent {
             // Snap to original position when close enough
             this.discX = this.originalDiscX;
             this.discY = this.originalDiscY;
+            this.discSize = this.originalDiscSize; // Ensure original size
             this.discSpringActive = false;
             
             // Final update
             this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
             this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+            this.discElement.style.width = `${this.discSize}px`;
+            this.discElement.style.height = `${this.discSize}px`;
             this.updateStem();
             this.updatePetals();
         }
@@ -184,9 +323,14 @@ class FlowerComponent {
         // Constrain disc position due to stem hardness
         this.constrainDiscPosition();
         
+        // Ensure disc size is at original (in case tap animation changed it)
+        this.discSize = this.originalDiscSize;
+        
         // Update visual position
         this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
         this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+        this.discElement.style.width = `${this.discSize}px`;
+        this.discElement.style.height = `${this.discSize}px`;
         
         // Update stem and petals
         this.updateStem();
@@ -430,9 +574,15 @@ class FlowerComponent {
     startDiscDrag(e) {
         e.preventDefault();
         this.isDraggingDisc = true;
+        this.isTap = true; // Assume it's a tap until movement is detected
         
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Record tap start time and position
+        this.tapStartTime = Date.now();
+        this.tapStartPosition.x = clientX;
+        this.tapStartPosition.y = clientY;
         
         const rect = this.discElement.getBoundingClientRect();
         this.dragOffset.x = clientX - (rect.left + rect.width / 2);
@@ -448,11 +598,22 @@ class FlowerComponent {
         if (!this.isDraggingDisc) return;
         e.preventDefault();
         
-        // Stop spring animation while dragging
-        this.discSpringActive = false;
-        
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Check if this is a tap (minimal movement) or a drag
+        const moveDistance = Math.sqrt(
+            Math.pow(clientX - this.tapStartPosition.x, 2) + 
+            Math.pow(clientY - this.tapStartPosition.y, 2)
+        );
+        
+        // If moved more than 10 pixels, it's a drag, not a tap
+        if (moveDistance > 10) {
+            this.isTap = false;
+        }
+        
+        // Stop spring animation while dragging
+        this.discSpringActive = false;
         
         // Update disc position
         this.discX = clientX - this.dragOffset.x;
@@ -470,9 +631,14 @@ class FlowerComponent {
         // Constrain disc position due to stem hardness
         this.constrainDiscPosition();
         
+        // Ensure disc size is at original (in case tap animation changed it)
+        this.discSize = this.originalDiscSize;
+        
         // Update disc visual position
         this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
         this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+        this.discElement.style.width = `${this.discSize}px`;
+        this.discElement.style.height = `${this.discSize}px`;
         
         // Update stem
         this.updateStem();
@@ -481,16 +647,81 @@ class FlowerComponent {
         this.updatePetals();
     }
     
-    stopDiscDrag = () => {
+    stopDiscDrag = (e) => {
         this.isDraggingDisc = false;
         
-        // Start spring animation to bounce back to original position
-        this.startDiscSpring();
+        // If it was a tap (not a drag), trigger tap effects
+        if (this.isTap) {
+            // Trigger tap animation: increase petal size, swing petals, move disc
+            this.triggerTapAnimation();
+            
+            // Calculate tap force/pressure
+            let force = 0.5; // Default force for mouse clicks
+            
+            if (e && e.changedTouches && e.changedTouches.length > 0) {
+                // Try to get force/pressure from touch event
+                const touch = e.changedTouches[0];
+                if (touch.force !== undefined && touch.force > 0) {
+                    force = touch.force; // 0.0 to 1.0
+                } else if (touch.pressure !== undefined && touch.pressure > 0) {
+                    force = touch.pressure; // 0.0 to 1.0
+                } else {
+                    // Use tap duration as proxy for force (longer press = more force)
+                    const tapDuration = Date.now() - this.tapStartTime;
+                    force = Math.min(1.0, tapDuration / 300); // Max force at 300ms
+                }
+            } else {
+                // For mouse clicks, use tap duration
+                const tapDuration = Date.now() - this.tapStartTime;
+                force = Math.min(1.0, tapDuration / 300); // Max force at 300ms
+            }
+            
+            // Calculate number of petals to detach (1-3 based on force)
+            // Force 0.0-0.33 = 1 petal, 0.33-0.66 = 2 petals, 0.66-1.0 = 3 petals
+            let numToDetach = 1;
+            if (force > 0.66) {
+                numToDetach = 3;
+            } else if (force > 0.33) {
+                numToDetach = 2;
+            }
+            
+            // Detach random petals after a short delay (during animation)
+            setTimeout(() => {
+                this.detachRandomPetals(numToDetach);
+            }, 100);
+        } else {
+            // Start spring animation to bounce back to original position
+            this.startDiscSpring();
+        }
         
         document.removeEventListener('mousemove', this.handleDiscDrag);
         document.removeEventListener('mouseup', this.stopDiscDrag);
         document.removeEventListener('touchmove', this.handleDiscDrag);
         document.removeEventListener('touchend', this.stopDiscDrag);
+    }
+    
+    detachRandomPetals(count) {
+        // Get only attached petals
+        const attachedPetals = this.petals.filter(p => p.attached);
+        
+        if (attachedPetals.length === 0) return;
+        
+        // Limit count to available petals
+        const numToDetach = Math.min(count, attachedPetals.length);
+        
+        // Shuffle array and take first N petals
+        const shuffled = [...attachedPetals].sort(() => Math.random() - 0.5);
+        const petalsToDetach = shuffled.slice(0, numToDetach);
+        
+        // Detach each petal
+        petalsToDetach.forEach(petal => {
+            // Calculate random direction for falling
+            const angle = Math.random() * Math.PI * 2;
+            const releaseX = this.discX + Math.cos(angle) * 50;
+            const releaseY = this.discY + Math.sin(angle) * 50;
+            
+            this.detachPetal(petal, releaseX, releaseY);
+        });
     }
     
     createPetals() {
