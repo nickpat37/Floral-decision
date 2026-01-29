@@ -139,24 +139,29 @@ class FlowerComponent {
         const dirX = dx / distance;
         const dirY = dy / distance;
         
-        // Move disc slightly in swipe direction (5% of swipe distance, max 10% of stem length)
-        const maxMoveDistance = this.fixedStemLength * 0.1; // 10% of stem length
-        const moveDistance = Math.min(distance * 0.05, maxMoveDistance);
+        // Move disc slightly in swipe direction
+        // Use a fixed movement amount based on stem length (more visible)
+        const moveDistance = this.fixedStemLength * 0.08; // 8% of stem length (more visible)
         
-        // Calculate new disc position
-        const newDiscX = this.discX + dirX * moveDistance;
-        const newDiscY = this.discY + dirY * moveDistance;
+        // Calculate new disc position relative to original position
+        const newDiscX = this.originalDiscX + dirX * moveDistance;
+        const newDiscY = this.originalDiscY + dirY * moveDistance;
         
-        // Constrain to maintain stem length
-        const tempDiscX = this.discX;
-        const tempDiscY = this.discY;
+        // Update disc position
         this.discX = newDiscX;
         this.discY = newDiscY;
+        
+        // Constrain to maintain stem length
         this.constrainDiscPosition();
         
-        // Update disc visual position
+        // Ensure disc size is at original
+        this.discSize = this.originalDiscSize;
+        
+        // Update disc visual position and size
         this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
         this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+        this.discElement.style.width = `${this.discSize}px`;
+        this.discElement.style.height = `${this.discSize}px`;
         
         // Update stem and petals
         this.updateStem();
@@ -1211,7 +1216,15 @@ class FlowerComponent {
         let touchStartY = 0;
         let touchStartTime = 0;
         
+        // Swipe detection for touch devices
+        // Use capture phase to detect before disc/petal handlers
         this.container.addEventListener('touchstart', (e) => {
+            // Skip if touching disc or petal directly
+            const target = e.target;
+            if (target.closest('.flower-disc') || target.closest('.flower-petal')) {
+                return;
+            }
+            
             // Only handle if not already handling disc drag or petal stretch
             if (this.isDraggingDisc || this.stretchingPetal) return;
             
@@ -1220,7 +1233,7 @@ class FlowerComponent {
             touchStartY = touch.clientY;
             touchStartTime = Date.now();
             this.isSwiping = true;
-        }, { passive: true });
+        }, { passive: true, capture: true });
         
         this.container.addEventListener('touchmove', (e) => {
             if (!this.isSwiping || this.isDraggingDisc || this.stretchingPetal) return;
@@ -1260,6 +1273,12 @@ class FlowerComponent {
         let isMouseSwiping = false;
         
         this.container.addEventListener('mousedown', (e) => {
+            // Skip if clicking disc or petal directly
+            const target = e.target;
+            if (target.closest('.flower-disc') || target.closest('.flower-petal')) {
+                return;
+            }
+            
             // Only handle if not already handling disc drag or petal stretch
             if (this.isDraggingDisc || this.stretchingPetal) return;
             
@@ -1267,7 +1286,7 @@ class FlowerComponent {
             mouseStartY = e.clientY;
             mouseStartTime = Date.now();
             isMouseSwiping = true;
-        });
+        }, { capture: true });
         
         this.container.addEventListener('mousemove', (e) => {
             if (!isMouseSwiping || this.isDraggingDisc || this.stretchingPetal) return;
