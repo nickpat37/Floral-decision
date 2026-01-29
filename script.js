@@ -779,8 +779,12 @@ class FlowerComponent {
                 // If still attached, remove stretching class
                 this.stretchingPetal.element.classList.remove('stretching');
                 
-                // Reset swing angle smoothly when released
+                // Reset petal to original form/size when released
+                this.stretchingPetal.currentLength = this.stretchingPetal.baseLength;
                 this.stretchingPetal.swingAngle = 0;
+                
+                // Update petal to reflect the reset
+                this.updatePetal(this.stretchingPetal);
                 
                 // Start spring animation to bounce disc back to original position
                 this.startDiscSpring();
@@ -827,8 +831,8 @@ class FlowerComponent {
         
         // Rotate petal to point outward from attachment point (including swing angle)
         // The petal should be perpendicular to the direction (pointing outward)
-        const baseRotation = (petal.angle * 180) / Math.PI + 90;
-        const rotation = baseRotation + petal.swingAngle;
+        const baseRotation = (currentAngle * 180) / Math.PI + 90;
+        const rotation = baseRotation;
         
         // Translate to center bottom at attachment point, then rotate around it
         // translate(-50%, -100%) positions bottom center of petal at the point
