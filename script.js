@@ -79,6 +79,18 @@ class FlowerComponent {
         this.tapAnimationStartTime = 0;
         this.tapAnimationDuration = 400; // Animation duration in ms
         
+        // Continuous petal detachment during swiping/dragging
+        this.swipeDetachInterval = null; // Interval ID for swipe detachment
+        this.swipeDetachIntervalMs = 300; // Detach petals every 300ms during swiping
+        this.lastSwipeDetachTime = 0; // Last time a petal was detached during swipe
+        
+        // Continuous petal detachment during disc dragging
+        this.dragDetachInterval = null; // Interval ID for drag detachment
+        this.dragDetachIntervalMs = 250; // Detach petals every 250ms during forceful dragging
+        this.lastDragDetachTime = 0; // Last time a petal was detached during drag
+        this.lastDragPosition = { x: 0, y: 0 }; // Last drag position for velocity calculation
+        this.dragVelocityThreshold = 5; // Minimum velocity (pixels per frame) to trigger detachment
+        
         this.init();
     }
     
@@ -133,6 +145,80 @@ class FlowerComponent {
         return distance <= this.swipeAreaRadius;
     }
     
+    // Start continuous petal detachment during swiping
+    startSwipeDetach() {
+        // Clear any existing interval
+        if (this.swipeDetachInterval) {
+            clearInterval(this.swipeDetachInterval);
+        }
+        
+        // Reset last detach time
+        this.lastSwipeDetachTime = Date.now();
+        
+        // Start interval to detach petals continuously
+        this.swipeDetachInterval = setInterval(() => {
+            // Check if there are still attached petals
+            const attachedPetals = this.petals.filter(p => p.attached);
+            if (attachedPetals.length === 0) {
+                // No more petals, stop interval
+                this.stopSwipeDetach();
+                return;
+            }
+            
+            // Detach 1 petal randomly
+            this.detachRandomPetals(1);
+        }, this.swipeDetachIntervalMs);
+    }
+    
+    // Stop continuous petal detachment during swiping
+    stopSwipeDetach() {
+        if (this.swipeDetachInterval) {
+            clearInterval(this.swipeDetachInterval);
+            this.swipeDetachInterval = null;
+        }
+        this.lastSwipeDetachTime = 0;
+    }
+    
+    // Start continuous petal detachment during forceful disc dragging
+    startDragDetach() {
+        // Clear any existing interval
+        if (this.dragDetachInterval) {
+            clearInterval(this.dragDetachInterval);
+        }
+        
+        // Reset last detach time
+        this.lastDragDetachTime = Date.now();
+        
+        // Start interval to detach petals continuously during forceful dragging
+        this.dragDetachInterval = setInterval(() => {
+            // Check if still dragging
+            if (!this.isDraggingDisc) {
+                this.stopDragDetach();
+                return;
+            }
+            
+            // Check if there are still attached petals
+            const attachedPetals = this.petals.filter(p => p.attached);
+            if (attachedPetals.length === 0) {
+                // No more petals, stop interval
+                this.stopDragDetach();
+                return;
+            }
+            
+            // Detach 1 petal randomly
+            this.detachRandomPetals(1);
+        }, this.dragDetachIntervalMs);
+    }
+    
+    // Stop continuous petal detachment during disc dragging
+    stopDragDetach() {
+        if (this.dragDetachInterval) {
+            clearInterval(this.dragDetachInterval);
+            this.dragDetachInterval = null;
+        }
+        this.lastDragDetachTime = 0;
+    }
+    
     // Update disc position to follow swipe (called during swipe movement)
     updateDiscFollowSwipe(fingerX, fingerY) {
         // Calculate distance from finger to original disc center (for string length)
@@ -143,8 +229,14 @@ class FlowerComponent {
         // Check if finger is within swipe area
         if (distanceFromOriginal > this.swipeAreaRadius) {
             // Finger moved out of swipe radius - return disc to original position
+            this.stopSwipeDetach(); // Stop continuous detachment
             this.startDiscSpring();
             return false;
+        }
+        
+        // Start continuous detachment if not already started
+        if (!this.swipeDetachInterval) {
+            this.startSwipeDetach();
         }
         
         // Calculate follow strength based on distance (closer = stronger follow)
@@ -184,6 +276,9 @@ class FlowerComponent {
     
     // Handle swipe gesture end
     handleSwipeEnd(startX, startY, endX, endY) {
+        // Stop continuous detachment
+        this.stopSwipeDetach();
+        
         // Check if swipe started or ended near disc area
         const startInArea = this.isInSwipeArea(startX, startY);
         const endInArea = this.isInSwipeArea(endX, endY);
@@ -204,9 +299,8 @@ class FlowerComponent {
             return false;
         }
         
-        // Detach 1-2 petals randomly (similar to tap interaction)
-        const numToDetach = Math.random() > 0.5 ? 1 : 2;
-        this.detachRandomPetals(numToDetach);
+        // Petals are already being detached continuously during swipe
+        // No need to detach additional petals here
         
         // Start spring animation to return disc to original position
         this.startDiscSpring();
@@ -736,6 +830,10 @@ class FlowerComponent {
         this.tapStartPosition.x = clientX;
         this.tapStartPosition.y = clientY;
         
+        // Initialize last drag position for velocity calculation
+        this.lastDragPosition.x = this.discX;
+        this.lastDragPosition.y = this.discY;
+        
         const rect = this.discElement.getBoundingClientRect();
         this.dragOffset.x = clientX - (rect.left + rect.width / 2);
         this.dragOffset.y = clientY - (rect.top + rect.height / 2);
@@ -768,8 +866,20 @@ class FlowerComponent {
         this.discSpringActive = false;
         
         // Update disc position
-        this.discX = clientX - this.dragOffset.x;
-        this.discY = clientY - this.dragOffset.y;
+        const newDiscX = clientX - this.dragOffset.x;
+        const newDiscY = clientY - this.dragOffset.y;
+        
+        // Calculate drag velocity (movement per frame)
+        const dx = newDiscX - this.lastDragPosition.x;
+        const dy = newDiscY - this.lastDragPosition.y;
+        const dragVelocity = Math.sqrt(dx * dx + dy * dy);
+        
+        // Update last drag position
+        this.lastDragPosition.x = newDiscX;
+        this.lastDragPosition.y = newDiscY;
+        
+        this.discX = newDiscX;
+        this.discY = newDiscY;
         
         // Constrain to screen bounds
         const maxX = window.innerWidth - this.discSize / 2;
@@ -786,6 +896,17 @@ class FlowerComponent {
         // Ensure disc size is at original (in case tap animation changed it)
         this.discSize = this.originalDiscSize;
         
+        // Check if dragging is forceful (high velocity)
+        if (dragVelocity > this.dragVelocityThreshold) {
+            // Start continuous detachment if not already started
+            if (!this.dragDetachInterval) {
+                this.startDragDetach();
+            }
+        } else {
+            // If velocity drops below threshold, stop detachment
+            this.stopDragDetach();
+        }
+        
         // Update disc visual position
         this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
         this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
@@ -801,6 +922,9 @@ class FlowerComponent {
     
     stopDiscDrag = (e) => {
         this.isDraggingDisc = false;
+        
+        // Stop continuous detachment during drag
+        this.stopDragDetach();
         
         // If it was a tap (not a drag), trigger tap effects
         if (this.isTap) {
@@ -1276,7 +1400,8 @@ class FlowerComponent {
             // Only handle if not dragging disc or stretching petal
             if (this.isDraggingDisc || this.stretchingPetal) {
                 if (this.isSwiping) {
-                    // If was swiping, return disc to original
+                    // If was swiping, stop detachment and return disc to original
+                    this.stopSwipeDetach();
                     this.startDiscSpring();
                     this.isSwiping = false;
                 }
@@ -1297,11 +1422,12 @@ class FlowerComponent {
             // If swipe is active
             if (this.isSwiping) {
                 if (!inSwipeArea) {
-                    // Finger moved out of swipe radius - return disc to original
+                    // Finger moved out of swipe radius - stop detachment and return disc to original
+                    this.stopSwipeDetach();
                     this.startDiscSpring();
                     this.isSwiping = false;
                 } else {
-                    // Make disc follow
+                    // Make disc follow (this will start continuous detachment if not already started)
                     this.updateDiscFollowSwipe(currentX, currentY);
                 }
             } else {
@@ -1319,12 +1445,13 @@ class FlowerComponent {
                 const endX = touch.clientX;
                 const endY = touch.clientY;
                 
-                // Handle swipe end
+                // Handle swipe end (this will stop continuous detachment)
                 this.handleSwipeEnd(touchStartX, touchStartY, endX, endY);
             }
             
             // Always ensure disc returns to original when touch ends
             if (this.isSwiping) {
+                this.stopSwipeDetach(); // Ensure detachment stops
                 this.startDiscSpring();
             }
             this.isSwiping = false;
@@ -1357,7 +1484,8 @@ class FlowerComponent {
             // Only handle if not dragging disc or stretching petal
             if (this.isDraggingDisc || this.stretchingPetal) {
                 if (isMouseSwiping || this.isSwiping) {
-                    // If was swiping, return disc to original
+                    // If was swiping, stop detachment and return disc to original
+                    this.stopSwipeDetach();
                     this.startDiscSpring();
                 }
                 isMouseSwiping = false;
@@ -1378,12 +1506,13 @@ class FlowerComponent {
             // If swipe is active
             if (isMouseSwiping && this.isSwiping) {
                 if (!inSwipeArea) {
-                    // Mouse moved out of swipe radius - return disc to original
+                    // Mouse moved out of swipe radius - stop detachment and return disc to original
+                    this.stopSwipeDetach();
                     this.startDiscSpring();
                     isMouseSwiping = false;
                     this.isSwiping = false;
                 } else {
-                    // Make disc follow
+                    // Make disc follow (this will start continuous detachment if not already started)
                     this.updateDiscFollowSwipe(currentX, currentY);
                 }
             } else {
@@ -1401,12 +1530,13 @@ class FlowerComponent {
                 const endX = e.clientX;
                 const endY = e.clientY;
                 
-                // Handle swipe end
+                // Handle swipe end (this will stop continuous detachment)
                 this.handleSwipeEnd(mouseStartX, mouseStartY, endX, endY);
             }
             
             // Always ensure disc returns to original when mouse is released
             if (isMouseSwiping || this.isSwiping) {
+                this.stopSwipeDetach(); // Ensure detachment stops
                 this.startDiscSpring();
             }
             isMouseSwiping = false;
