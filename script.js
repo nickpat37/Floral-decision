@@ -1122,6 +1122,19 @@ class FlowerComponent {
         
         this.container.appendChild(petalElement);
         
+        // Set z-index based on petal number (1-based): even numbers on top, odd numbers behind
+        // Index is 0-based, so petal number = index + 1
+        // Even petal numbers (2, 4, 6...) -> higher z-index (on top)
+        // Odd petal numbers (1, 3, 5...) -> lower z-index (behind)
+        const petalNumber = index + 1;
+        if (petalNumber % 2 === 0) {
+            // Even number - on top
+            petalElement.style.zIndex = '5';
+        } else {
+            // Odd number - behind
+            petalElement.style.zIndex = '3';
+        }
+        
         // Base length should be the petal radius (distance from disc edge)
         const discRadius = this.discSize / 2;
         const baseLength = this.petalRadius;
