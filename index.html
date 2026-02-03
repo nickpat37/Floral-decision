@@ -12,18 +12,63 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="flower-container" id="flowerContainer">
-            <!-- SVG for flexible stem -->
-            <svg id="stemSVG" class="stem-svg">
-                <path id="stemPath" class="stem-path" />
-            </svg>
-            <!-- Disc, petals will be added here -->
-        </div>
-        <div class="instructions">
-            <p>Drag the disc • Stretch petals</p>
+    <!-- Question Modal Page -->
+    <div id="questionPage" class="page active">
+        <div class="question-page-background">
+            <div class="question-page-content">
+                <div class="question-header">
+                    <h1>Ask me anything!</h1>
+                    <p>And count ... for the answer</p>
+                </div>
+                
+                <!-- Flower Component Container -->
+                <div class="daisy-container">
+                    <div class="question-flower-container" id="questionFlowerContainer">
+                        <!-- SVG for flexible stem -->
+                        <svg id="questionStemSVG" class="stem-svg">
+                            <path id="questionStemPath" class="stem-path" />
+                        </svg>
+                        <!-- Disc, petals will be added here -->
+                    </div>
+                </div>
+                
+                <!-- Question Modal -->
+                <div class="question-modal" id="questionModal">
+                    <div class="question-modal-label">I want to know if...</div>
+                    <div class="question-input-wrapper">
+                        <textarea 
+                            id="questionInput" 
+                            class="question-input" 
+                            placeholder="Type your question..."
+                            rows="3"
+                        ></textarea>
+                        <button id="doneButton" class="done-button" style="display: none;">Done</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Flower Interaction Page -->
+    <div id="flowerPage" class="page">
+        <div class="flower-page-container">
+            <div class="question-display" id="questionDisplay"></div>
+            <div class="container">
+                <div class="flower-container" id="flowerContainer">
+                    <!-- SVG for flexible stem -->
+                    <svg id="stemSVG" class="stem-svg">
+                        <path id="stemPath" class="stem-path" />
+                    </svg>
+                    <!-- Disc, petals will be added here -->
+                </div>
+                <div class="instructions">
+                    <p>Drag the disc • Stretch petals</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
+    <script src="question-page.js"></script>
 </body>
 </html>

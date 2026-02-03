@@ -13,18 +13,34 @@
  * - Swipe near disc: Disc follows swipe direction, detaches petals
  */
 class FlowerComponent {
-    constructor() {
-        this.container = document.getElementById('flowerContainer');
-        this.stemSVG = document.getElementById('stemSVG');
-        this.stemPath = document.getElementById('stemPath');
+    constructor(options = {}) {
+        // Allow custom container IDs, default to flower page IDs
+        const containerId = options.containerId || 'flowerContainer';
+        const stemSVGId = options.stemSVGId || 'stemSVG';
+        const stemPathId = options.stemPathId || 'stemPath';
         
-        // Initial positions
-        this.originalDiscX = window.innerWidth / 2;
-        this.originalDiscY = window.innerHeight * 0.3;
+        this.container = document.getElementById(containerId);
+        this.stemSVG = document.getElementById(stemSVGId);
+        this.stemPath = document.getElementById(stemPathId);
+        
+        // Check if container exists
+        if (!this.container) {
+            console.error(`Container with ID '${containerId}' not found`);
+            return;
+        }
+        
+        // Get container dimensions for positioning
+        const containerRect = this.container.getBoundingClientRect();
+        this.containerWidth = containerRect.width || window.innerWidth;
+        this.containerHeight = containerRect.height || window.innerHeight;
+        
+        // Initial positions - adjust based on container
+        this.originalDiscX = this.containerWidth / 2;
+        this.originalDiscY = this.containerHeight * 0.3;
         this.discX = this.originalDiscX;
         this.discY = this.originalDiscY;
-        this.stemBottomX = window.innerWidth / 2;
-        this.stemBottomY = window.innerHeight * 0.9;
+        this.stemBottomX = this.containerWidth / 2;
+        this.stemBottomY = this.containerHeight;
         
         // Disc properties
         this.discSize = 120;
@@ -577,11 +593,16 @@ class FlowerComponent {
     
     createStem() {
         // Stem SVG is already in HTML, just update the path
-        // Set SVG viewBox to match viewport
+        // Set SVG viewBox to match container
         if (this.stemSVG) {
-            this.stemSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
-            this.stemSVG.setAttribute('width', window.innerWidth);
-            this.stemSVG.setAttribute('height', window.innerHeight);
+            // Update container dimensions in case they changed
+            const containerRect = this.container.getBoundingClientRect();
+            this.containerWidth = containerRect.width || window.innerWidth;
+            this.containerHeight = containerRect.height || window.innerHeight;
+            
+            this.stemSVG.setAttribute('viewBox', `0 0 ${this.containerWidth} ${this.containerHeight}`);
+            this.stemSVG.setAttribute('width', this.containerWidth);
+            this.stemSVG.setAttribute('height', this.containerHeight);
         }
         this.updateStem();
     }
@@ -881,10 +902,15 @@ class FlowerComponent {
         this.discX = newDiscX;
         this.discY = newDiscY;
         
-        // Constrain to screen bounds
-        const maxX = window.innerWidth - this.discSize / 2;
+        // Update container dimensions in case they changed
+        const containerRect = this.container.getBoundingClientRect();
+        this.containerWidth = containerRect.width || window.innerWidth;
+        this.containerHeight = containerRect.height || window.innerHeight;
+        
+        // Constrain to container bounds
+        const maxX = this.containerWidth - this.discSize / 2;
         const minX = this.discSize / 2;
-        const maxY = window.innerHeight - this.discSize / 2;
+        const maxY = this.containerHeight - this.discSize / 2;
         const minY = this.discSize / 2;
         
         this.discX = Math.max(minX, Math.min(maxX, this.discX));
@@ -1248,8 +1274,12 @@ class FlowerComponent {
             petal.element.style.pointerEvents = 'none';
             petal.element.style.touchAction = 'none';
             
-            // Remove if fallen off screen
-            if (petal.y > window.innerHeight + 100) {
+            // Update container dimensions
+            const containerRect = this.container.getBoundingClientRect();
+            this.containerHeight = containerRect.height || window.innerHeight;
+            
+            // Remove if fallen off container
+            if (petal.y > this.containerHeight + 100) {
                 const index = this.detachedPetals.indexOf(petal);
                 if (index > -1) {
                     this.detachedPetals.splice(index, 1);
@@ -1545,6 +1575,11 @@ class FlowerComponent {
         
         // Handle window resize
         window.addEventListener('resize', () => {
+            // Update container dimensions
+            const containerRect = this.container.getBoundingClientRect();
+            this.containerWidth = containerRect.width || window.innerWidth;
+            this.containerHeight = containerRect.height || window.innerHeight;
+            
             // Keep disc size fixed (120px) - never changes
             this.discSize = 120;
             this.originalDiscSize = 120;
@@ -1555,13 +1590,13 @@ class FlowerComponent {
             // Recalculate swipe area radius
             this.swipeAreaRadius = (this.discSize / 2) * 1.5;
             
-            // Center everything horizontally
-            this.originalDiscX = window.innerWidth / 2;
-            this.originalDiscY = window.innerHeight * 0.3;
+            // Center everything horizontally based on container
+            this.originalDiscX = this.containerWidth / 2;
+            this.originalDiscY = this.containerHeight * 0.3;
             
-            // Center stem bottom horizontally
-            this.stemBottomX = window.innerWidth / 2;
-            this.stemBottomY = window.innerHeight * 0.9;
+            // Center stem bottom horizontally based on container
+            this.stemBottomX = this.containerWidth / 2;
+            this.stemBottomY = this.containerHeight;
             
             // Recalculate fixed stem length based on new positions
             const dx = this.originalDiscX - this.stemBottomX;
@@ -1579,8 +1614,8 @@ class FlowerComponent {
             } else {
                 // If interacting, maintain relative horizontal position but ensure centered
                 // Keep current Y position, but center X
-                const relativeX = this.discX - (window.innerWidth / 2);
-                this.discX = window.innerWidth / 2 + relativeX;
+                const relativeX = this.discX - (this.containerWidth / 2);
+                this.discX = this.containerWidth / 2 + relativeX;
             }
             
             // Update disc visual position and size
@@ -1613,11 +1648,11 @@ class FlowerComponent {
             
             this.updatePetals();
             
-            // Update SVG viewBox to match viewport
+            // Update SVG viewBox to match container
             if (this.stemSVG) {
-                this.stemSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
-                this.stemSVG.setAttribute('width', window.innerWidth);
-                this.stemSVG.setAttribute('height', window.innerHeight);
+                this.stemSVG.setAttribute('viewBox', `0 0 ${this.containerWidth} ${this.containerHeight}`);
+                this.stemSVG.setAttribute('width', this.containerWidth);
+                this.stemSVG.setAttribute('height', this.containerHeight);
             }
         });
     }
@@ -1627,7 +1662,11 @@ class FlowerComponent {
 let flowerInstance;
 
 document.addEventListener('DOMContentLoaded', () => {
-    flowerInstance = new FlowerComponent();
+    // Only initialize flower if flower page is active
+    const flowerPage = document.getElementById('flowerPage');
+    if (flowerPage && flowerPage.classList.contains('active')) {
+        flowerInstance = new FlowerComponent();
+    }
 });
 
 // Prevent default touch behaviors (only for attached elements)

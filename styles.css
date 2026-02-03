@@ -18,6 +18,227 @@ body {
     user-select: none;
 }
 
+/* Page Management */
+.page {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+.page.active {
+    display: block;
+}
+
+/* Question Page Styles */
+.question-page-background {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 40px 0 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.question-page-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+    gap: 0;
+    overflow: hidden;
+}
+
+.question-header {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.95);
+    margin-top: 40px;
+    margin-bottom: 20px;
+    z-index: 100;
+    position: relative;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.question-header h1 {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.question-header p {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    opacity: 0.9;
+}
+
+/* Flower Component Container in Question Page */
+.daisy-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    z-index: 1;
+    overflow: visible;
+    padding-top: 120px;
+}
+
+.question-flower-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.question-flower-container > * {
+    pointer-events: auto;
+}
+
+/* Question Modal */
+.question-modal {
+    width: calc(100% - 40px);
+    max-width: 500px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 20px 12px 8px 12px;
+    height: 180px;
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+.question-modal-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(10, 24, 1, 1);
+    margin-bottom: 12px;
+    padding-left: 4px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.question-input-wrapper {
+    position: relative;
+}
+
+.question-input {
+    width: 100%;
+    height: 115px;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(242, 242, 242, 1);
+    background: white;
+    resize: none;
+    outline: none;
+    transition: border-color 0.3s ease;
+    padding-right: 80px;
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: auto;
+}
+
+.question-input:focus {
+    border-color: rgba(45, 80, 22, 0.5);
+}
+
+.question-input::placeholder {
+    color: #999;
+    opacity: 0.7;
+}
+
+.done-button {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    padding: 8px 20px;
+    background: rgba(138, 138, 138, 0.9);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-family: 'Kalam', cursive, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.done-button:hover {
+    background: rgba(120, 120, 120, 0.95);
+    transform: scale(1.05);
+}
+
+.done-button:active {
+    transform: scale(0.98);
+}
+
+/* Flower Page Styles */
+.flower-page-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #000000;
+    overflow: hidden;
+}
+
+.question-display {
+    padding: 30px 20px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    position: relative;
+}
+
+.question-display::before {
+    content: '"';
+    font-size: 40px;
+    opacity: 0.5;
+    margin-right: 8px;
+}
+
+.question-display::after {
+    content: '"';
+    font-size: 40px;
+    opacity: 0.5;
+    margin-left: 8px;
+}
+
 .container {
     width: 100vw;
     height: 100vh;
@@ -26,6 +247,11 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
+}
+
+.flower-page-container .container {
+    flex: 1;
+    height: calc(100vh - 80px);
 }
 
 .flower-container {
