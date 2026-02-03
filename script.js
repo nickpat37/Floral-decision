@@ -77,8 +77,9 @@ class FlowerComponent {
         this.maxDiscMovement = null; // Will be calculated on init
         
         // Petal properties
-        this.numPetals = 13; // 12-14 petals as in reference image
-        this.petalRadius = 70; // Distance from disc center to petal center
+        // Random number of petals between 12 and 30 (inclusive)
+        this.numPetals = Math.floor(Math.random() * (30 - 12 + 1)) + 12;
+        this.petalRadius = 88; // Distance from disc center to petal center
         this.petals = [];
         this.detachedPetals = []; // Petals that have fallen off
         this.stretchingPetal = null;
@@ -1422,10 +1423,16 @@ class FlowerComponent {
         if (!petal || !petal.attached) return;
         
         // Calculate attachment point (tip closer to disc) - this is the anchor point for swinging
-        // Distance = 0 means petal tip is exactly at disc edge
+        // petalRadius represents distance from disc center to petal center
+        // Since transform-origin is 'center bottom', we need to adjust attachment point
+        // Petal height is 80px, so center is 40px above bottom
         const discRadius = this.discSize / 2;
-        const attachmentX = this.discX + Math.cos(petal.angle) * discRadius;
-        const attachmentY = this.discY + Math.sin(petal.angle) * discRadius;
+        const petalHeight = 80; // Petal height in pixels
+        const petalCenterOffset = petalHeight / 2; // Distance from bottom to center
+        // Attachment point (bottom) should be at petalRadius - centerOffset to place center at petalRadius
+        const attachmentDistance = this.petalRadius - petalCenterOffset;
+        const attachmentX = this.discX + Math.cos(petal.angle) * attachmentDistance;
+        const attachmentY = this.discY + Math.sin(petal.angle) * attachmentDistance;
         
         // Calculate angle including swing (swing happens around attachment point)
         const currentAngle = petal.angle + (petal.swingAngle * Math.PI / 180);
@@ -1643,8 +1650,8 @@ class FlowerComponent {
             this.discSize = 120;
             this.originalDiscSize = 120;
             
-            // Keep petal radius fixed (70px) - maintains ratio with disc
-            this.petalRadius = 70;
+            // Keep petal radius fixed (88px) - maintains ratio with disc
+            this.petalRadius = 88;
             
             // Recalculate swipe area radius
             this.swipeAreaRadius = (this.discSize / 2) * 1.5;
