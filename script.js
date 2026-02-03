@@ -1042,6 +1042,65 @@ class FlowerComponent {
         this.updatePetals();
     }
     
+    regrowMissingPetals() {
+        // Identify which petal indices are missing (only check attached petals)
+        // We want to regrow petals that were detached, so we check what's currently attached
+        const angleStep = (2 * Math.PI) / this.numPetals;
+        const attachedIndices = new Set(this.petals.map(p => p.index));
+        const missingIndices = [];
+        
+        // Find all indices that should exist but aren't attached
+        for (let i = 0; i < this.numPetals; i++) {
+            if (!attachedIndices.has(i)) {
+                missingIndices.push(i);
+            }
+        }
+        
+        if (missingIndices.length === 0) {
+            return; // No missing petals
+        }
+        
+        // Create missing petals with growth animation
+        missingIndices.forEach((index, delayIndex) => {
+            const angle = index * angleStep;
+            const petal = this.createPetal(angle, index);
+            
+            // Set initial position (this will set the transform)
+            this.updatePetal(petal);
+            
+            // Store the base transform
+            const baseTransform = petal.element.style.transform;
+            
+            // Start with overall scale 0 and opacity 0 for growth animation
+            // Append scale(0) to the existing transform
+            petal.element.style.transform = baseTransform + ' scale(0)';
+            petal.element.style.opacity = '0';
+            petal.element.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-out';
+            
+            // Animate growth after a slight delay (staggered animation)
+            setTimeout(() => {
+                requestAnimationFrame(() => {
+                    petal.element.style.opacity = '1';
+                    // Animate to scale 1 (append scale(1) to transform)
+                    petal.element.style.transform = baseTransform + ' scale(1)';
+                    
+                    // After animation completes, remove transition and the scale modifier
+                    setTimeout(() => {
+                        petal.element.style.transition = '';
+                        // Remove the scale modifier, keep only the base transform
+                        // The base transform will be maintained by updatePetal calls
+                        this.updatePetal(petal);
+                    }, 600);
+                });
+            }, delayIndex * 100); // Stagger each petal by 100ms
+            
+            this.petals.push(petal);
+        });
+        
+        // Sort petals by index to maintain order
+        this.petals.sort((a, b) => a.index - b.index);
+    }
+    
     createPetal(angle, index) {
         const petalElement = document.createElement('img');
         petalElement.src = 'Petal.png';

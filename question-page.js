@@ -130,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update petals to reflect new disc position
                 questionFlowerInstance.updatePetals();
                 
+                // Regrow any missing petals (if user detached some before sending question)
+                setTimeout(() => {
+                    questionFlowerInstance.regrowMissingPetals();
+                }, 100); // Small delay to ensure transition is complete
+                
                 // Reuse the same instance
                 flowerPageInstance = questionFlowerInstance;
             } else if (!flowerPageInstance) {
