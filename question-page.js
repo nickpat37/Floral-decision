@@ -5,6 +5,7 @@
 
 let questionFlowerInstance;
 let flowerPageInstance;
+let currentQuestion = null; // Store current question for saving
 
 document.addEventListener('DOMContentLoaded', () => {
     const questionPage = document.getElementById('questionPage');
@@ -55,6 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     function navigateToFlowerPage(question) {
+        // Store current question for saving later
+        currentQuestion = question;
+        
         const questionModal = document.getElementById('questionModal');
         const questionFlowerContainer = document.getElementById('questionFlowerContainer');
         const flowerContainer = document.getElementById('flowerContainer');
@@ -137,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Reuse the same instance
                 flowerPageInstance = questionFlowerInstance;
+                
+                // Store question globally for saving when answer is shown
+                window.currentQuestion = question;
             } else if (!flowerPageInstance) {
                 // Fallback: create new instance if moving failed
                 flowerPageInstance = new FlowerComponent({

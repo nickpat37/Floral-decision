@@ -43,8 +43,8 @@ class FlowerComponent {
         this.stemBottomY = this.containerHeight;
         
         // Disc properties
-        this.discSize = 120;
-        this.originalDiscSize = 120; // Store original disc size for tap animation
+        this.discSize = options.discSize || 120;
+        this.originalDiscSize = options.discSize || 120; // Store original disc size for tap animation
         this.discElement = null;
         this.isDraggingDisc = false;
         this.dragOffset = { x: 0, y: 0 };
@@ -77,13 +77,15 @@ class FlowerComponent {
         this.maxDiscMovement = null; // Will be calculated on init
         
         // Petal properties
-        // Random number of petals between 12 and 30 (inclusive)
-        this.numPetals = Math.floor(Math.random() * (30 - 12 + 1)) + 12;
-        this.petalRadius = 88; // Distance from disc center to petal center
+        // Random number of petals between 12 and 30 (inclusive), or use saved value
+        this.numPetals = options.numPetals || Math.floor(Math.random() * (30 - 12 + 1)) + 12;
+        this.petalRadius = options.petalRadius || 88; // Distance from disc center to petal center
         this.petals = [];
         this.detachedPetals = []; // Petals that have fallen off
         this.finalAnswer = null; // Will be set when last petal is detached
         this.answerDisplayed = false; // Track if answer has been shown
+        this.savedFlowerId = null; // Track if flower has been saved to prevent duplicates
+        this.seed = options.seed || Math.random(); // Seed for consistent petal arrangement
         this.stretchingPetal = null;
         this.stretchStartDistance = 0;
         this.stretchStartLength = 0;
@@ -1369,6 +1371,15 @@ class FlowerComponent {
         if (this.answerDisplayed) return; // Prevent showing answer multiple times
         this.answerDisplayed = true;
         
+        // Save flower to database if we have a question (save immediately when answer is shown)
+        if (typeof window.currentQuestion !== 'undefined' && window.currentQuestion) {
+            this.saveFlowerToDatabase(window.currentQuestion, answer).then(flowerId => {
+                if (flowerId) {
+                    window.lastCreatedFlowerId = flowerId;
+                }
+            });
+        }
+        
         // Hide instructions
         const instructions = document.querySelector('.instructions');
         if (instructions) {
@@ -1408,10 +1419,34 @@ class FlowerComponent {
             const doneButton = document.createElement('button');
             doneButton.className = 'answer-button';
             doneButton.textContent = 'Done';
-            doneButton.addEventListener('click', () => {
-                // Hide answer display
-                answerDisplay.style.display = 'none';
-                buttonContainer.style.display = 'none';
+            doneButton.addEventListener('click', async () => {
+                // Save flower to database (if not already saved)
+                let savedFlowerId = this.savedFlowerId;
+                if (!savedFlowerId && window.currentQuestion) {
+                    savedFlowerId = await this.saveFlowerToDatabase(window.currentQuestion, answer);
+                }
+                
+                // Store the saved flower ID for Garden page
+                window.lastCreatedFlowerId = savedFlowerId;
+                
+                // Navigate to Garden page
+                const flowerPage = document.getElementById('flowerPage');
+                const gardenPage = document.getElementById('gardenPage');
+                
+                if (flowerPage && gardenPage) {
+                    flowerPage.classList.remove('active');
+                    gardenPage.classList.add('active');
+                    
+                    // Trigger Garden page to scroll to new flower
+                    setTimeout(() => {
+                        if (window.gardenPageInstance && savedFlowerId) {
+                            window.gardenPageInstance.scrollToFlower(savedFlowerId);
+                        } else {
+                            // Reload garden page to show new flower
+                            window.gardenPageInstance?.refreshAndScrollToFlower(savedFlowerId);
+                        }
+                    }, 300);
+                }
             });
             
             const tryAnotherButton = document.createElement('button');
@@ -1433,6 +1468,39 @@ class FlowerComponent {
             buttonContainer.style.transition = 'opacity 0.5s ease-in';
             buttonContainer.style.opacity = '1';
         }, 600);
+    }
+    
+    /**
+     * Save flower to database when answer is shown
+     * @returns {Promise<string>} - ID of saved flower
+     */
+    async saveFlowerToDatabase(question, answer) {
+        if (typeof flowerDB === 'undefined') {
+            console.warn('Database not initialized');
+            return null;
+        }
+        
+        // Check if already saved (prevent duplicate saves)
+        if (this.savedFlowerId) {
+            return this.savedFlowerId;
+        }
+        
+        try {
+            const flowerId = await flowerDB.saveFlower({
+                question: question,
+                answer: answer,
+                numPetals: this.numPetals,
+                petalRadius: this.petalRadius,
+                discSize: this.discSize,
+                seed: this.seed || Math.random()
+            });
+            this.savedFlowerId = flowerId;
+            console.log('Flower saved to database:', flowerId);
+            return flowerId;
+        } catch (error) {
+            console.error('Error saving flower:', error);
+            return null;
+        }
     }
     
     updateFallingPetals() {
