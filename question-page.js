@@ -75,10 +75,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Step 3: Move flower elements from question page container to interactive page container
             // This keeps the flower in the exact same position
             if (questionFlowerInstance && questionFlowerContainer && flowerContainer) {
-                // Move all flower elements (disc, petals, SVG) to the new container
+                // Move flower elements (disc, petals) to the new container
+                // Don't move SVG elements - each container has its own stem SVG
                 const flowerElements = Array.from(questionFlowerContainer.children);
                 flowerElements.forEach(element => {
-                    flowerContainer.appendChild(element);
+                    // Skip SVG elements - flowerContainer already has its own stem SVG
+                    if (element.tagName !== 'svg') {
+                        flowerContainer.appendChild(element);
+                    }
                 });
                 
                 // Update the flower instance to use the new container
@@ -91,12 +95,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 questionFlowerInstance.containerWidth = containerRect.width || window.innerWidth;
                 questionFlowerInstance.containerHeight = containerRect.height || window.innerHeight;
                 
+                // Recalculate disc and stem positions based on new container dimensions
+                questionFlowerInstance.originalDiscX = questionFlowerInstance.containerWidth / 2;
+                questionFlowerInstance.originalDiscY = questionFlowerInstance.containerHeight * 0.4;
+                questionFlowerInstance.discX = questionFlowerInstance.originalDiscX;
+                questionFlowerInstance.discY = questionFlowerInstance.originalDiscY;
+                questionFlowerInstance.stemBottomX = questionFlowerInstance.containerWidth / 2;
+                questionFlowerInstance.stemBottomY = questionFlowerInstance.containerHeight;
+                
+                // Recalculate fixed stem length
+                const dx = questionFlowerInstance.originalDiscX - questionFlowerInstance.stemBottomX;
+                const dy = questionFlowerInstance.originalDiscY - questionFlowerInstance.stemBottomY;
+                questionFlowerInstance.fixedStemLength = Math.sqrt(dx * dx + dy * dy);
+                questionFlowerInstance.maxDiscMovement = questionFlowerInstance.fixedStemLength * 0.15;
+                
                 // Update stem SVG
                 if (questionFlowerInstance.stemSVG) {
                     questionFlowerInstance.stemSVG.setAttribute('viewBox', `0 0 ${questionFlowerInstance.containerWidth} ${questionFlowerInstance.containerHeight}`);
                     questionFlowerInstance.stemSVG.setAttribute('width', questionFlowerInstance.containerWidth);
                     questionFlowerInstance.stemSVG.setAttribute('height', questionFlowerInstance.containerHeight);
                 }
+                
+                // Update disc position visually
+                if (questionFlowerInstance.discElement) {
+                    questionFlowerInstance.discElement.style.left = `${questionFlowerInstance.discX - questionFlowerInstance.discSize / 2}px`;
+                    questionFlowerInstance.discElement.style.top = `${questionFlowerInstance.discY - questionFlowerInstance.discSize / 2}px`;
+                }
+                
+                // Update stem path to ensure it's drawn (critical after transition)
+                if (questionFlowerInstance.stemPath) {
+                    questionFlowerInstance.updateStem();
+                }
+                
+                // Update petals to reflect new disc position
+                questionFlowerInstance.updatePetals();
                 
                 // Reuse the same instance
                 flowerPageInstance = questionFlowerInstance;
