@@ -36,7 +36,7 @@ class FlowerComponent {
         
         // Initial positions - adjust based on container
         this.originalDiscX = this.containerWidth / 2;
-        this.originalDiscY = this.containerHeight * 0.3;
+        this.originalDiscY = this.containerHeight * 0.4;
         this.discX = this.originalDiscX;
         this.discY = this.originalDiscY;
         this.stemBottomX = this.containerWidth / 2;
@@ -1592,7 +1592,7 @@ class FlowerComponent {
             
             // Center everything horizontally based on container
             this.originalDiscX = this.containerWidth / 2;
-            this.originalDiscY = this.containerHeight * 0.3;
+            this.originalDiscY = this.containerHeight * 0.4;
             
             // Center stem bottom horizontally based on container
             this.stemBottomX = this.containerWidth / 2;

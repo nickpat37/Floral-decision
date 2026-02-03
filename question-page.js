@@ -55,30 +55,71 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     function navigateToFlowerPage(question) {
-        // Hide question page
-        questionPage.classList.remove('active');
+        const questionModal = document.getElementById('questionModal');
+        const questionFlowerContainer = document.getElementById('questionFlowerContainer');
+        const flowerContainer = document.getElementById('flowerContainer');
         
-        // Stop question page flower physics if running
-        if (questionFlowerInstance) {
-            questionFlowerInstance.stopPhysicsLoop();
-        }
+        // Step 1: Fade out the question modal
+        questionModal.style.transition = 'opacity 0.4s ease-out';
+        questionModal.style.opacity = '0';
         
-        // Display question on flower page
-        questionDisplay.textContent = question;
-        
-        // Show flower page
-        flowerPage.classList.add('active');
-        
-        // Initialize flower component on flower page if not already initialized
-        if (!flowerPageInstance) {
-            // Wait a bit for page transition
-            setTimeout(() => {
+        // Step 2: After modal fades out, prepare the transition
+        setTimeout(() => {
+            // Display question on flower page in two-line format (initially hidden)
+            questionDisplay.innerHTML = `
+                <div class="question-prefix">I want to know if...</div>
+                <div class="question-text">"${question}"</div>
+            `;
+            questionDisplay.style.opacity = '0';
+            
+            // Step 3: Move flower elements from question page container to interactive page container
+            // This keeps the flower in the exact same position
+            if (questionFlowerInstance && questionFlowerContainer && flowerContainer) {
+                // Move all flower elements (disc, petals, SVG) to the new container
+                const flowerElements = Array.from(questionFlowerContainer.children);
+                flowerElements.forEach(element => {
+                    flowerContainer.appendChild(element);
+                });
+                
+                // Update the flower instance to use the new container
+                questionFlowerInstance.container = flowerContainer;
+                questionFlowerInstance.stemSVG = document.getElementById('stemSVG');
+                questionFlowerInstance.stemPath = document.getElementById('stemPath');
+                
+                // Update container dimensions
+                const containerRect = flowerContainer.getBoundingClientRect();
+                questionFlowerInstance.containerWidth = containerRect.width || window.innerWidth;
+                questionFlowerInstance.containerHeight = containerRect.height || window.innerHeight;
+                
+                // Update stem SVG
+                if (questionFlowerInstance.stemSVG) {
+                    questionFlowerInstance.stemSVG.setAttribute('viewBox', `0 0 ${questionFlowerInstance.containerWidth} ${questionFlowerInstance.containerHeight}`);
+                    questionFlowerInstance.stemSVG.setAttribute('width', questionFlowerInstance.containerWidth);
+                    questionFlowerInstance.stemSVG.setAttribute('height', questionFlowerInstance.containerHeight);
+                }
+                
+                // Reuse the same instance
+                flowerPageInstance = questionFlowerInstance;
+            } else if (!flowerPageInstance) {
+                // Fallback: create new instance if moving failed
                 flowerPageInstance = new FlowerComponent({
                     containerId: 'flowerContainer',
                     stemSVGId: 'stemSVG',
                     stemPathId: 'stemPath'
                 });
-            }, 100);
-        }
+            }
+            
+            // Show flower page (overlay it on top, both pages visible during transition)
+            flowerPage.classList.add('active');
+            
+            // Step 4: After a brief delay, hide question page and fade in question display
+            setTimeout(() => {
+                questionPage.classList.remove('active');
+                
+                // Fade in the question display
+                questionDisplay.style.transition = 'opacity 0.4s ease-in';
+                questionDisplay.style.opacity = '1';
+            }, 50);
+        }, 400); // Wait for fade-out to complete
     }
 });

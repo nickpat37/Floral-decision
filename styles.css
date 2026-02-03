@@ -26,10 +26,13 @@ body {
     position: fixed;
     top: 0;
     left: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .page.active {
     display: block;
+    opacity: 1;
 }
 
 /* Question Page Styles */
@@ -37,25 +40,26 @@ body {
     width: 100%;
     height: 100%;
     background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 40px 0 0;
     position: relative;
     overflow: hidden;
 }
 
-.question-page-content {
+/* Full-screen Flower Container (used on both pages) */
+.fullscreen-flower-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    position: relative;
-    gap: 0;
-    overflow: hidden;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.fullscreen-flower-container > * {
+    pointer-events: auto;
 }
 
 .question-header {
@@ -64,9 +68,12 @@ body {
     margin-top: 40px;
     margin-bottom: 20px;
     z-index: 100;
-    position: relative;
-    flex-shrink: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     width: 100%;
+    pointer-events: none;
 }
 
 .question-header h1 {
@@ -84,45 +91,14 @@ body {
     opacity: 0.9;
 }
 
-/* Flower Component Container in Question Page */
-.daisy-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    width: 100%;
-    z-index: 1;
-    overflow: visible;
-    padding-top: 120px;
-}
 
-.question-flower-container {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    overflow: visible;
-    pointer-events: none;
-}
-
-.question-flower-container > * {
-    pointer-events: auto;
-}
-
-/* Question Modal */
+/* Question Modal - Overlay */
 .question-modal {
     width: calc(100% - 40px);
     max-width: 500px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border-radius: 12px;
     padding: 20px 12px 8px 12px;
     height: 180px;
@@ -130,12 +106,14 @@ body {
     bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    z-index: 10;
+    box-shadow: none;
+    z-index: 200;
+    opacity: 1;
+    transition: opacity 0.4s ease-out;
 }
 
 .question-modal-label {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: rgba(10, 24, 1, 1);
     margin-bottom: 12px;
@@ -154,7 +132,9 @@ body {
     border: none;
     border-radius: 12px;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-    color: rgba(242, 242, 242, 1);
+    color: rgba(0, 0, 0, 1);
+    font-size: 20px;
+    font-weight: 600;
     background: white;
     resize: none;
     outline: none;
@@ -178,21 +158,32 @@ body {
     position: absolute;
     bottom: 12px;
     right: 12px;
-    padding: 8px 20px;
-    background: rgba(138, 138, 138, 0.9);
-    color: white;
+    padding: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(219, 189, 229, 0.9);
+    color: rgba(13, 13, 13, 1);
     border: none;
-    border-radius: 20px;
-    font-family: 'Kalam', cursive, sans-serif;
-    font-size: 16px;
-    font-weight: 600;
+    border-radius: 50%;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
     cursor: pointer;
     transition: background 0.3s ease, transform 0.1s ease;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: none;
+}
+
+.done-button svg {
+    width: 16px;
+    height: 16px;
+    display: block;
 }
 
 .done-button:hover {
-    background: rgba(120, 120, 120, 0.95);
+    background: rgba(180, 130, 180, 0.95);
     transform: scale(1.05);
 }
 
@@ -200,66 +191,50 @@ body {
     transform: scale(0.98);
 }
 
-/* Flower Page Styles */
+/* Interactive Page Styles (Flower Page) */
 .flower-page-container {
     width: 100vw;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: #000000;
+    position: relative;
+    background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
     overflow: hidden;
 }
 
 .question-display {
     padding: 30px 20px 20px;
-    background: rgba(0, 0, 0, 0.3);
+    background: unset;
     color: white;
-    font-size: 20px;
-    font-weight: 600;
     text-align: center;
     min-height: 80px;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    position: relative;
-}
-
-.question-display::before {
-    content: '"';
-    font-size: 40px;
-    opacity: 0.5;
-    margin-right: 8px;
-}
-
-.question-display::after {
-    content: '"';
-    font-size: 40px;
-    opacity: 0.5;
-    margin-left: 8px;
-}
-
-.container {
-    width: 100vw;
-    height: 100vh;
-    display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    position: relative;
+    justify-content: center;
+    z-index: 200;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    transition: opacity 0.4s ease-in;
+    pointer-events: none;
 }
 
-.flower-page-container .container {
-    flex: 1;
-    height: calc(100vh - 80px);
+.question-prefix {
+    font-size: 14px;
+    font-weight: 400;
+    color: white;
+    margin-bottom: 4px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.flower-container {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    overflow: hidden;
+.question-text {
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
 
 .stem-svg {
     position: absolute;
@@ -333,16 +308,17 @@ body {
 
 .instructions {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     color: #ffffff;
-    text-align: left;
-    font-size: 16px;
+    text-align: center;
+    font-size: 14px;
     font-weight: normal;
     pointer-events: none;
-    transform: rotate(-2deg);
-    font-style: italic;
-    z-index: 10;
+    z-index: 200;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 0 20px;
 }
 
 /* Responsive adjustments */

@@ -15,55 +15,60 @@
     <!-- Question Modal Page -->
     <div id="questionPage" class="page active">
         <div class="question-page-background">
-            <div class="question-page-content">
-                <div class="question-header">
-                    <h1>Ask me anything!</h1>
-                    <p>And count ... for the answer</p>
-                </div>
-                
-                <!-- Flower Component Container -->
-                <div class="daisy-container">
-                    <div class="question-flower-container" id="questionFlowerContainer">
-                        <!-- SVG for flexible stem -->
-                        <svg id="questionStemSVG" class="stem-svg">
-                            <path id="questionStemPath" class="stem-path" />
+            <!-- Full-screen Flower Container (always present) -->
+            <div class="fullscreen-flower-container" id="questionFlowerContainer">
+                <!-- SVG for flexible stem -->
+                <svg id="questionStemSVG" class="stem-svg">
+                    <path id="questionStemPath" class="stem-path" />
+                </svg>
+                <!-- Disc, petals will be added here -->
+            </div>
+            
+            <!-- Overlay: Question Header -->
+            <div class="question-header">
+                <h1>Ask me anything!</h1>
+                <p>And count ... for the answer</p>
+            </div>
+            
+            <!-- Overlay: Question Modal -->
+            <div class="question-modal" id="questionModal">
+                <div class="question-modal-label">I want to know if...</div>
+                <div class="question-input-wrapper">
+                    <textarea 
+                        id="questionInput" 
+                        class="question-input" 
+                        placeholder="Type your question..."
+                        rows="3"
+                    ></textarea>
+                    <button id="doneButton" class="done-button" style="display: none;" aria-label="Submit">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                            <polyline points="5 12 12 5 19 12"></polyline>
                         </svg>
-                        <!-- Disc, petals will be added here -->
-                    </div>
-                </div>
-                
-                <!-- Question Modal -->
-                <div class="question-modal" id="questionModal">
-                    <div class="question-modal-label">I want to know if...</div>
-                    <div class="question-input-wrapper">
-                        <textarea 
-                            id="questionInput" 
-                            class="question-input" 
-                            placeholder="Type your question..."
-                            rows="3"
-                        ></textarea>
-                        <button id="doneButton" class="done-button" style="display: none;">Done</button>
-                    </div>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Flower Interaction Page -->
+    <!-- Interactive Page -->
     <div id="flowerPage" class="page">
         <div class="flower-page-container">
+            <!-- Full-screen Flower Container (same as question page) -->
+            <div class="fullscreen-flower-container" id="flowerContainer">
+                <!-- SVG for flexible stem -->
+                <svg id="stemSVG" class="stem-svg">
+                    <path id="stemPath" class="stem-path" />
+                </svg>
+                <!-- Disc, petals will be added here -->
+            </div>
+            
+            <!-- Overlay: Question Display -->
             <div class="question-display" id="questionDisplay"></div>
-            <div class="container">
-                <div class="flower-container" id="flowerContainer">
-                    <!-- SVG for flexible stem -->
-                    <svg id="stemSVG" class="stem-svg">
-                        <path id="stemPath" class="stem-path" />
-                    </svg>
-                    <!-- Disc, petals will be added here -->
-                </div>
-                <div class="instructions">
-                    <p>Drag the disc • Stretch petals</p>
-                </div>
+            
+            <!-- Overlay: Instructions -->
+            <div class="instructions">
+                <p>Tap on me, or pluck the petal or whatever to get the universe answer</p>
             </div>
         </div>
     </div>
