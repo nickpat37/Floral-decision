@@ -323,10 +323,73 @@ body {
     padding: 0 20px;
 }
 
+/* Answer Display */
+.answer-display {
+    position: absolute;
+    top: 270px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 300;
+    pointer-events: none;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.answer-buttons {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    z-index: 301;
+}
+
+.answer-button {
+    padding: 12px 24px;
+    background: rgba(219, 189, 229, 0.9);
+    color: rgba(13, 13, 13, 1);
+    border: none;
+    border-radius: 40px;
+    width: 140px;
+    height: 44px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.answer-button:hover {
+    background: rgba(180, 130, 180, 0.95);
+    transform: translateY(-2px);
+}
+
+.answer-button:active {
+    transform: translateY(0);
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
     /* Disc and petal sizes remain fixed - no scaling */
     .instructions {
+        font-size: 14px;
+    }
+    
+    .answer-display {
+        font-size: 200px;
+    }
+    
+    .answer-button {
+        padding: 10px 20px;
         font-size: 14px;
     }
 }
@@ -334,5 +397,9 @@ body {
 @media (orientation: landscape) and (max-height: 500px) {
     .instructions {
         display: none;
+    }
+    
+    .answer-display {
+        font-size: 60px;
     }
 }

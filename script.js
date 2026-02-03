@@ -82,6 +82,8 @@ class FlowerComponent {
         this.petalRadius = 88; // Distance from disc center to petal center
         this.petals = [];
         this.detachedPetals = []; // Petals that have fallen off
+        this.finalAnswer = null; // Will be set when last petal is detached
+        this.answerDisplayed = false; // Track if answer has been shown
         this.stretchingPetal = null;
         this.stretchStartDistance = 0;
         this.stretchStartLength = 0;
@@ -1031,14 +1033,25 @@ class FlowerComponent {
         // Clear existing petals
         this.petals.forEach(petal => petal.element.remove());
         this.petals = [];
+        this.finalAnswer = null;
+        this.answerDisplayed = false;
+        
+        // Assign YES/NO to petals: start randomly, then alternate
+        const startAnswer = Math.random() < 0.5 ? 'YES' : 'NO';
         
         const angleStep = (2 * Math.PI) / this.numPetals;
         
         for (let i = 0; i < this.numPetals; i++) {
             const angle = i * angleStep;
-            const petal = this.createPetal(angle, i);
+            // Alternate answer: if start is YES, then YES, NO, YES, NO...
+            // If start is NO, then NO, YES, NO, YES...
+            const answer = (i % 2 === 0) ? startAnswer : (startAnswer === 'YES' ? 'NO' : 'YES');
+            const petal = this.createPetal(angle, i, answer);
             this.petals.push(petal);
         }
+        
+        // Store the final answer (last petal's answer)
+        this.finalAnswer = this.petals[this.petals.length - 1].answer;
         
         this.updatePetals();
     }
@@ -1061,10 +1074,27 @@ class FlowerComponent {
             return; // No missing petals
         }
         
+        // Determine the starting answer for regrown petals
+        // If we have existing petals, use the first petal's answer pattern
+        // Otherwise, start randomly
+        let startAnswer;
+        if (this.petals.length > 0) {
+            // Find the pattern from existing petals
+            const firstExistingIndex = Math.min(...this.petals.map(p => p.index));
+            startAnswer = this.petals.find(p => p.index === firstExistingIndex)?.answer;
+            if (!startAnswer) {
+                startAnswer = Math.random() < 0.5 ? 'YES' : 'NO';
+            }
+        } else {
+            startAnswer = Math.random() < 0.5 ? 'YES' : 'NO';
+        }
+        
         // Create missing petals with growth animation
         missingIndices.forEach((index, delayIndex) => {
             const angle = index * angleStep;
-            const petal = this.createPetal(angle, index);
+            // Assign answer based on index (alternating from startAnswer)
+            const answer = (index % 2 === 0) ? startAnswer : (startAnswer === 'YES' ? 'NO' : 'YES');
+            const petal = this.createPetal(angle, index, answer);
             
             // Set initial position (this will set the transform)
             this.updatePetal(petal);
@@ -1100,9 +1130,15 @@ class FlowerComponent {
         
         // Sort petals by index to maintain order
         this.petals.sort((a, b) => a.index - b.index);
+        
+        // Update final answer (last petal's answer)
+        if (this.petals.length > 0) {
+            const lastPetal = this.petals[this.petals.length - 1];
+            this.finalAnswer = lastPetal.answer;
+        }
     }
     
-    createPetal(angle, index) {
+    createPetal(angle, index, answer = null) {
         const petalElement = document.createElement('img');
         petalElement.src = 'Petal.png';
         petalElement.className = 'flower-petal';
@@ -1143,6 +1179,7 @@ class FlowerComponent {
             element: petalElement,
             angle: angle,
             index: index,
+            answer: answer, // YES or NO assigned to this petal
             baseLength: baseLength,
             currentLength: baseLength,
             baseRotation: (angle * 180) / Math.PI,
@@ -1257,6 +1294,10 @@ class FlowerComponent {
         
         petal.attached = false;
         
+        // Check if this is the last petal
+        const attachedPetals = this.petals.filter(p => p.attached);
+        const isLastPetal = attachedPetals.length === 1; // This petal is the last one
+        
         // Remove from attached petals array immediately
         const index = this.petals.indexOf(petal);
         if (index > -1) {
@@ -1265,6 +1306,13 @@ class FlowerComponent {
         
         // Add to detached petals array
         this.detachedPetals.push(petal);
+        
+        // If this was the last petal, show the answer ONLY if we're on the flower page (question has been sent)
+        // Don't show answer on the homepage (questionFlowerContainer)
+        const isOnFlowerPage = this.container && this.container.id === 'flowerContainer';
+        if (isLastPetal && !this.answerDisplayed && isOnFlowerPage) {
+            this.showAnswer(petal.answer);
+        }
         
         // Change petal class and remove all transitions
         petal.element.classList.remove('flower-petal', 'stretching');
@@ -1315,6 +1363,76 @@ class FlowerComponent {
         
         // Immediately start disc bounce-back when petal detaches
         this.startDiscSpring();
+    }
+    
+    showAnswer(answer) {
+        if (this.answerDisplayed) return; // Prevent showing answer multiple times
+        this.answerDisplayed = true;
+        
+        // Hide instructions
+        const instructions = document.querySelector('.instructions');
+        if (instructions) {
+            instructions.style.display = 'none';
+        }
+        
+        // Get the flower page container (parent of this.container)
+        const flowerPageContainer = this.container.parentElement;
+        
+        // Create or get answer display element
+        let answerDisplay = document.getElementById('answerDisplay');
+        if (!answerDisplay) {
+            answerDisplay = document.createElement('div');
+            answerDisplay.id = 'answerDisplay';
+            answerDisplay.className = 'answer-display';
+            flowerPageContainer.appendChild(answerDisplay);
+        }
+        
+        // Set answer text
+        answerDisplay.textContent = answer;
+        answerDisplay.style.display = 'flex';
+        answerDisplay.style.opacity = '0';
+        
+        // Animate answer appearance
+        setTimeout(() => {
+            answerDisplay.style.transition = 'opacity 0.5s ease-in';
+            answerDisplay.style.opacity = '1';
+        }, 100);
+        
+        // Create action buttons
+        let buttonContainer = document.getElementById('answerButtons');
+        if (!buttonContainer) {
+            buttonContainer = document.createElement('div');
+            buttonContainer.id = 'answerButtons';
+            buttonContainer.className = 'answer-buttons';
+            
+            const doneButton = document.createElement('button');
+            doneButton.className = 'answer-button';
+            doneButton.textContent = 'Done';
+            doneButton.addEventListener('click', () => {
+                // Hide answer display
+                answerDisplay.style.display = 'none';
+                buttonContainer.style.display = 'none';
+            });
+            
+            const tryAnotherButton = document.createElement('button');
+            tryAnotherButton.className = 'answer-button';
+            tryAnotherButton.textContent = 'Try another';
+            tryAnotherButton.addEventListener('click', () => {
+                // Reload the page to start fresh
+                window.location.reload();
+            });
+            
+            buttonContainer.appendChild(doneButton);
+            buttonContainer.appendChild(tryAnotherButton);
+            flowerPageContainer.appendChild(buttonContainer);
+        }
+        
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.opacity = '0';
+        setTimeout(() => {
+            buttonContainer.style.transition = 'opacity 0.5s ease-in';
+            buttonContainer.style.opacity = '1';
+        }, 600);
     }
     
     updateFallingPetals() {
