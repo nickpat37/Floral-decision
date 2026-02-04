@@ -1420,14 +1420,23 @@ class FlowerComponent {
             doneButton.className = 'answer-button';
             doneButton.textContent = 'Done';
             doneButton.addEventListener('click', async () => {
+                console.log('🌸 Done button clicked');
+                
                 // Save flower to database (if not already saved)
                 let savedFlowerId = this.savedFlowerId;
                 if (!savedFlowerId && window.currentQuestion) {
+                    console.log('🌸 Saving flower to database...');
                     savedFlowerId = await this.saveFlowerToDatabase(window.currentQuestion, answer);
+                    console.log('🌸 Flower saved with ID:', savedFlowerId);
+                } else if (savedFlowerId) {
+                    console.log('🌸 Flower already saved with ID:', savedFlowerId);
+                } else {
+                    console.warn('🌸 No question available to save');
                 }
                 
                 // Store the saved flower ID for Garden page
                 window.lastCreatedFlowerId = savedFlowerId;
+                console.log('🌸 Set window.lastCreatedFlowerId:', savedFlowerId);
                 
                 // Navigate to Garden page
                 const flowerPage = document.getElementById('flowerPage');
@@ -1437,15 +1446,41 @@ class FlowerComponent {
                     flowerPage.classList.remove('active');
                     gardenPage.classList.add('active');
                     
-                    // Trigger Garden page to scroll to new flower
-                    setTimeout(() => {
-                        if (window.gardenPageInstance && savedFlowerId) {
-                            window.gardenPageInstance.scrollToFlower(savedFlowerId);
+                    // Refresh garden and scroll to new flower
+                    setTimeout(async () => {
+                        if (window.gardenPageInstance) {
+                            console.log('🌸 Garden page instance found, refreshing...');
+                            // Store the flower ID before refreshing
+                            const targetFlowerId = savedFlowerId;
+                            // Refresh to load the new flower
+                            await window.gardenPageInstance.refreshGarden();
+                            console.log('🌸 Garden refreshed, scrolling to flower:', targetFlowerId);
+                            // Scroll to the flower after refresh
+                            if (targetFlowerId) {
+                                setTimeout(() => {
+                                    window.gardenPageInstance.scrollToFlower(targetFlowerId);
+                                }, 800);
+                            }
                         } else {
-                            // Reload garden page to show new flower
-                            window.gardenPageInstance?.refreshAndScrollToFlower(savedFlowerId);
+                            console.warn('🌸 Garden page instance not found, waiting...');
+                            // If garden page instance doesn't exist yet, wait a bit
+                            setTimeout(async () => {
+                                if (window.gardenPageInstance) {
+                                    const targetFlowerId = savedFlowerId;
+                                    await window.gardenPageInstance.refreshGarden();
+                                    if (targetFlowerId) {
+                                        setTimeout(() => {
+                                            window.gardenPageInstance.scrollToFlower(targetFlowerId);
+                                        }, 800);
+                                    }
+                                } else {
+                                    console.error('🌸 Garden page instance still not found after wait');
+                                }
+                            }, 500);
                         }
                     }, 300);
+                } else {
+                    console.error('🌸 Flower page or garden page element not found');
                 }
             });
             
@@ -1476,29 +1511,64 @@ class FlowerComponent {
      */
     async saveFlowerToDatabase(question, answer) {
         if (typeof flowerDB === 'undefined') {
-            console.warn('Database not initialized');
+            console.warn('❌ Database not initialized');
             return null;
         }
         
         // Check if already saved (prevent duplicate saves)
         if (this.savedFlowerId) {
+            console.log('🌸 Flower already saved with ID:', this.savedFlowerId);
             return this.savedFlowerId;
         }
         
         try {
-            const flowerId = await flowerDB.saveFlower({
+            // Ensure database is initialized
+            await flowerDB.init();
+            
+            // Generate a unique ID for this flower
+            const flowerId = Date.now().toString();
+            
+            console.log('🌸 Saving flower with ID:', flowerId);
+            console.log('🌸 Flower properties:', {
+                numPetals: this.numPetals,
+                petalRadius: this.petalRadius,
+                discSize: this.discSize,
+                seed: this.seed
+            });
+            
+            const savedId = await flowerDB.saveFlower({
+                id: flowerId, // Explicitly set the ID
                 question: question,
                 answer: answer,
                 numPetals: this.numPetals,
                 petalRadius: this.petalRadius,
                 discSize: this.discSize,
-                seed: this.seed || Math.random()
+                seed: this.seed || Math.random(),
+                timestamp: Date.now()
             });
-            this.savedFlowerId = flowerId;
-            console.log('Flower saved to database:', flowerId);
-            return flowerId;
+            
+            this.savedFlowerId = savedId || flowerId;
+            console.log('✅ Flower saved successfully! ID:', this.savedFlowerId);
+            console.log('✅ Saved ID type:', typeof this.savedFlowerId);
+            
+            // Verify the flower was saved by trying to retrieve it
+            if (savedId) {
+                try {
+                    const verifyFlower = await flowerDB.getFlower(savedId);
+                    if (verifyFlower) {
+                        console.log('✅ Verified: Flower exists in database');
+                    } else {
+                        console.warn('⚠️ Warning: Could not verify flower in database');
+                    }
+                } catch (verifyError) {
+                    console.warn('⚠️ Could not verify flower:', verifyError);
+                }
+            }
+            
+            return this.savedFlowerId;
         } catch (error) {
-            console.error('Error saving flower:', error);
+            console.error('❌ Error saving flower:', error);
+            console.error('❌ Error stack:', error.stack);
             return null;
         }
     }

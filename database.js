@@ -80,9 +80,10 @@ class FlowerDatabase {
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains(this.storeName)) {
+                        // Use keyPath 'id' but don't auto-increment (we provide our own IDs)
                         const objectStore = db.createObjectStore(this.storeName, {
                             keyPath: 'id',
-                            autoIncrement: true
+                            autoIncrement: false
                         });
                         objectStore.createIndex('timestamp', 'timestamp', { unique: false });
                         objectStore.createIndex('question', 'question', { unique: false });
@@ -150,8 +151,16 @@ class FlowerDatabase {
                 const store = transaction.objectStore(this.storeName);
                 const request = store.add(flowerForIndexedDB);
 
-                request.onsuccess = () => resolve(flowerForIndexedDB.id);
-                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    const savedId = flowerForIndexedDB.id;
+                    console.log('✅ Flower saved to IndexedDB with ID:', savedId);
+                    console.log('✅ Saved flower data:', flowerForIndexedDB);
+                    resolve(savedId);
+                };
+                request.onerror = () => {
+                    console.error('❌ IndexedDB save error:', request.error);
+                    reject(request.error);
+                };
             });
         } else {
             // Fallback to localStorage
@@ -218,16 +227,28 @@ class FlowerDatabase {
                     const cursor = event.target.result;
                     if (cursor && count < offset + limit) {
                         if (count >= offset) {
-                            flowers.push(cursor.value);
+                            const flower = cursor.value;
+                            // Ensure ID is a string for consistency
+                            if (flower.id !== undefined) {
+                                flower.id = String(flower.id);
+                            }
+                            flowers.push(flower);
                         }
                         count++;
                         cursor.continue();
                     } else {
+                        console.log(`📖 Loaded ${flowers.length} flowers from IndexedDB (offset: ${offset}, limit: ${limit})`);
+                        if (flowers.length > 0) {
+                            console.log('📖 Flower IDs:', flowers.slice(0, 5).map(f => f.id));
+                        }
                         resolve(flowers);
                     }
                 };
 
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error('❌ IndexedDB get error:', request.error);
+                    reject(request.error);
+                };
             });
         } else {
             // Fallback to localStorage

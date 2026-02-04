@@ -409,18 +409,27 @@ body {
     width: 100vw;
     height: 100vh;
     position: relative;
-    background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
+    background: linear-gradient(180deg, #4A90E2 0%, #87CEEB 50%, #B0E0E6 100%);
     overflow: hidden;
 }
 
 .garden-container {
     width: 100%;
     height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
     position: relative;
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
+    overflow: hidden;
+    cursor: grab;
+}
+
+.garden-container:active {
+    cursor: grabbing;
+}
+
+.garden-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
 }
 
 .garden-header {
@@ -459,8 +468,8 @@ body {
 
 .garden-flower-container {
     position: relative;
-    width: 100vw;
-    height: 400px;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
 }
 
@@ -468,36 +477,38 @@ body {
     pointer-events: auto;
 }
 
-/* Question Bubble Styles (matching image description) */
+/* Question Bubble Styles (matching reference image) */
 .garden-question-bubble {
-    background: rgba(173, 216, 230, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 16px;
+    background: rgba(100, 150, 200, 0.4);
+    border-radius: 12px;
     padding: 16px 20px;
-    max-width: 320px;
+    max-width: 400px;
     min-width: 280px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 350;
     pointer-events: none;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .question-bubble-prefix {
     font-size: 14px;
-    font-weight: 500;
-    color: rgba(0, 0, 0, 0.7);
-    margin-bottom: 8px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 6px;
     line-height: 1.4;
 }
 
 .question-bubble-text {
-    font-size: 16px;
-    font-weight: 700;
-    color: rgba(0, 0, 0, 0.9);
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 1);
     line-height: 1.5;
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+
+.question-bubble-answer {
+    display: none; /* Hide answer in garden view, only show question */
 }
 
 /* Navigation Button */
@@ -543,20 +554,57 @@ body {
     animation: flowerGrow 0.6s ease-out;
 }
 
+/* Empty state for garden */
+.garden-empty-state {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none; /* Hidden by default, shown via JavaScript when needed */
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    z-index: 100;
+}
+
+.empty-state-content {
+    padding: 40px;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.empty-state-content h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.empty-state-content p {
+    font-size: 16px;
+    opacity: 0.9;
+}
+
 /* Responsive adjustments for Garden page */
 @media (max-width: 480px) {
     .garden-question-bubble {
-        max-width: 280px;
-        min-width: 240px;
-        padding: 12px 16px;
+        max-width: 300px;
+        min-width: 260px;
+        padding: 14px 18px;
     }
     
     .question-bubble-prefix {
-        font-size: 12px;
+        font-size: 13px;
     }
     
     .question-bubble-text {
-        font-size: 14px;
+        font-size: 16px;
     }
     
     .garden-header h1 {
