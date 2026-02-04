@@ -1000,13 +1000,13 @@ class GardenPage {
         // Position bubble: center-aligned horizontally, bottom edge at 190px
         const wrapperWidth = 400; // Flower wrapper is 400px wide
         const bubbleWidth = 312;
-        const bubbleHeight = 320;
+        const bubbleHeight = 380;
         
         // Center align horizontally: (wrapper width - bubble width) / 2
         const leftPosition = 51; // Updated from calculated value
         
         // Top position updated to -51px
-        const topPosition = -51;
+        const topPosition = -70;
         
         bubble.style.cssText = `
             position: absolute;
