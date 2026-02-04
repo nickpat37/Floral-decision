@@ -12,15 +12,15 @@ class GardenPage {
         this.canvas = null;
         this.flowers = [];
         this.loadedFlowers = new Map(); // Track rendered flower instances
-        this.centerFlowers = []; // Array of flowers near center (max 3)
+        this.centerFlowers = []; // Array of flowers near center (max 1)
         this.questionBubbles = []; // Array of active question bubbles
-        this.maxBubbles = 3; // Maximum number of bubbles to show
+        this.maxBubbles = 1; // Maximum number of bubbles to show (only closest to center)
 
         // Canvas settings
         this.canvasSize = 10000; // Virtual canvas size (10000x10000)
         this.flowerSpread = 400; // Spread between flowers
-        this.isolatedSpread = 800; // Spread for flowers showing questions (isolated)
-        this.denseSpread = 250; // Spread for flowers not showing questions (dense)
+        this.isolatedSpread = 400; // Spread for flowers showing questions (denser)
+        this.denseSpread = 150; // Spread for flowers not showing questions (much denser)
         this.viewportPadding = 500; // Load flowers this far outside viewport
 
         // Pan/scroll state
@@ -830,7 +830,9 @@ class GardenPage {
         flowerWrapper.style.transform = 'translate(-50%, -50%) scale(0)';
         flowerWrapper.style.width = '400px';
         flowerWrapper.style.height = '400px';
-        flowerWrapper.style.zIndex = '10';
+        // Set z-index based on y position: higher y = lower on screen = higher z-index = in front
+        // Use canvasY directly as z-index (higher values = in front)
+        flowerWrapper.style.zIndex = Math.floor(canvasY);
 
         // Create flower container
         const flowerContainer = document.createElement('div');
@@ -938,7 +940,7 @@ class GardenPage {
             }
         });
 
-        // Sort by distance and take top 3
+        // Sort by distance and take only the closest one
         nearbyFlowers.sort((a, b) => a.distance - b.distance);
         const newCenterFlowers = nearbyFlowers.slice(0, this.maxBubbles).map(f => f.id);
 
