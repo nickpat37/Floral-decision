@@ -989,29 +989,56 @@ class GardenPage {
 
     /**
      * Create question bubble element
+     * Large container behind disc and petals (NOT stem), with blurred background
      */
     createQuestionBubble(flowerData, wrapper, index) {
         const bubble = document.createElement('div');
         bubble.className = 'garden-question-bubble';
         
-        const offsetX = (index - 1) * 20;
-        const offsetY = (index - 1) * 120;
+        // Flower wrapper is 400px x 400px
+        // Disc is typically at ~40% from top (160px), disc size is ~120px
+        // Petals extend around disc, roughly covering disc + petal radius on each side
+        // Stem extends below from disc center, so box should end where petals meet stem
+        // Position box to cover disc and petals area, ending before stem starts
+        const wrapperHeight = 400;
+        const discCenterY = wrapperHeight * 0.4; // ~160px from top
+        const discSize = 120;
+        const petalRadius = 88; // Approximate petal extension from disc center
+        const flowerHeadTop = discCenterY - (discSize / 2) - petalRadius; // Top of flower head
+        const flowerHeadBottom = discCenterY + (discSize / 2) + petalRadius; // Bottom of flower head (where stem starts)
+        const boxTop = flowerHeadTop - 20; // Start slightly above petals
+        const boxBottom = flowerHeadBottom + 10; // End just below where petals meet stem
+        const boxHeight = boxBottom - boxTop; // ~280-300px
         
         bubble.style.cssText = `
             position: absolute;
             left: 50%;
-            top: -20px;
-            transform: translateX(calc(-50% + ${offsetX}px)) translateY(calc(-100% - ${offsetY}px));
+            top: ${boxTop + (boxHeight / 2)}px;
+            width: 400px;
+            height: ${boxHeight}px;
+            transform: translate(-50%, -50%);
             opacity: 0;
-            transition: opacity 0.4s ease-in, transform 0.4s ease-out;
+            transition: opacity 0.4s ease-in;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         `;
 
+        // Format: Two-line format - "I want to know if..." (prefix) + question
         bubble.innerHTML = `
             <div class="question-bubble-prefix">I want to know if...</div>
-            <div class="question-bubble-text">${this.truncateText(flowerData.question, 60)}</div>
+            <div class="question-bubble-text">${this.truncateText(flowerData.question || '', 80)}</div>
         `;
 
-        wrapper.appendChild(bubble);
+        // Insert bubble before the flower container so it appears behind
+        const flowerContainer = wrapper.querySelector('.garden-flower-container');
+        if (flowerContainer) {
+            wrapper.insertBefore(bubble, flowerContainer);
+        } else {
+            wrapper.appendChild(bubble);
+        }
 
         requestAnimationFrame(() => {
             bubble.style.opacity = '1';
