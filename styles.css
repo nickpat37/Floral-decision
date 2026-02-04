@@ -485,7 +485,7 @@ body {
     -webkit-backdrop-filter: blur(15px);
     border-radius: 16px;
     padding: 24px 28px;
-    width: 400px;
+    width: 312px;
     z-index: 1; /* Behind the flower (flower wrapper has z-index: 10) */
     pointer-events: none;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -493,7 +493,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: left;
     overflow: hidden;
 }
@@ -504,6 +504,8 @@ body {
     color: rgba(100, 100, 100, 0.8);
     margin-bottom: 8px;
     line-height: 1.4;
+    text-align: center;
+    width: 100%;
 }
 
 .question-bubble-text {
@@ -514,6 +516,9 @@ body {
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
+    width: 100%;
+    height: 80px;
+    text-align: center;
 }
 
 .question-bubble-answer {

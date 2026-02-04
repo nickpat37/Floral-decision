@@ -995,35 +995,31 @@ class GardenPage {
         const bubble = document.createElement('div');
         bubble.className = 'garden-question-bubble';
         
-        // Flower wrapper is 400px x 400px
-        // Disc is typically at ~40% from top (160px), disc size is ~120px
-        // Petals extend around disc, roughly covering disc + petal radius on each side
-        // Stem extends below from disc center, so box should end where petals meet stem
-        // Position box to cover disc and petals area, ending before stem starts
-        const wrapperHeight = 400;
-        const discCenterY = wrapperHeight * 0.4; // ~160px from top
-        const discSize = 120;
-        const petalRadius = 88; // Approximate petal extension from disc center
-        const flowerHeadTop = discCenterY - (discSize / 2) - petalRadius; // Top of flower head
-        const flowerHeadBottom = discCenterY + (discSize / 2) + petalRadius; // Bottom of flower head (where stem starts)
-        const boxTop = flowerHeadTop - 20; // Start slightly above petals
-        const boxBottom = flowerHeadBottom + 10; // End just below where petals meet stem
-        const boxHeight = boxBottom - boxTop; // ~280-300px
+        // Position bubble: center-aligned horizontally, bottom edge at 190px
+        const wrapperWidth = 400; // Flower wrapper is 400px wide
+        const bubbleWidth = 312;
+        const bubbleHeight = 320;
+        
+        // Center align horizontally: (wrapper width - bubble width) / 2
+        const leftPosition = 51; // Updated from calculated value
+        
+        // Top position updated to -51px
+        const topPosition = -51;
         
         bubble.style.cssText = `
             position: absolute;
-            left: 50%;
-            top: ${boxTop + (boxHeight / 2)}px;
-            width: 400px;
-            height: ${boxHeight}px;
-            transform: translate(-50%, -50%);
+            left: ${leftPosition}px;
+            top: ${topPosition}px;
+            width: ${bubbleWidth}px;
+            height: ${bubbleHeight}px;
+            transform: none;
             opacity: 0;
             transition: opacity 0.4s ease-in;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+            align-items: flex-start;
+            justify-content: flex-start;
+            text-align: left;
         `;
 
         // Format: Two-line format - "I want to know if..." (prefix) + question
