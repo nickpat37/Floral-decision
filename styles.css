@@ -484,7 +484,7 @@ body {
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     border-radius: 16px;
-    padding: 24px 28px;
+    padding: 24px 16px;
     width: 312px;
     z-index: 1; /* Behind the flower (flower wrapper has z-index: 10) */
     pointer-events: none;
@@ -509,7 +509,7 @@ body {
 }
 
 .question-bubble-text {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: rgba(30, 30, 30, 0.95);
     line-height: 22px;

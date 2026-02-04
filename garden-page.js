@@ -1006,7 +1006,7 @@ class GardenPage {
         const leftPosition = 51; // Updated from calculated value
         
         // Top position updated to -51px
-        const topPosition = -70;
+        const topPosition = -120;
         
         bubble.style.cssText = `
             position: absolute;
