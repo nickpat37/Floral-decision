@@ -1000,7 +1000,6 @@ class GardenPage {
         // Position bubble: center-aligned horizontally, bottom edge at 190px
         const wrapperWidth = 400; // Flower wrapper is 400px wide
         const bubbleWidth = 312;
-        const bubbleHeight = 380;
         
         // Center align horizontally: (wrapper width - bubble width) / 2
         const leftPosition = 51; // Updated from calculated value
@@ -1013,21 +1012,23 @@ class GardenPage {
             left: ${leftPosition}px;
             top: ${topPosition}px;
             width: ${bubbleWidth}px;
-            height: ${bubbleHeight}px;
+            height: auto;
+            min-height: fit-content;
             transform: none;
             opacity: 0;
             transition: opacity 0.4s ease-in;
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            justify-content: flex-start;
+            align-items: center;
+            justify-content: flex-end;
             text-align: left;
         `;
 
-        // Format: Two-line format - "I want to know if..." (prefix) + question
+        // Format: Two-line format - "I want to know if..." (prefix) + question + flower space
         bubble.innerHTML = `
             <div class="question-bubble-prefix">I want to know if...</div>
             <div class="question-bubble-text">${this.truncateText(flowerData.question || '', 80)}</div>
+            <div class="question-bubble-flower-space"></div>
         `;
 
         // Insert bubble before the flower container so it appears behind

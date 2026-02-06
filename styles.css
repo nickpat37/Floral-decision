@@ -492,10 +492,10 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: flex-end;
     text-align: left;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .question-bubble-prefix {
@@ -518,13 +518,14 @@ body {
     max-width: 100%;
     width: 100%;
     height: fit-content;
-    max-height: 88px;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    vertical-align: bottom;
     text-align: center;
+}
+
+.question-bubble-flower-space {
+    width: 100%;
+    height: 200px;
+    flex-shrink: 0;
+    min-height: 200px;
 }
 
 .question-bubble-answer {
