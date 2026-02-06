@@ -92,7 +92,27 @@ class FlowerComponent {
         
         // Petal properties
         // Random number of petals between 12 and 30 (inclusive), or use saved value
-        this.numPetals = options.numPetals || Math.floor(Math.random() * (30 - 12 + 1)) + 12;
+        // CRITICAL: Clamp to valid range: 12-30 with strict validation
+        const requestedPetals = options.numPetals || Math.floor(Math.random() * (30 - 12 + 1)) + 12;
+        
+        // Ensure we have a valid number
+        if (typeof requestedPetals !== 'number' || isNaN(requestedPetals)) {
+            console.error(`🌸 CRITICAL: Invalid numPetals value: ${requestedPetals}, using default 20`);
+            this.numPetals = 20;
+        } else {
+            // Strict clamping: ensure integer between 12 and 30
+            const clamped = Math.max(12, Math.min(30, Math.floor(Math.abs(requestedPetals))));
+            this.numPetals = clamped;
+            if (requestedPetals !== this.numPetals) {
+                console.warn(`🌸 Petal count clamped from ${requestedPetals} to ${this.numPetals} (valid range: 12-30)`);
+            }
+        }
+        
+        // Final verification
+        if (this.numPetals < 12 || this.numPetals > 30) {
+            console.error(`🌸 CRITICAL ERROR: numPetals is ${this.numPetals}, forcing to 20`);
+            this.numPetals = 20;
+        }
         this.petalRadius = options.petalRadius || 88; // Distance from disc center to petal center
         this.petals = [];
         this.detachedPetals = []; // Petals that have fallen off
@@ -130,6 +150,10 @@ class FlowerComponent {
     }
     
     init() {
+        // CRITICAL: Clean up any existing flower elements before creating new ones
+        // This prevents multiple discs/petals when FlowerComponent is initialized multiple times
+        this.cleanupExistingElements();
+        
         // Calculate fixed stem length based on original positions
         const dx = this.originalDiscX - this.stemBottomX;
         const dy = this.originalDiscY - this.stemBottomY;
@@ -170,6 +194,49 @@ class FlowerComponent {
         }, 100);
         
         this.startPhysicsLoop();
+    }
+    
+    /**
+     * Clean up any existing flower elements (disc, petals) from the container
+     * This prevents duplicate elements when FlowerComponent is reinitialized
+     */
+    cleanupExistingElements() {
+        if (!this.container) return;
+        
+        // Only clean up if there are actually existing elements
+        // This prevents issues on initial page load when container is empty
+        const existingDiscs = this.container.querySelectorAll('.flower-disc');
+        const existingPetals = this.container.querySelectorAll('.flower-petal');
+        const detachedPetals = this.container.querySelectorAll('.detached-petal');
+        
+        if (existingDiscs.length > 0 || existingPetals.length > 0 || detachedPetals.length > 0) {
+            console.log(`🌸 Cleaning up ${existingDiscs.length} discs, ${existingPetals.length} petals, ${detachedPetals.length} detached petals`);
+            
+            // Remove all existing discs
+            existingDiscs.forEach(disc => {
+                disc.remove();
+            });
+            
+            // Remove all existing petals
+            existingPetals.forEach(petal => {
+                petal.remove();
+            });
+            
+            // Clear any detached petals
+            detachedPetals.forEach(petal => {
+                petal.remove();
+            });
+        }
+        
+        // Reset petal arrays
+        this.petals = [];
+        this.detachedPetals = [];
+        
+        // Stop any running animations
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
     }
     
     // Check if a point is within swipe area (near disc)
@@ -832,6 +899,13 @@ class FlowerComponent {
     }
     
     createDisc() {
+        // CRITICAL: Ensure no existing disc before creating new one
+        const existingDisc = this.container.querySelector('.flower-disc');
+        if (existingDisc) {
+            console.warn(`🌸 Existing disc found, removing before creating new one`);
+            existingDisc.remove();
+        }
+        
         const disc = document.createElement('img');
         disc.src = 'Disc.png';
         disc.className = 'flower-disc';
@@ -1046,18 +1120,55 @@ class FlowerComponent {
     }
     
     createPetals() {
-        // Clear existing petals
-        this.petals.forEach(petal => petal.element.remove());
+        // CRITICAL: Clear existing petals from both array and DOM
+        this.petals.forEach(petal => {
+            if (petal.element && petal.element.parentNode) {
+                petal.element.remove();
+            }
+        });
         this.petals = [];
         this.finalAnswer = null;
         this.answerDisplayed = false;
+        
+        // CRITICAL: Also remove any existing petal elements from DOM that might not be in array
+        if (this.container) {
+            const existingPetals = this.container.querySelectorAll('.flower-petal');
+            existingPetals.forEach(petal => {
+                console.warn(`🌸 Removing existing petal element from DOM before creating new petals`);
+                petal.remove();
+            });
+        }
+        
+        // CRITICAL: Validate and clamp numPetals before creating petals
+        // This is a final safeguard to ensure we never exceed limits
+        const requestedPetals = this.numPetals || 20;
+        this.numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+        if (requestedPetals !== this.numPetals) {
+            console.error(`🌸 CRITICAL: Petal count was ${requestedPetals}, clamped to ${this.numPetals} (valid range: 12-30)`);
+        }
         
         // Assign YES/NO to petals: start randomly, then alternate
         const startAnswer = Math.random() < 0.5 ? 'YES' : 'NO';
         
         const angleStep = (2 * Math.PI) / this.numPetals;
         
+        // Final safeguard: ensure we never create more than 30 petals
+        const maxPetals = Math.min(30, this.numPetals);
+        const minPetals = Math.max(12, maxPetals);
+        const actualPetals = Math.max(12, Math.min(30, maxPetals));
+        
+        if (actualPetals !== this.numPetals) {
+            console.error(`🌸 CRITICAL: Adjusted petal count from ${this.numPetals} to ${actualPetals}`);
+            this.numPetals = actualPetals;
+        }
+        
         for (let i = 0; i < this.numPetals; i++) {
+            // Additional safeguard: never create more than 30 petals
+            if (i >= 30) {
+                console.error(`🌸 CRITICAL: Stopping petal creation at index ${i} to prevent exceeding 30 petals`);
+                break;
+            }
+            
             const angle = i * angleStep;
             // Alternate answer: if start is YES, then YES, NO, YES, NO...
             // If start is NO, then NO, YES, NO, YES...
@@ -1066,13 +1177,34 @@ class FlowerComponent {
             this.petals.push(petal);
         }
         
+        // Verify we didn't exceed limits
+        if (this.petals.length > 30) {
+            console.error(`🌸 CRITICAL ERROR: Created ${this.petals.length} petals, removing excess`);
+            const excess = this.petals.splice(30);
+            excess.forEach(petal => {
+                if (petal.element && petal.element.parentNode) {
+                    petal.element.remove();
+                }
+            });
+        }
+        
+        if (this.petals.length < 12) {
+            console.error(`🌸 CRITICAL ERROR: Only ${this.petals.length} petals created, expected at least 12`);
+        }
+        
         // Store the final answer (last petal's answer)
-        this.finalAnswer = this.petals[this.petals.length - 1].answer;
+        if (this.petals.length > 0) {
+            this.finalAnswer = this.petals[this.petals.length - 1].answer;
+        }
         
         this.updatePetals();
     }
     
     regrowMissingPetals() {
+        // CRITICAL: Validate numPetals before regrowing
+        const requestedPetals = this.numPetals || 20;
+        this.numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+        
         // Identify which petal indices are missing (only check attached petals)
         // We want to regrow petals that were detached, so we check what's currently attached
         const angleStep = (2 * Math.PI) / this.numPetals;
@@ -1080,7 +1212,9 @@ class FlowerComponent {
         const missingIndices = [];
         
         // Find all indices that should exist but aren't attached
-        for (let i = 0; i < this.numPetals; i++) {
+        // Safeguard: never exceed 30 petals total
+        const maxAllowedIndex = Math.min(29, this.numPetals - 1); // 0-indexed, so max is 29 for 30 petals
+        for (let i = 0; i <= maxAllowedIndex; i++) {
             if (!attachedIndices.has(i)) {
                 missingIndices.push(i);
             }
@@ -1106,7 +1240,24 @@ class FlowerComponent {
         }
         
         // Create missing petals with growth animation
-        missingIndices.forEach((index, delayIndex) => {
+        // CRITICAL: Ensure we never exceed 30 petals total
+        const currentPetalCount = this.petals.length;
+        const maxCanAdd = 30 - currentPetalCount;
+        const indicesToRegrow = missingIndices.slice(0, maxCanAdd);
+        
+        indicesToRegrow.forEach((index, delayIndex) => {
+            // Additional safeguard: never exceed index 29 (30th petal)
+            if (index >= 30) {
+                console.error(`🌸 CRITICAL: Skipping regrow for index ${index} to prevent exceeding 30 petals`);
+                return;
+            }
+            
+            // Additional safeguard: check current count before adding
+            if (this.petals.length >= 30) {
+                console.error(`🌸 CRITICAL: Already have ${this.petals.length} petals, stopping regrow`);
+                return;
+            }
+            
             const angle = index * angleStep;
             // Assign answer based on index (alternating from startAnswer)
             const answer = (index % 2 === 0) ? startAnswer : (startAnswer === 'YES' ? 'NO' : 'YES');
@@ -1143,6 +1294,17 @@ class FlowerComponent {
             
             this.petals.push(petal);
         });
+        
+        // Final verification: remove any excess petals if somehow we exceeded 30
+        if (this.petals.length > 30) {
+            console.error(`🌸 CRITICAL ERROR: After regrow, have ${this.petals.length} petals, removing excess`);
+            const excess = this.petals.splice(30);
+            excess.forEach(petal => {
+                if (petal.element && petal.element.parentNode) {
+                    petal.element.remove();
+                }
+            });
+        }
         
         // Sort petals by index to maintain order
         this.petals.sort((a, b) => a.index - b.index);

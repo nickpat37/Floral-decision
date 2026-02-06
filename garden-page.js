@@ -21,6 +21,7 @@ class GardenPage {
         this.flowerSpread = 400; // Spread between flowers
         this.isolatedSpread = 400; // Spread for flowers showing questions (denser)
         this.denseSpread = 150; // Spread for flowers not showing questions (much denser)
+        this.minFlowerDistance = 60; // Minimum distance between flower disc centers (px)
         this.viewportPadding = 500; // Load flowers this far outside viewport
 
         // Pan/scroll state
@@ -82,10 +83,11 @@ class GardenPage {
                     throw new Error('generateMockFlowers returned empty array');
                 }
                 
-                const emergencyFlowersWithPositions = emergencyFlowers.map((flower, index) => {
+                const emergencyFlowersWithPositions = [];
+                emergencyFlowers.forEach((flower, index) => {
                     let pos;
                     try {
-                        pos = this.getFlowerPosition(index, flower.seed, flower.showsQuestion);
+                        pos = this.getFlowerPosition(index, flower.seed, flower.showsQuestion, emergencyFlowersWithPositions);
                     } catch (posError) {
                         console.error('🌸 Error getting emergency position:', posError);
                         pos = {
@@ -93,11 +95,12 @@ class GardenPage {
                             y: this.canvasSize / 2 + (index * 200)
                         };
                     }
-                    return {
+                    const positionedFlower = {
                         ...flower,
                         canvasX: pos.x,
                         canvasY: pos.y
                     };
+                    emergencyFlowersWithPositions.push(positionedFlower);
                 });
                 this.flowers = emergencyFlowersWithPositions;
                 console.log(`🌸 Emergency: Generated ${this.flowers.length} flowers`);
@@ -277,10 +280,109 @@ class GardenPage {
     }
 
     /**
+     * Check if a position is too close to existing flowers
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate
+     * @param {Array} existingFlowers - Array of flowers with canvasX and canvasY
+     * @param {number} minDistance - Minimum distance required
+     * @returns {boolean} - True if position is too close to any existing flower
+     */
+    isPositionTooClose(x, y, existingFlowers, minDistance) {
+        for (const flower of existingFlowers) {
+            if (flower.canvasX === undefined || flower.canvasY === undefined) continue;
+            
+            const dx = x - flower.canvasX;
+            const dy = y - flower.canvasY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < minDistance) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Find a valid position that maintains minimum distance from existing flowers
+     * @param {number} baseX - Base X coordinate
+     * @param {number} baseY - Base Y coordinate
+     * @param {Array} existingFlowers - Array of flowers with canvasX and canvasY
+     * @param {number} minDistance - Minimum distance required
+     * @param {number} maxAttempts - Maximum attempts to find valid position
+     * @returns {Object} - {x, y} valid position
+     */
+    findValidPosition(baseX, baseY, existingFlowers, minDistance, maxAttempts = 50) {
+        // First check if base position is valid
+        if (!this.isPositionTooClose(baseX, baseY, existingFlowers, minDistance)) {
+            return { x: baseX, y: baseY };
+        }
+
+        // Try to find a valid position by moving away from closest flower
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            // Find the closest flower
+            let closestFlower = null;
+            let closestDistance = Infinity;
+            
+            for (const flower of existingFlowers) {
+                if (flower.canvasX === undefined || flower.canvasY === undefined) continue;
+                
+                const dx = baseX - flower.canvasX;
+                const dy = baseY - flower.canvasY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestFlower = flower;
+                }
+            }
+
+            if (!closestFlower) {
+                // No existing flowers, use base position
+                return { x: baseX, y: baseY };
+            }
+
+            // Calculate direction away from closest flower
+            const dx = baseX - closestFlower.canvasX;
+            const dy = baseY - closestFlower.canvasY;
+            const currentDistance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (currentDistance === 0) {
+                // Same position, move in random direction
+                const angle = Math.random() * Math.PI * 2;
+                baseX += Math.cos(angle) * minDistance;
+                baseY += Math.sin(angle) * minDistance;
+            } else {
+                // Move away from closest flower
+                const moveDistance = minDistance - currentDistance + 10; // Add 10px buffer
+                const unitX = dx / currentDistance;
+                const unitY = dy / currentDistance;
+                
+                baseX += unitX * moveDistance;
+                baseY += unitY * moveDistance;
+            }
+
+            // Check if new position is valid
+            if (!this.isPositionTooClose(baseX, baseY, existingFlowers, minDistance)) {
+                return { x: baseX, y: baseY };
+            }
+
+            // Ensure position stays within canvas bounds
+            baseX = Math.max(0, Math.min(this.canvasSize, baseX));
+            baseY = Math.max(0, Math.min(this.canvasSize, baseY));
+        }
+
+        // If we couldn't find a valid position, return the last attempted position
+        // This should rarely happen, but ensures we don't get stuck
+        console.warn(`🌸 Could not find valid position after ${maxAttempts} attempts, using last position`);
+        return { x: baseX, y: baseY };
+    }
+
+    /**
      * Generate a deterministic position for a flower
      * Flowers with questions get isolated spacing, others get dense spacing
+     * Now includes collision detection to ensure minimum distance
      */
-    getFlowerPosition(index, seed, hasQuestion = false) {
+    getFlowerPosition(index, seed, hasQuestion = false, existingFlowers = []) {
         const random = this.seededRandom(seed + index);
         const random2 = this.seededRandom(seed + index + 1000);
 
@@ -299,10 +401,11 @@ class GardenPage {
         const centerX = this.canvasSize / 2;
         const centerY = this.canvasSize / 2;
 
-        return {
-            x: centerX + Math.cos(angle) * radius + jitterX,
-            y: centerY + Math.sin(angle) * radius + jitterY
-        };
+        const baseX = centerX + Math.cos(angle) * radius + jitterX;
+        const baseY = centerY + Math.sin(angle) * radius + jitterY;
+
+        // Find valid position that maintains minimum distance
+        return this.findValidPosition(baseX, baseY, existingFlowers, this.minFlowerDistance);
     }
 
     /**
@@ -311,6 +414,49 @@ class GardenPage {
     seededRandom(seed) {
         const x = Math.sin(seed * 9999) * 10000;
         return x - Math.floor(x);
+    }
+
+    /**
+     * Final verification pass to ensure no flowers overlap
+     * Adjusts positions if any flowers are too close
+     */
+    ensureNoOverlaps(flowers) {
+        let adjustmentsMade = 0;
+        
+        for (let i = 0; i < flowers.length; i++) {
+            const flower1 = flowers[i];
+            if (!flower1.canvasX || !flower1.canvasY) continue;
+            
+            for (let j = i + 1; j < flowers.length; j++) {
+                const flower2 = flowers[j];
+                if (!flower2.canvasX || !flower2.canvasY) continue;
+                
+                const dx = flower1.canvasX - flower2.canvasX;
+                const dy = flower1.canvasY - flower2.canvasY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < this.minFlowerDistance) {
+                    // Flowers are too close, adjust position
+                    const adjustment = this.minFlowerDistance - distance + 5; // Add 5px buffer
+                    const angle = Math.atan2(dy, dx);
+                    
+                    // Move flower2 away from flower1
+                    flower2.canvasX += Math.cos(angle) * adjustment;
+                    flower2.canvasY += Math.sin(angle) * adjustment;
+                    
+                    // Ensure position stays within canvas bounds
+                    flower2.canvasX = Math.max(0, Math.min(this.canvasSize, flower2.canvasX));
+                    flower2.canvasY = Math.max(0, Math.min(this.canvasSize, flower2.canvasY));
+                    
+                    adjustmentsMade++;
+                    console.log(`🌸 Adjusted flower ${flower2.id} position to maintain ${this.minFlowerDistance}px minimum distance`);
+                }
+            }
+        }
+        
+        if (adjustmentsMade > 0) {
+            console.log(`🌸 Made ${adjustmentsMade} position adjustments to prevent overlaps`);
+        }
     }
 
     /**
@@ -338,6 +484,9 @@ class GardenPage {
 
         const mockAnswers = ['Yes', 'No', 'Maybe', 'Definitely', 'Probably not'];
 
+        // Track positioned flowers to prevent overlaps within this batch
+        const positionedMockFlowers = [];
+        
         for (let i = 0; i < count; i++) {
             try {
                 const seed = Math.random();
@@ -346,7 +495,8 @@ class GardenPage {
                 // Ensure getFlowerPosition doesn't fail
                 let pos;
                 try {
-                    pos = this.getFlowerPosition(i, seed, hasQuestion);
+                    // Pass existing positioned mock flowers to prevent overlaps
+                    pos = this.getFlowerPosition(i, seed, hasQuestion, positionedMockFlowers);
                 } catch (posError) {
                     console.error(`🌸 Error getting position for flower ${i}:`, posError);
                     // Fallback position
@@ -462,35 +612,48 @@ class GardenPage {
             }
 
             // Create copies of database flowers with positions (don't mutate readonly objects)
+            // Track existing flowers to prevent overlaps
+            const positionedFlowers = [];
+            
             const dbFlowersWithPositions = dbFlowers.map((flower, index) => {
                 // First few database flowers show questions (isolated)
                 const showsQuestion = index < 3;
-                const pos = this.getFlowerPosition(index, flower.seed || index, showsQuestion);
+                const pos = this.getFlowerPosition(index, flower.seed || index, showsQuestion, positionedFlowers);
                 
-                // Create a new object instead of mutating the readonly one
-                return {
+                const positionedFlower = {
                     ...flower,
                     canvasX: pos.x,
                     canvasY: pos.y,
                     showsQuestion: showsQuestion
                 };
+                
+                positionedFlowers.push(positionedFlower);
+                return positionedFlower;
             });
 
             // Mock flowers after database flowers (dense)
-            const mockFlowersWithPositions = mockFlowers.map((flower, index) => {
+            const mockFlowersWithPositions = [];
+            mockFlowers.forEach((flower, index) => {
                 const dbIndex = dbFlowers.length + index;
-                const pos = this.getFlowerPosition(dbIndex, flower.seed, false);
+                const pos = this.getFlowerPosition(dbIndex, flower.seed, false, positionedFlowers);
                 
-                return {
+                const positionedFlower = {
                     ...flower,
                     canvasX: pos.x,
                     canvasY: pos.y
                 };
+                
+                positionedFlowers.push(positionedFlower);
+                mockFlowersWithPositions.push(positionedFlower);
             });
 
             // Combine flowers: database first, then mock
             // IMPORTANT: Always include all mock flowers, don't slice them away
             const allFlowers = [...dbFlowersWithPositions, ...mockFlowersWithPositions];
+            
+            // Final verification: ensure no overlaps exist
+            this.ensureNoOverlaps(allFlowers);
+            
             this.flowers = allFlowers.slice(0, Math.max(this.maxFlowersToShow, 10)); // Ensure at least 10
 
             console.log(`🌸 Total flowers in array: ${this.flowers.length}`);
@@ -613,13 +776,16 @@ class GardenPage {
                     throw new Error('generateMockFlowers returned empty array');
                 }
                 
-                const mockFlowersWithPositions = mockFlowers.map((flower, index) => {
-                    const pos = this.getFlowerPosition(index, flower.seed, flower.showsQuestion || false);
-                    return {
+                const mockFlowersWithPositions = [];
+                mockFlowers.forEach((flower, index) => {
+                    // Use existing positioned flowers to prevent overlaps
+                    const pos = this.getFlowerPosition(index, flower.seed, flower.showsQuestion || false, mockFlowersWithPositions);
+                    const positionedFlower = {
                         ...flower,
                         canvasX: pos.x,
                         canvasY: pos.y
                     };
+                    mockFlowersWithPositions.push(positionedFlower);
                 });
                 
                 this.flowers = mockFlowersWithPositions;
@@ -749,7 +915,8 @@ class GardenPage {
                 visibleCount++;
 
                 // Render if not already rendered (lazy loading)
-                if (!this.loadedFlowers.has(flower.id)) {
+                const existingFlower = this.loadedFlowers.get(flower.id);
+                if (!existingFlower) {
                     console.log(`🌸 Rendering flower ${flower.id} at (${flower.canvasX.toFixed(0)}, ${flower.canvasY.toFixed(0)})`);
                     // Create a plain object copy to avoid readonly property errors
                     const flowerCopy = {
@@ -766,6 +933,61 @@ class GardenPage {
                         showsQuestion: flower.showsQuestion
                     };
                     this.renderFlower(flowerCopy);
+                } else if (existingFlower.wrapper) {
+                    // Ensure wrapper is always visible
+                    if (!existingFlower.wrapper.parentNode) {
+                        // Wrapper was removed, re-render
+                        console.log(`🌸 Flower ${flower.id} wrapper missing from DOM, re-rendering`);
+                        this.loadedFlowers.delete(flower.id);
+                        const flowerCopy = {
+                            id: flower.id,
+                            question: flower.question,
+                            answer: flower.answer,
+                            numPetals: flower.numPetals,
+                            petalRadius: flower.petalRadius,
+                            discSize: flower.discSize,
+                            seed: flower.seed,
+                            timestamp: flower.timestamp,
+                            canvasX: flower.canvasX,
+                            canvasY: flower.canvasY,
+                            showsQuestion: flower.showsQuestion
+                        };
+                        this.renderFlower(flowerCopy);
+                    } else {
+                        // Ensure visibility
+                        existingFlower.wrapper.style.visibility = 'visible';
+                        existingFlower.wrapper.style.opacity = '1';
+                        existingFlower.wrapper.style.display = 'block';
+                        
+                        // If not rendered, try to verify and retry if needed
+                        if (!existingFlower.rendered) {
+                            console.log(`🌸 Flower ${flower.id} wrapper exists but not rendered, checking status`);
+                            const containerId = `gardenFlower_${flower.id}`;
+                            const containerElement = document.getElementById(containerId);
+                            if (!containerElement || !existingFlower.instance) {
+                                // Flower failed to render, remove and retry
+                                console.log(`🌸 Flower ${flower.id} failed to render, retrying...`);
+                                if (existingFlower.wrapper.parentNode) {
+                                    existingFlower.wrapper.remove();
+                                }
+                                this.loadedFlowers.delete(flower.id);
+                                const flowerCopy = {
+                                    id: flower.id,
+                                    question: flower.question,
+                                    answer: flower.answer,
+                                    numPetals: flower.numPetals,
+                                    petalRadius: flower.petalRadius,
+                                    discSize: flower.discSize,
+                                    seed: flower.seed,
+                                    timestamp: flower.timestamp,
+                                    canvasX: flower.canvasX,
+                                    canvasY: flower.canvasY,
+                                    showsQuestion: flower.showsQuestion
+                                };
+                                this.renderFlower(flowerCopy);
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -796,7 +1018,12 @@ class GardenPage {
         const canvasX = Number(flowerData.canvasX);
         const canvasY = Number(flowerData.canvasY);
         const seed = flowerData.seed || Math.random();
-        const numPetals = flowerData.numPetals || 20;
+        // Clamp numPetals to valid range: 12-30
+        const requestedPetals = flowerData.numPetals || 20;
+        const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+        if (requestedPetals !== numPetals) {
+            console.warn(`🌸 Flower ${flowerId}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+        }
         const petalRadius = flowerData.petalRadius || 88;
         const discSize = flowerData.discSize || 120;
         const question = flowerData.question || '';
@@ -830,6 +1057,9 @@ class GardenPage {
         flowerWrapper.style.transform = 'translate(-50%, -50%) scale(0)';
         flowerWrapper.style.width = '400px';
         flowerWrapper.style.height = '400px';
+        flowerWrapper.style.visibility = 'visible';
+        flowerWrapper.style.opacity = '1';
+        flowerWrapper.style.display = 'block';
         // Set z-index based on y position: higher y = lower on screen = higher z-index = in front
         // Use canvasY directly as z-index (higher values = in front)
         flowerWrapper.style.zIndex = Math.floor(canvasY);
@@ -866,9 +1096,15 @@ class GardenPage {
         const flowerRef = {
             instance: null,
             data: flowerDataCopy,
-            wrapper: flowerWrapper
+            wrapper: flowerWrapper,
+            rendered: false // Track if flower successfully rendered
         };
         this.loadedFlowers.set(flowerId, flowerRef);
+
+        // Ensure wrapper is visible immediately
+        flowerWrapper.style.visibility = 'visible';
+        flowerWrapper.style.opacity = '1';
+        flowerWrapper.style.display = 'block';
 
         // Wait for DOM to be ready before creating flower component
         requestAnimationFrame(() => {
@@ -885,21 +1121,58 @@ class GardenPage {
                 if (!containerElement) {
                     console.error(`🌸 ERROR: Container element '${containerId}' not found for flower ${flowerId}`);
                     console.error(`🌸 Available containers:`, Array.from(document.querySelectorAll('.garden-flower-container')).map(el => el.id));
+                    // Remove the flower wrapper if it failed to render
+                    if (flowerWrapper.parentNode) {
+                        flowerWrapper.remove();
+                    }
+                    this.loadedFlowers.delete(flowerId);
                     return;
                 }
                 
                 if (!stemSVGElement) {
                     console.error(`🌸 ERROR: Stem SVG '${stemSVGId}' not found for flower ${flowerId}`);
+                    // Remove the flower wrapper if it failed to render
+                    if (flowerWrapper.parentNode) {
+                        flowerWrapper.remove();
+                    }
+                    this.loadedFlowers.delete(flowerId);
                     return;
                 }
                 
                 if (!stemPathElement) {
                     console.error(`🌸 ERROR: Stem path '${stemPathId}' not found for flower ${flowerId}`);
+                    // Remove the flower wrapper if it failed to render
+                    if (flowerWrapper.parentNode) {
+                        flowerWrapper.remove();
+                    }
+                    this.loadedFlowers.delete(flowerId);
                     return;
                 }
                 
                 const originalTransform = flowerWrapper.style.transform;
                 flowerWrapper.style.transform = 'translate(-50%, -50%) scale(1)';
+                
+                // CRITICAL: Check if container already has a flower instance
+                // If it does, clean it up first to prevent duplicate discs/petals
+                const existingDiscs = containerElement.querySelectorAll('.flower-disc');
+                const existingPetals = containerElement.querySelectorAll('.flower-petal');
+                
+                if (existingDiscs.length > 0 || existingPetals.length > 0) {
+                    console.warn(`🌸 Container ${containerId} already has flower elements (${existingDiscs.length} discs, ${existingPetals.length} petals), cleaning up...`);
+                    existingDiscs.forEach(disc => disc.remove());
+                    existingPetals.forEach(petal => petal.remove());
+                }
+                
+                // CRITICAL: If there's already an instance stored, clean it up
+                if (flowerRef.instance) {
+                    console.warn(`🌸 Flower ${flowerId} already has an instance, cleaning up before creating new one`);
+                    if (flowerRef.instance.cleanupExistingElements) {
+                        flowerRef.instance.cleanupExistingElements();
+                    }
+                    if (flowerRef.instance.animationFrameId) {
+                        cancelAnimationFrame(flowerRef.instance.animationFrameId);
+                    }
+                }
                 
                 // Create flower component using extracted values
                 const flowerInstance = new FlowerComponent({
@@ -915,23 +1188,51 @@ class GardenPage {
                 // Verify flower component was created successfully
                 if (!flowerInstance || !flowerInstance.container) {
                     console.error(`🌸 ERROR: FlowerComponent failed to initialize for flower ${flowerId}`);
+                    // Remove the flower wrapper if it failed to render
+                    if (flowerWrapper.parentNode) {
+                        flowerWrapper.remove();
+                    }
+                    this.loadedFlowers.delete(flowerId);
                     return;
                 }
                 
-                // Verify disc and petals were created
+                // Verify disc and petals were created correctly
                 const discElement = containerElement.querySelector('.flower-disc');
                 const petalElements = containerElement.querySelectorAll('.flower-petal');
+                
+                // CRITICAL: Verify only ONE disc exists
+                const allDiscs = containerElement.querySelectorAll('.flower-disc');
+                if (allDiscs.length > 1) {
+                    console.error(`🌸 CRITICAL ERROR: Container ${containerId} has ${allDiscs.length} discs! Removing excess...`);
+                    // Keep only the first disc, remove the rest
+                    for (let i = 1; i < allDiscs.length; i++) {
+                        allDiscs[i].remove();
+                    }
+                }
+                
+                // CRITICAL: Verify petal count doesn't exceed 30
+                if (petalElements.length > 30) {
+                    console.error(`🌸 CRITICAL ERROR: Container ${containerId} has ${petalElements.length} petals! Removing excess...`);
+                    // Keep only first 30 petals
+                    const excessPetals = Array.from(petalElements).slice(30);
+                    excessPetals.forEach(petal => petal.remove());
+                }
+                
                 if (!discElement) {
                     console.warn(`🌸 WARNING: Disc element not found in container for flower ${flowerId}`);
+                } else if (allDiscs.length === 1) {
+                    console.log(`🌸 Successfully created flower ${flowerId} with 1 disc and ${Math.min(petalElements.length, 30)} petals`);
                 }
+                
                 if (petalElements.length === 0) {
                     console.warn(`🌸 WARNING: No petal elements found in container for flower ${flowerId}`);
-                } else {
+                } else if (petalElements.length <= 30) {
                     console.log(`🌸 Successfully created flower ${flowerId} with ${petalElements.length} petals`);
                 }
 
                 flowerWrapper.style.transform = originalTransform;
                 flowerRef.instance = flowerInstance;
+                flowerRef.rendered = true; // Mark as successfully rendered
 
                 // Animate growing in
                 requestAnimationFrame(() => {
@@ -948,12 +1249,53 @@ class GardenPage {
     removeFlower(flowerId) {
         const flower = this.loadedFlowers.get(flowerId);
         if (flower && flower.wrapper) {
+            // CRITICAL: Clean up FlowerComponent instance before removing wrapper
+            if (flower.instance) {
+                // Stop animations
+                if (flower.instance.animationFrameId) {
+                    cancelAnimationFrame(flower.instance.animationFrameId);
+                    flower.instance.animationFrameId = null;
+                }
+                
+                // Clean up event listeners and elements
+                if (flower.instance.cleanupExistingElements) {
+                    flower.instance.cleanupExistingElements();
+                }
+                
+                // Clear references
+                flower.instance = null;
+            }
+            
+            // Also remove any associated question bubbles
+            const bubbleIndex = this.questionBubbles.findIndex(b => b.flowerId === flowerId);
+            if (bubbleIndex !== -1) {
+                const bubble = this.questionBubbles[bubbleIndex];
+                if (bubble.element && bubble.element.parentNode) {
+                    bubble.element.style.transition = 'opacity 0.3s ease-out';
+                    bubble.element.style.opacity = '0';
+                    setTimeout(() => {
+                        if (bubble.element && bubble.element.parentNode) {
+                            bubble.element.remove();
+                        }
+                    }, 300);
+                }
+                this.questionBubbles.splice(bubbleIndex, 1);
+            }
+
             flower.wrapper.style.transition = 'transform 0.3s ease-in, opacity 0.3s ease-in';
             flower.wrapper.style.transform = 'translate(-50%, -50%) scale(0)';
             flower.wrapper.style.opacity = '0';
 
             setTimeout(() => {
                 if (flower.wrapper && flower.wrapper.parentNode) {
+                    // Final cleanup: remove all flower elements
+                    const container = flower.wrapper.querySelector('.garden-flower-container');
+                    if (container) {
+                        const discs = container.querySelectorAll('.flower-disc');
+                        const petals = container.querySelectorAll('.flower-petal');
+                        discs.forEach(disc => disc.remove());
+                        petals.forEach(petal => petal.remove());
+                    }
                     flower.wrapper.remove();
                 }
             }, 300);
@@ -1029,6 +1371,18 @@ class GardenPage {
 
             const flower = this.loadedFlowers.get(flowerId);
             if (!flower) return;
+
+            // Only create bubble if flower is successfully rendered
+            if (!flower.rendered || !flower.instance || !flower.wrapper) {
+                console.warn(`🌸 Skipping bubble creation for flower ${flowerId} - flower not fully rendered`);
+                return;
+            }
+
+            // Verify wrapper is still in DOM
+            if (!flower.wrapper.parentNode) {
+                console.warn(`🌸 Skipping bubble creation for flower ${flowerId} - wrapper not in DOM`);
+                return;
+            }
 
             const bubble = this.createQuestionBubble(flower.data, flower.wrapper, index);
             this.questionBubbles.push(bubble);

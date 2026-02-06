@@ -103,10 +103,17 @@ class FlowerDatabase {
      * @returns {Promise<string>} - ID of saved flower
      */
     async saveFlower(flowerData) {
+        // Clamp numPetals to valid range: 12-30
+        const requestedPetals = flowerData.numPetals || Math.floor(Math.random() * (30 - 12 + 1)) + 12;
+        const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+        if (requestedPetals !== numPetals) {
+            console.warn(`🌸 Saving flower: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+        }
+        
         const flower = {
             question: flowerData.question,
             answer: flowerData.answer,
-            num_petals: flowerData.numPetals || Math.floor(Math.random() * (30 - 12 + 1)) + 12,
+            num_petals: numPetals,
             petal_radius: flowerData.petalRadius || 88,
             disc_size: flowerData.discSize || 120,
             seed: flowerData.seed || Math.random(),
@@ -137,7 +144,7 @@ class FlowerDatabase {
             id: flowerData.id || Date.now().toString(),
             question: flower.question,
             answer: flower.answer,
-            numPetals: flower.num_petals,
+            numPetals: numPetals, // Use clamped value
             petalRadius: flower.petal_radius,
             discSize: flower.disc_size,
             seed: flower.seed,
@@ -195,17 +202,25 @@ class FlowerDatabase {
                 console.log(`📖 Loaded ${data?.length || 0} flowers from Supabase (offset: ${offset}, limit: ${limit})`);
                 
                 // Convert Supabase format to app format
-                return (data || []).map(flower => ({
-                    id: flower.id.toString(),
-                    question: flower.question,
-                    answer: flower.answer,
-                    numPetals: flower.num_petals,
-                    petalRadius: flower.petal_radius,
-                    discSize: flower.disc_size,
-                    seed: flower.seed,
-                    timestamp: flower.timestamp,
-                    createdAt: flower.created_at
-                }));
+                return (data || []).map(flower => {
+                    // Clamp numPetals to valid range: 12-30
+                    const requestedPetals = flower.num_petals || 20;
+                    const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                    if (requestedPetals !== numPetals) {
+                        console.warn(`🌸 Flower ${flower.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                    }
+                    return {
+                        id: flower.id.toString(),
+                        question: flower.question,
+                        answer: flower.answer,
+                        numPetals: numPetals,
+                        petalRadius: flower.petal_radius,
+                        discSize: flower.disc_size,
+                        seed: flower.seed,
+                        timestamp: flower.timestamp,
+                        createdAt: flower.created_at
+                    };
+                });
             } catch (error) {
                 console.error('❌ Supabase get error, falling back to IndexedDB:', error.message);
                 // Fall through to IndexedDB fallback
@@ -232,6 +247,15 @@ class FlowerDatabase {
                             if (flower.id !== undefined) {
                                 flower.id = String(flower.id);
                             }
+                            // Clamp numPetals to valid range: 12-30
+                            if (flower.numPetals !== undefined) {
+                                const requestedPetals = flower.numPetals;
+                                const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                                if (requestedPetals !== numPetals) {
+                                    console.warn(`🌸 Flower ${flower.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                                }
+                                flower.numPetals = numPetals;
+                            }
                             flowers.push(flower);
                         }
                         count++;
@@ -253,6 +277,17 @@ class FlowerDatabase {
         } else {
             // Fallback to localStorage
             const flowers = this.getAllFlowersSync();
+            // Clamp numPetals for all flowers
+            flowers.forEach(flower => {
+                if (flower.numPetals !== undefined) {
+                    const requestedPetals = flower.numPetals;
+                    const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                    if (requestedPetals !== numPetals) {
+                        console.warn(`🌸 Flower ${flower.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                    }
+                    flower.numPetals = numPetals;
+                }
+            });
             flowers.sort((a, b) => b.timestamp - a.timestamp);
             const start = offset;
             const end = offset + limit;
@@ -314,11 +349,17 @@ class FlowerDatabase {
                 if (error) throw error;
                 
                 // Convert Supabase format to app format
+                // Clamp numPetals to valid range: 12-30
+                const requestedPetals = data.num_petals || 20;
+                const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                if (requestedPetals !== numPetals) {
+                    console.warn(`🌸 Flower ${data.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                }
                 return {
                     id: data.id.toString(),
                     question: data.question,
                     answer: data.answer,
-                    numPetals: data.num_petals,
+                    numPetals: numPetals,
                     petalRadius: data.petal_radius,
                     discSize: data.disc_size,
                     seed: data.seed,
@@ -338,12 +379,33 @@ class FlowerDatabase {
                 const store = transaction.objectStore(this.storeName);
                 const request = store.get(id);
 
-                request.onsuccess = () => resolve(request.result);
+                request.onsuccess = () => {
+                    const flower = request.result;
+                    if (flower && flower.numPetals !== undefined) {
+                        // Clamp numPetals to valid range: 12-30
+                        const requestedPetals = flower.numPetals;
+                        const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                        if (requestedPetals !== numPetals) {
+                            console.warn(`🌸 Flower ${flower.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                        }
+                        flower.numPetals = numPetals;
+                    }
+                    resolve(flower);
+                };
                 request.onerror = () => reject(request.error);
             });
         } else {
             const flowers = this.getAllFlowersSync();
             const flower = flowers.find(f => f.id === id);
+            if (flower && flower.numPetals !== undefined) {
+                // Clamp numPetals to valid range: 12-30
+                const requestedPetals = flower.numPetals;
+                const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                if (requestedPetals !== numPetals) {
+                    console.warn(`🌸 Flower ${flower.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                }
+                flower.numPetals = numPetals;
+            }
             return Promise.resolve(flower);
         }
     }
