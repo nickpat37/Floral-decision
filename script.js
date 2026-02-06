@@ -25,14 +25,28 @@ class FlowerComponent {
         
         // Check if container exists
         if (!this.container) {
-            console.error(`Container with ID '${containerId}' not found`);
+            console.error(`🌸 FlowerComponent ERROR: Container with ID '${containerId}' not found`);
+            console.error(`🌸 Available containers:`, Array.from(document.querySelectorAll('[id^="gardenFlower_"]')).map(el => el.id));
+            return;
+        }
+        
+        if (!this.stemSVG) {
+            console.error(`🌸 FlowerComponent ERROR: Stem SVG with ID '${stemSVGId}' not found`);
+            return;
+        }
+        
+        if (!this.stemPath) {
+            console.error(`🌸 FlowerComponent ERROR: Stem path with ID '${stemPathId}' not found`);
             return;
         }
         
         // Get container dimensions for positioning
         const containerRect = this.container.getBoundingClientRect();
-        this.containerWidth = containerRect.width || window.innerWidth;
-        this.containerHeight = containerRect.height || window.innerHeight;
+        // Use explicit style dimensions if getBoundingClientRect returns zero (e.g., parent is scaled to 0)
+        const styleWidth = parseInt(this.container.style.width) || parseInt(window.getComputedStyle(this.container).width) || 400;
+        const styleHeight = parseInt(this.container.style.height) || parseInt(window.getComputedStyle(this.container).height) || 400;
+        this.containerWidth = containerRect.width > 0 ? containerRect.width : styleWidth;
+        this.containerHeight = containerRect.height > 0 ? containerRect.height : styleHeight;
         
         // Initial positions - adjust based on container
         this.originalDiscX = this.containerWidth / 2;

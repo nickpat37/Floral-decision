@@ -840,6 +840,9 @@ class GardenPage {
         flowerContainer.id = `gardenFlower_${flowerId}`;
         flowerContainer.style.width = '400px';
         flowerContainer.style.height = '400px';
+        flowerContainer.style.position = 'relative';
+        flowerContainer.style.visibility = 'visible';
+        flowerContainer.style.opacity = '1';
 
         // Create SVG for stem
         const stemSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -870,19 +873,62 @@ class GardenPage {
         // Wait for DOM to be ready before creating flower component
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
+                const containerId = `gardenFlower_${flowerId}`;
+                const stemSVGId = `gardenStemSVG_${flowerId}`;
+                const stemPathId = `gardenStemPath_${flowerId}`;
+                
+                // Verify container exists before creating FlowerComponent
+                const containerElement = document.getElementById(containerId);
+                const stemSVGElement = document.getElementById(stemSVGId);
+                const stemPathElement = document.getElementById(stemPathId);
+                
+                if (!containerElement) {
+                    console.error(`🌸 ERROR: Container element '${containerId}' not found for flower ${flowerId}`);
+                    console.error(`🌸 Available containers:`, Array.from(document.querySelectorAll('.garden-flower-container')).map(el => el.id));
+                    return;
+                }
+                
+                if (!stemSVGElement) {
+                    console.error(`🌸 ERROR: Stem SVG '${stemSVGId}' not found for flower ${flowerId}`);
+                    return;
+                }
+                
+                if (!stemPathElement) {
+                    console.error(`🌸 ERROR: Stem path '${stemPathId}' not found for flower ${flowerId}`);
+                    return;
+                }
+                
                 const originalTransform = flowerWrapper.style.transform;
                 flowerWrapper.style.transform = 'translate(-50%, -50%) scale(1)';
                 
                 // Create flower component using extracted values
                 const flowerInstance = new FlowerComponent({
-                    containerId: `gardenFlower_${flowerId}`,
-                    stemSVGId: `gardenStemSVG_${flowerId}`,
-                    stemPathId: `gardenStemPath_${flowerId}`,
+                    containerId: containerId,
+                    stemSVGId: stemSVGId,
+                    stemPathId: stemPathId,
                     seed: seed,
                     numPetals: numPetals,
                     petalRadius: petalRadius,
                     discSize: discSize
                 });
+
+                // Verify flower component was created successfully
+                if (!flowerInstance || !flowerInstance.container) {
+                    console.error(`🌸 ERROR: FlowerComponent failed to initialize for flower ${flowerId}`);
+                    return;
+                }
+                
+                // Verify disc and petals were created
+                const discElement = containerElement.querySelector('.flower-disc');
+                const petalElements = containerElement.querySelectorAll('.flower-petal');
+                if (!discElement) {
+                    console.warn(`🌸 WARNING: Disc element not found in container for flower ${flowerId}`);
+                }
+                if (petalElements.length === 0) {
+                    console.warn(`🌸 WARNING: No petal elements found in container for flower ${flowerId}`);
+                } else {
+                    console.log(`🌸 Successfully created flower ${flowerId} with ${petalElements.length} petals`);
+                }
 
                 flowerWrapper.style.transform = originalTransform;
                 flowerRef.instance = flowerInstance;
@@ -994,10 +1040,11 @@ class GardenPage {
      * Large container behind disc and petals (NOT stem), with blurred background
      */
     createQuestionBubble(flowerData, wrapper, index) {
-        const bubble = document.createElement('div');
-        bubble.className = 'garden-question-bubble';
+        // Create container div that wraps the bubble
+        const bubbleContainer = document.createElement('div');
+        bubbleContainer.className = 'garden-question-bubble-container';
         
-        // Position bubble: center-aligned horizontally, bottom edge at 190px
+        // Position container: center-aligned horizontally, bottom edge at 190px
         const wrapperWidth = 400; // Flower wrapper is 400px wide
         const bubbleWidth = 312;
         
@@ -1007,22 +1054,23 @@ class GardenPage {
         // Top position updated to -51px
         const topPosition = -120;
         
-        bubble.style.cssText = `
+        bubbleContainer.style.cssText = `
             position: absolute;
             left: ${leftPosition}px;
             top: ${topPosition}px;
             width: ${bubbleWidth}px;
-            height: auto;
-            min-height: fit-content;
-            transform: none;
-            opacity: 0;
-            transition: opacity 0.4s ease-in;
+            height: 350px;
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: flex-end;
-            text-align: left;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.4s ease-in;
         `;
+
+        // Create the bubble element
+        const bubble = document.createElement('div');
+        bubble.className = 'garden-question-bubble';
 
         // Format: Two-line format - "I want to know if..." (prefix) + question + flower space
         bubble.innerHTML = `
@@ -1031,20 +1079,23 @@ class GardenPage {
             <div class="question-bubble-flower-space"></div>
         `;
 
-        // Insert bubble before the flower container so it appears behind
+        // Add bubble to container
+        bubbleContainer.appendChild(bubble);
+
+        // Insert container before the flower container so it appears behind
         const flowerContainer = wrapper.querySelector('.garden-flower-container');
         if (flowerContainer) {
-            wrapper.insertBefore(bubble, flowerContainer);
+            wrapper.insertBefore(bubbleContainer, flowerContainer);
         } else {
-            wrapper.appendChild(bubble);
+            wrapper.appendChild(bubbleContainer);
         }
 
         requestAnimationFrame(() => {
-            bubble.style.opacity = '1';
+            bubbleContainer.style.opacity = '1';
         });
 
         return {
-            element: bubble,
+            element: bubbleContainer,
             flowerId: flowerData.id
         };
     }

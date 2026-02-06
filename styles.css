@@ -479,13 +479,22 @@ body {
 }
 
 /* Question Bubble Styles (matching reference image) */
+.garden-question-bubble-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    width: 312px;
+    height: 350px;
+}
+
 .garden-question-bubble {
     background: rgba(180, 220, 230, 0.6); /* Light greenish-blue/cyan */
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     border-radius: 16px;
     padding: 24px 16px;
-    width: 312px;
+    width: 100%;
     z-index: 1; /* Behind the flower (flower wrapper has z-index: 10) */
     pointer-events: none;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
