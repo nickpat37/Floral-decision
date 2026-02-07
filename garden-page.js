@@ -22,7 +22,13 @@ class GardenPage {
         this.isolatedSpread = 400; // Spread for flowers showing questions (denser)
         this.denseSpread = 150; // Spread for flowers not showing questions (much denser)
         this.minFlowerDistance = 60; // Minimum distance between flower disc centers (px)
-        this.viewportPadding = 500; // Load flowers this far outside viewport
+        this.viewportPaddingPercent = 0.2; // 20% padding around viewport for lazy loading
+        this.maxRenderedFlowers = 50; // Maximum number of flowers to render at once (performance limit)
+        this.minRenderedFlowers = 5; // Minimum flowers to always render (ensures some flowers show)
+        
+        // Throttling for updateVisibleFlowers to reduce lag
+        this.updateVisibleFlowersThrottle = null;
+        this.updateVisibleFlowersDelay = 100; // Update every 100ms max
 
         // Pan/scroll state
         this.offsetX = 0;
@@ -38,13 +44,32 @@ class GardenPage {
         this.isLoading = false;
         this.allFlowersLoaded = false;
         this.maxFlowersToShow = 20; // Limit total flowers shown
+        this.initialized = false; // Track if initialization is complete
 
-        this.init();
+        // Start initialization (async, but don't block constructor)
+        // Note: init() will set this.initialized = true when it completes
+        this.init().catch((error) => {
+            console.error('🌸 Garden page initialization failed:', error);
+            this.initialized = false;
+        });
     }
 
     async init() {
-        this.container = document.getElementById('gardenContainer');
-        if (!this.container) return;
+        try {
+            // Ensure we're in the right context
+            if (typeof document === 'undefined') {
+                console.error('🌸 Document is not available');
+                this.initialized = false;
+                return;
+            }
+            
+            this.container = document.getElementById('gardenContainer');
+            if (!this.container) {
+                console.error('🌸 Garden container not found, cannot initialize');
+                console.error('🌸 Available elements with id:', Array.from(document.querySelectorAll('[id]')).map(el => el.id).slice(0, 10));
+                this.initialized = false;
+                return;
+            }
 
         // Hide empty state initially (will be shown if no flowers)
         this.hideEmptyState();
@@ -69,6 +94,17 @@ class GardenPage {
 
         // Setup navigation
         this.setupNavigation();
+        
+        // Setup window resize handler to update viewport calculations
+        window.addEventListener('resize', () => {
+            // Clear throttle to allow immediate update on resize
+            if (this.updateVisibleFlowersThrottle) {
+                clearTimeout(this.updateVisibleFlowersThrottle);
+                this.updateVisibleFlowersThrottle = null;
+            }
+            // Update visible flowers with new viewport size
+            this.throttledUpdateVisibleFlowers();
+        });
 
         // Load flowers (limited number)
         await this.loadAllFlowers();
@@ -109,8 +145,22 @@ class GardenPage {
                     const newest = this.flowers[0];
                     if (newest && newest.canvasX && newest.canvasY) {
                         this.centerOn(newest.canvasX, newest.canvasY);
+                        // Ensure flowers are rendered immediately
+                        setTimeout(() => {
+                            if (this.updateVisibleFlowersThrottle) {
+                                clearTimeout(this.updateVisibleFlowersThrottle);
+                            }
+                            this.updateVisibleFlowers();
+                        }, 50);
                     } else {
                         this.centerOn(this.canvasSize / 2, this.canvasSize / 2);
+                        // Ensure flowers are rendered immediately
+                        setTimeout(() => {
+                            if (this.updateVisibleFlowersThrottle) {
+                                clearTimeout(this.updateVisibleFlowersThrottle);
+                            }
+                            this.updateVisibleFlowers();
+                        }, 50);
                     }
                 } else {
                     this.showEmptyState();
@@ -123,6 +173,34 @@ class GardenPage {
         } else {
             // Ensure empty state is hidden if we have flowers
             this.hideEmptyState();
+            
+            // CRITICAL: Center and render flowers after successful load
+            if (this.flowers.length > 0) {
+                const newest = this.flowers[0];
+                if (newest && newest.canvasX && newest.canvasY) {
+                    console.log(`🌸 Centering on newest flower at (${newest.canvasX}, ${newest.canvasY})`);
+                    this.centerOn(newest.canvasX, newest.canvasY);
+                    // Ensure flowers are rendered immediately
+                    setTimeout(() => {
+                        if (this.updateVisibleFlowersThrottle) {
+                            clearTimeout(this.updateVisibleFlowersThrottle);
+                        }
+                        this.updateVisibleFlowers();
+                        console.log(`🌸 Initial render complete: ${this.loadedFlowers.size} flowers rendered`);
+                    }, 100);
+                } else {
+                    console.warn('🌸 Newest flower missing position, centering on canvas middle');
+                    this.centerOn(this.canvasSize / 2, this.canvasSize / 2);
+                    // Ensure flowers are rendered immediately
+                    setTimeout(() => {
+                        if (this.updateVisibleFlowersThrottle) {
+                            clearTimeout(this.updateVisibleFlowersThrottle);
+                        }
+                        this.updateVisibleFlowers();
+                        console.log(`🌸 Initial render complete: ${this.loadedFlowers.size} flowers rendered`);
+                    }, 100);
+                }
+            }
         }
 
         this.initialized = true;
@@ -134,8 +212,29 @@ class GardenPage {
                 position: `(${this.flowers[0].canvasX}, ${this.flowers[0].canvasY})`,
                 question: this.flowers[0].question
             });
+            
+            // CRITICAL: Ensure flowers are rendered after initialization completes
+            // This is a final safety check to ensure flowers appear
+            setTimeout(() => {
+                if (this.canvas && this.flowers.length > 0 && this.loadedFlowers.size === 0) {
+                    console.log('🌸 No flowers rendered after init, forcing render...');
+                    // Clear throttle
+                    if (this.updateVisibleFlowersThrottle) {
+                        clearTimeout(this.updateVisibleFlowersThrottle);
+                        this.updateVisibleFlowersThrottle = null;
+                    }
+                    // Force update
+                    this.updateVisibleFlowers();
+                    console.log(`🌸 Forced render complete: ${this.loadedFlowers.size} flowers rendered`);
+                }
+            }, 200);
         } else {
             console.error('🌸 CRITICAL: Initialization completed with ZERO flowers!');
+        }
+        } catch (error) {
+            console.error('🌸 Error during garden page initialization:', error);
+            console.error('🌸 Error stack:', error.stack);
+            this.initialized = false;
         }
     }
 
@@ -229,10 +328,10 @@ class GardenPage {
         // Apply transform
         this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
 
-        // Update visible flowers (but don't lazy load yet - wait for drag end)
+        // Throttle updateVisibleFlowers to reduce lag during panning
         // Only if we have flowers loaded
         if (this.flowers.length > 0) {
-            this.updateVisibleFlowers();
+            this.throttledUpdateVisibleFlowers();
         }
     }
 
@@ -242,9 +341,12 @@ class GardenPage {
     checkAndLazyLoad() {
         if (this.flowers.length === 0) return;
         
+        // Use dynamic padding based on viewport size (20%)
+        const viewportPaddingX = window.innerWidth * this.viewportPaddingPercent;
+        const viewportPaddingY = window.innerHeight * this.viewportPaddingPercent;
         const currentArea = {
-            x: Math.floor(-this.offsetX / (this.viewportPadding * 2)),
-            y: Math.floor(-this.offsetY / (this.viewportPadding * 2))
+            x: Math.floor(-this.offsetX / (viewportPaddingX * 2)),
+            y: Math.floor(-this.offsetY / (viewportPaddingY * 2))
         };
 
         if (!this.lastRenderedArea || 
@@ -252,7 +354,7 @@ class GardenPage {
             currentArea.y !== this.lastRenderedArea.y) {
             console.log('🌸 New area detected, lazy loading flowers...');
             this.lastRenderedArea = currentArea;
-            this.updateVisibleFlowers();
+            this.throttledUpdateVisibleFlowers();
         }
     }
 
@@ -260,7 +362,12 @@ class GardenPage {
      * Center the view on a specific position
      */
     centerOn(x, y) {
-        if (!this.canvas) return;
+        if (!this.canvas) {
+            console.warn('🌸 Cannot center: canvas not initialized');
+            return;
+        }
+
+        console.log(`🌸 centerOn called with (${x}, ${y}), current offset: (${this.offsetX}, ${this.offsetY})`);
 
         this.offsetX = -x + window.innerWidth / 2;
         this.offsetY = -y + window.innerHeight / 2;
@@ -271,11 +378,23 @@ class GardenPage {
         this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
         this.offsetY = Math.max(-maxOffsetY, Math.min(0, this.offsetY));
 
+        console.log(`🌸 After clamp: offsetX=${this.offsetX.toFixed(0)}, offsetY=${this.offsetY.toFixed(0)}`);
+
         this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
         
         // Only update visible flowers if we have flowers loaded
+        // Use immediate update (not throttled) when centering to ensure flowers appear
         if (this.flowers.length > 0) {
+            // Clear any pending throttled update
+            if (this.updateVisibleFlowersThrottle) {
+                clearTimeout(this.updateVisibleFlowersThrottle);
+                this.updateVisibleFlowersThrottle = null;
+            }
+            // Immediate update when centering
+            console.log(`🌸 Calling updateVisibleFlowers after centerOn, flowers.length=${this.flowers.length}`);
             this.updateVisibleFlowers();
+        } else {
+            console.warn('🌸 centerOn called but no flowers available to render');
         }
     }
 
@@ -414,6 +533,21 @@ class GardenPage {
     seededRandom(seed) {
         const x = Math.sin(seed * 9999) * 10000;
         return x - Math.floor(x);
+    }
+
+    /**
+     * Throttled version of updateVisibleFlowers to reduce lag
+     * Only updates every updateVisibleFlowersDelay ms
+     */
+    throttledUpdateVisibleFlowers() {
+        if (this.updateVisibleFlowersThrottle) {
+            clearTimeout(this.updateVisibleFlowersThrottle);
+        }
+        
+        this.updateVisibleFlowersThrottle = setTimeout(() => {
+            this.updateVisibleFlowers();
+            this.updateVisibleFlowersThrottle = null;
+        }, this.updateVisibleFlowersDelay);
     }
 
     /**
@@ -748,21 +882,29 @@ class GardenPage {
                 try {
                     this.centerOn(centerX, centerY);
                     console.log('🌸 CenterOn completed');
+                    
+                    // Force immediate render of visible flowers (don't wait for lazy loading)
+                    // centerOn already calls updateVisibleFlowers immediately, but add a small delay
+                    // to ensure DOM is ready
+                    setTimeout(() => {
+                        console.log('🌸 Force updating visible flowers after centering...');
+                        try {
+                            // Clear any pending throttled update
+                            if (this.updateVisibleFlowersThrottle) {
+                                clearTimeout(this.updateVisibleFlowersThrottle);
+                                this.updateVisibleFlowersThrottle = null;
+                            }
+                            // Immediate update
+                            this.updateVisibleFlowers();
+                            console.log(`🌸 updateVisibleFlowers completed: ${this.loadedFlowers.size} flowers rendered`);
+                        } catch (updateError) {
+                            console.error('🌸 Error in updateVisibleFlowers:', updateError);
+                            console.error('🌸 Error stack:', updateError.stack);
+                        }
+                    }, 100);
                 } catch (centerError) {
                     console.error('🌸 Error in centerOn:', centerError);
                 }
-                
-                // Force immediate render of visible flowers (don't wait for lazy loading)
-                setTimeout(() => {
-                    console.log('🌸 Force updating visible flowers after centering...');
-                    try {
-                        this.updateVisibleFlowers();
-                        console.log('🌸 updateVisibleFlowers completed');
-                    } catch (updateError) {
-                        console.error('🌸 Error in updateVisibleFlowers:', updateError);
-                        console.error('🌸 Error stack:', updateError.stack);
-                    }
-                }, 100);
             }
 
         } catch (error) {
@@ -873,6 +1015,7 @@ class GardenPage {
 
     /**
      * Update which flowers are visible and render/hide accordingly (lazy loading)
+     * Optimized to only render flowers within screen + 20% padding area
      */
     updateVisibleFlowers() {
         if (!this.canvas) {
@@ -885,39 +1028,89 @@ class GardenPage {
             return;
         }
 
-        const viewportLeft = -this.offsetX - this.viewportPadding;
-        const viewportTop = -this.offsetY - this.viewportPadding;
-        const viewportRight = viewportLeft + window.innerWidth + this.viewportPadding * 2;
-        const viewportBottom = viewportTop + window.innerHeight + this.viewportPadding * 2;
+        // Calculate 20% padding based on viewport dimensions (dynamic, not fixed pixels)
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const viewportPaddingX = viewportWidth * this.viewportPaddingPercent;
+        const viewportPaddingY = viewportHeight * this.viewportPaddingPercent;
+        
+        // Calculate visible area bounds
+        const viewportLeft = -this.offsetX - viewportPaddingX;
+        const viewportTop = -this.offsetY - viewportPaddingY;
+        const viewportRight = viewportLeft + viewportWidth + viewportPaddingX * 2;
+        const viewportBottom = viewportTop + viewportHeight + viewportPaddingY * 2;
 
-        console.log(`🌸 Viewport: L=${viewportLeft.toFixed(0)}, T=${viewportTop.toFixed(0)}, R=${viewportRight.toFixed(0)}, B=${viewportBottom.toFixed(0)}`);
-        console.log(`🌸 Offset: X=${this.offsetX.toFixed(0)}, Y=${this.offsetY.toFixed(0)}`);
+        // Debug: Log viewport info on first call or if no flowers visible
+        if (this.loadedFlowers.size === 0 || this.flowers.length > 0) {
+            console.log(`🌸 updateVisibleFlowers: offsetX=${this.offsetX.toFixed(0)}, offsetY=${this.offsetY.toFixed(0)}`);
+            console.log(`🌸 Viewport bounds: L=${viewportLeft.toFixed(0)}, T=${viewportTop.toFixed(0)}, R=${viewportRight.toFixed(0)}, B=${viewportBottom.toFixed(0)}`);
+            if (this.flowers.length > 0) {
+                console.log(`🌸 First flower position: (${this.flowers[0].canvasX}, ${this.flowers[0].canvasY})`);
+            }
+        }
 
         // Track which flowers should be visible
         const visibleIds = new Set();
         let visibleCount = 0;
+        
+        // Sort flowers by distance from viewport center for priority rendering
+        const viewportCenterX = -this.offsetX + viewportWidth / 2;
+        const viewportCenterY = -this.offsetY + viewportHeight / 2;
+        
+        const flowersWithDistance = this.flowers
+            .filter(flower => flower.canvasX !== undefined && flower.canvasY !== undefined)
+            .map(flower => {
+                const dx = flower.canvasX - viewportCenterX;
+                const dy = flower.canvasY - viewportCenterY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return { flower, distance };
+            })
+            .sort((a, b) => a.distance - b.distance); // Closest first
 
-        this.flowers.forEach((flower) => {
-            if (!flower.canvasX || !flower.canvasY) {
-                console.warn(`🌸 Flower ${flower.id} missing position data`);
-                return;
-            }
-
+        // Process flowers: only render those within viewport + 20% padding
+        // Prioritize closest flowers if we're at the limit
+        let renderedCount = 0;
+        
+        // CRITICAL: If no flowers are currently rendered, force render at least the closest ones
+        // This ensures flowers always appear on initial load
+        const forceRender = this.loadedFlowers.size === 0 && this.flowers.length > 0;
+        
+        for (const { flower, distance } of flowersWithDistance) {
             const isVisible = (
                 flower.canvasX >= viewportLeft &&
                 flower.canvasX <= viewportRight &&
                 flower.canvasY >= viewportTop &&
                 flower.canvasY <= viewportBottom
             );
+            
+            // Debug: Log first few flowers visibility check
+            if (visibleCount < 3) {
+                console.log(`🌸 Flower ${flower.id} at (${flower.canvasX.toFixed(0)}, ${flower.canvasY.toFixed(0)}): visible=${isVisible}, distance=${distance.toFixed(0)}`);
+            }
 
-            if (isVisible) {
+            // If forcing render and this is one of the closest flowers, render it even if outside viewport
+            const shouldForceRender = forceRender && renderedCount < this.minRenderedFlowers;
+            
+            if (isVisible || shouldForceRender) {
                 visibleIds.add(flower.id);
                 visibleCount++;
 
                 // Render if not already rendered (lazy loading)
                 const existingFlower = this.loadedFlowers.get(flower.id);
                 if (!existingFlower) {
-                    console.log(`🌸 Rendering flower ${flower.id} at (${flower.canvasX.toFixed(0)}, ${flower.canvasY.toFixed(0)})`);
+                    // Check if we've reached the maximum rendered flowers limit
+                    // But always allow rendering if we have fewer than minimum flowers (ensures flowers show)
+                    const shouldRender = this.loadedFlowers.size < this.maxRenderedFlowers || 
+                                       this.loadedFlowers.size < this.minRenderedFlowers ||
+                                       shouldForceRender;
+                    
+                    if (!shouldRender) {
+                        // Skip rendering this flower if we're at the limit
+                        // (it will be rendered when closer flowers are unloaded)
+                        continue;
+                    }
+                    
+                    renderedCount++;
                     // Create a plain object copy to avoid readonly property errors
                     const flowerCopy = {
                         id: flower.id,
@@ -990,16 +1183,40 @@ class GardenPage {
                     }
                 }
             }
-        });
+        }
 
-        console.log(`🌸 ${visibleCount} flowers visible, ${this.loadedFlowers.size} currently rendered`);
-
-        // Remove flowers no longer visible
+        // Remove flowers no longer visible (outside viewport + 20% padding)
+        // BUT: Don't remove flowers if we have fewer than minimum rendered flowers
+        // This prevents removing all flowers if viewport calculation is off
+        let removedCount = 0;
         this.loadedFlowers.forEach((data, id) => {
             if (!visibleIds.has(id)) {
-                this.removeFlower(id);
+                // Only remove if we have enough flowers rendered
+                if (this.loadedFlowers.size > this.minRenderedFlowers) {
+                    this.removeFlower(id);
+                    removedCount++;
+                } else {
+                    // Keep flower even if outside viewport if we're below minimum
+                    console.log(`🌸 Keeping flower ${id} (below minimum threshold: ${this.loadedFlowers.size}/${this.minRenderedFlowers})`);
+                }
             }
         });
+        
+        // Log performance metrics
+        if (visibleCount > 0 || removedCount > 0 || renderedCount > 0) {
+            console.log(`🌸 Viewport+20%: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} newly rendered, ${removedCount} unloaded`);
+        }
+        
+        // Debug: Log if no flowers are visible but we have flowers
+        if (visibleCount === 0 && this.flowers.length > 0) {
+            console.warn(`🌸 WARNING: No flowers visible but ${this.flowers.length} flowers exist`);
+            console.warn(`🌸 Viewport bounds: L=${viewportLeft.toFixed(0)}, T=${viewportTop.toFixed(0)}, R=${viewportRight.toFixed(0)}, B=${viewportBottom.toFixed(0)}`);
+            console.warn(`🌸 Offset: X=${this.offsetX.toFixed(0)}, Y=${this.offsetY.toFixed(0)}`);
+            if (this.flowers.length > 0) {
+                const firstFlower = this.flowers[0];
+                console.warn(`🌸 First flower position: (${firstFlower.canvasX}, ${firstFlower.canvasY})`);
+            }
+        }
 
         // Update center flower for question bubble
         this.updateCenterFlower();
@@ -1607,6 +1824,15 @@ class GardenPage {
         if (this.flowers.length > 0) {
             console.log('🌸 We have flowers, hiding empty state');
             this.hideEmptyState();
+            
+            // Ensure flowers are rendered immediately after refresh
+            setTimeout(() => {
+                if (this.updateVisibleFlowersThrottle) {
+                    clearTimeout(this.updateVisibleFlowersThrottle);
+                }
+                this.updateVisibleFlowers();
+                console.log(`🌸 After refresh: ${this.loadedFlowers.size} flowers rendered`);
+            }, 100);
         } else {
             console.error('🌸 CRITICAL: No flowers after loadAllFlowers in refreshGarden!');
             this.showEmptyState();
@@ -1627,9 +1853,23 @@ class GardenPage {
             if (newest && newest.canvasX && newest.canvasY) {
                 console.log('🌸 Centering on newest flower:', newest.id);
                 this.centerOn(newest.canvasX, newest.canvasY);
+                // Ensure flowers are rendered immediately
+                setTimeout(() => {
+                    if (this.updateVisibleFlowersThrottle) {
+                        clearTimeout(this.updateVisibleFlowersThrottle);
+                    }
+                    this.updateVisibleFlowers();
+                }, 50);
             } else {
                 console.warn('🌸 Newest flower missing position, using canvas center');
                 this.centerOn(this.canvasSize / 2, this.canvasSize / 2);
+                // Ensure flowers are rendered immediately
+                setTimeout(() => {
+                    if (this.updateVisibleFlowersThrottle) {
+                        clearTimeout(this.updateVisibleFlowersThrottle);
+                    }
+                    this.updateVisibleFlowers();
+                }, 50);
             }
         }
     }
@@ -1678,10 +1918,102 @@ class GardenPage {
 
 // Initialize garden page when DOM is ready
 let gardenPageInstance;
-document.addEventListener('DOMContentLoaded', () => {
-    const gardenPage = document.getElementById('gardenPage');
-    if (gardenPage) {
-        gardenPageInstance = new GardenPage();
-        window.gardenPageInstance = gardenPageInstance;
+
+// Function to initialize garden page (can be called multiple times safely)
+function initializeGardenPage() {
+    // Don't reinitialize if already exists
+    if (window.gardenPageInstance) {
+        console.log('🌸 Garden page instance already exists');
+        return window.gardenPageInstance;
     }
-});
+    
+    // Check if GardenPage class is available
+    if (typeof GardenPage === 'undefined') {
+        console.error('🌸 GardenPage class is not defined. Scripts may not be loaded in correct order.');
+        console.error('🌸 Available globals:', Object.keys(window).filter(k => k.includes('Garden') || k.includes('garden')));
+        return null;
+    }
+    
+    const gardenPage = document.getElementById('gardenPage');
+    if (!gardenPage) {
+        console.error('🌸 Garden page element (id="gardenPage") not found in DOM');
+        console.error('🌸 Available page elements:', Array.from(document.querySelectorAll('.page')).map(el => el.id));
+        return null;
+    }
+    
+    const gardenContainer = document.getElementById('gardenContainer');
+    if (!gardenContainer) {
+        console.error('🌸 Garden container element (id="gardenContainer") not found in DOM');
+        return null;
+    }
+    
+    try {
+        console.log('🌸 Creating GardenPage instance...');
+        gardenPageInstance = new GardenPage();
+        
+        if (!gardenPageInstance) {
+            console.error('🌸 GardenPage constructor returned null/undefined');
+            return null;
+        }
+        
+        window.gardenPageInstance = gardenPageInstance;
+        console.log('🌸 Garden page instance created and assigned to window.gardenPageInstance');
+        console.log('🌸 Instance properties:', {
+            container: !!gardenPageInstance.container,
+            canvas: !!gardenPageInstance.canvas,
+            initialized: gardenPageInstance.initialized
+        });
+        
+        // Wait for initialization to complete
+        // Check every 100ms for up to 5 seconds
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        
+        const checkInitialized = setInterval(() => {
+            attempts++;
+            if (gardenPageInstance && gardenPageInstance.initialized) {
+                clearInterval(checkInitialized);
+                console.log('🌸 Garden page instance ready and initialized');
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkInitialized);
+                console.warn('🌸 Garden page instance initialization timeout, but instance exists');
+                console.warn('🌸 Instance state:', {
+                    exists: !!gardenPageInstance,
+                    initialized: gardenPageInstance ? gardenPageInstance.initialized : false,
+                    container: gardenPageInstance ? !!gardenPageInstance.container : false,
+                    canvas: gardenPageInstance ? !!gardenPageInstance.canvas : false
+                });
+                // Still mark as available even if initialization timed out
+                // The instance exists and can be used, just might not be fully ready
+            }
+        }, 100);
+        
+        return gardenPageInstance;
+    } catch (error) {
+        console.error('🌸 Error creating garden page instance:', error);
+        console.error('🌸 Error name:', error.name);
+        console.error('🌸 Error message:', error.message);
+        console.error('🌸 Error stack:', error.stack);
+        // Don't set window.gardenPageInstance if creation failed
+        window.gardenPageInstance = null;
+        return null;
+    }
+}
+
+// Initialize on DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeGardenPage();
+    });
+} else {
+    // DOM is already loaded, initialize immediately
+    initializeGardenPage();
+}
+
+// Also expose initialization function globally for manual calls
+window.initializeGardenPage = initializeGardenPage;
+
+// Expose GardenPage class globally for fallback creation
+if (typeof window !== 'undefined') {
+    window.GardenPage = GardenPage;
+}

@@ -1624,37 +1624,96 @@ class FlowerComponent {
                     
                     // Refresh garden and scroll to new flower
                     setTimeout(async () => {
-                        if (window.gardenPageInstance) {
-                            console.log('🌸 Garden page instance found, refreshing...');
-                            // Store the flower ID before refreshing
-                            const targetFlowerId = savedFlowerId;
-                            // Refresh to load the new flower
-                            await window.gardenPageInstance.refreshGarden();
-                            console.log('🌸 Garden refreshed, scrolling to flower:', targetFlowerId);
-                            // Scroll to the flower after refresh
-                            if (targetFlowerId) {
-                                setTimeout(() => {
-                                    window.gardenPageInstance.scrollToFlower(targetFlowerId);
-                                }, 800);
-                            }
-                        } else {
-                            console.warn('🌸 Garden page instance not found, waiting...');
-                            // If garden page instance doesn't exist yet, wait a bit
-                            setTimeout(async () => {
-                                if (window.gardenPageInstance) {
-                                    const targetFlowerId = savedFlowerId;
-                                    await window.gardenPageInstance.refreshGarden();
-                                    if (targetFlowerId) {
-                                        setTimeout(() => {
-                                            window.gardenPageInstance.scrollToFlower(targetFlowerId);
-                                        }, 800);
+                        // Ensure garden page instance exists and is initialized
+                        // Try to get or create the instance
+                        if (!window.gardenPageInstance) {
+                            // Try using the initialization function if available
+                            if (typeof window.initializeGardenPage === 'function') {
+                                const instance = window.initializeGardenPage();
+                                if (!instance) {
+                                    console.error('🌸 initializeGardenPage() returned null - check console for errors');
+                                }
+                            } else {
+                                console.error('🌸 window.initializeGardenPage is not a function');
+                                console.error('🌸 Available window properties:', Object.keys(window).filter(k => k.toLowerCase().includes('garden')));
+                                
+                                // Fallback: try to create directly
+                                const gardenPageEl = document.getElementById('gardenPage');
+                                let GardenPageClass = null;
+                                if (typeof GardenPage !== 'undefined') {
+                                    GardenPageClass = GardenPage;
+                                } else if (window.GardenPage) {
+                                    GardenPageClass = window.GardenPage;
+                                }
+                                
+                                if (gardenPageEl && GardenPageClass) {
+                                    try {
+                                        window.gardenPageInstance = new GardenPageClass();
+                                        console.log('🌸 Created garden page instance via fallback method');
+                                    } catch (createError) {
+                                        console.error('🌸 Error creating garden page instance:', createError);
+                                        console.error('🌸 Error stack:', createError.stack);
                                     }
                                 } else {
-                                    console.error('🌸 Garden page instance still not found after wait');
+                                    console.error('🌸 Cannot create instance - gardenPageEl:', !!gardenPageEl, 'GardenPageClass:', !!GardenPageClass);
                                 }
-                            }, 500);
+                            }
                         }
-                    }, 300);
+                        
+                        // Wait for instance and initialization
+                        let attempts = 0;
+                        const maxAttempts = 50; // 5 seconds max
+                        while (attempts < maxAttempts) {
+                            if (window.gardenPageInstance) {
+                                if (window.gardenPageInstance.initialized) {
+                                    // Instance is ready
+                                    const targetFlowerId = savedFlowerId;
+                                    try {
+                                        await window.gardenPageInstance.refreshGarden();
+                                        if (targetFlowerId) {
+                                            setTimeout(() => {
+                                                if (window.gardenPageInstance) {
+                                                    window.gardenPageInstance.scrollToFlower(targetFlowerId);
+                                                }
+                                            }, 800);
+                                        }
+                                    } catch (error) {
+                                        console.error('🌸 Error refreshing garden:', error);
+                                        console.error('🌸 Error stack:', error.stack);
+                                    }
+                                    return; // Success, exit
+                                }
+                            }
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            attempts++;
+                        }
+                        
+                        // If we get here, initialization failed
+                        if (!window.gardenPageInstance) {
+                            console.error('🌸 Garden page instance not available after initialization attempt');
+                            console.error('🌸 Debug info:', {
+                                gardenPageExists: !!document.getElementById('gardenPage'),
+                                gardenContainerExists: !!document.getElementById('gardenContainer'),
+                                GardenPageDefined: typeof GardenPage !== 'undefined',
+                                windowGardenPage: !!window.GardenPage,
+                                initializeGardenPageFunction: typeof window.initializeGardenPage === 'function',
+                                documentReadyState: document.readyState,
+                                scriptsLoaded: {
+                                    database: typeof flowerDB !== 'undefined',
+                                    script: typeof FlowerComponent !== 'undefined',
+                                    gardenPage: typeof GardenPage !== 'undefined'
+                                }
+                            });
+                        } else if (!window.gardenPageInstance.initialized) {
+                            console.error('🌸 Garden page instance exists but initialization timed out');
+                            console.error('🌸 Instance state:', {
+                                container: !!window.gardenPageInstance.container,
+                                canvas: !!window.gardenPageInstance.canvas,
+                                initialized: window.gardenPageInstance.initialized,
+                                flowersLength: window.gardenPageInstance.flowers ? window.gardenPageInstance.flowers.length : 'N/A'
+                            });
+                        }
+                    }, 100);
                 } else {
                     console.error('🌸 Flower page or garden page element not found');
                 }
