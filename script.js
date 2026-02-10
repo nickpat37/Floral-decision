@@ -1470,13 +1470,13 @@ class FlowerComponent {
     detachPetal(petal, releaseX, releaseY) {
         if (!petal.attached) return;
         
+        // Check BEFORE detaching: is this the last remaining petal?
+        const attachedCount = this.petals.filter(p => p.attached).length;
+        const isLastPetal = attachedCount === 1;
+        
         petal.attached = false;
         
-        // Check if this is the last petal
-        const attachedPetals = this.petals.filter(p => p.attached);
-        const isLastPetal = attachedPetals.length === 1; // This petal is the last one
-        
-        // Remove from attached petals array immediately
+        // Remove from attached petals array
         const index = this.petals.indexOf(petal);
         if (index > -1) {
             this.petals.splice(index, 1);
@@ -1491,7 +1491,9 @@ class FlowerComponent {
         const isOnFlowerPage = containerId === 'flowerContainer' || 
             (document.getElementById('flowerPage') && document.getElementById('flowerPage').classList.contains('active'));
         if (isLastPetal && !this.answerDisplayed && isOnFlowerPage) {
-            this.showAnswer(petal.answer);
+            // Use finalAnswer (predetermined) - matches traditional "last petal" game
+            const answer = this.finalAnswer ?? petal.answer;
+            this.showAnswer(answer);
         }
         
         // Change petal class and remove all transitions
