@@ -1868,13 +1868,26 @@ class FlowerComponent {
     resetPetals() {
         this.hideRestartIcon();
         const answerDisplay = document.getElementById('answerDisplay');
-        if (answerDisplay) answerDisplay.style.display = 'none';
         const buttonContainer = document.getElementById('answerButtons');
-        if (buttonContainer) buttonContainer.style.display = 'none';
-        const instructions = document.querySelector('.instructions');
-        if (instructions) instructions.style.display = 'block';
         
-        this.createPetals(true);
+        const finishReset = () => {
+            if (answerDisplay) answerDisplay.style.display = 'none';
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            const instructions = document.querySelector('.instructions');
+            if (instructions) instructions.style.display = 'block';
+            this.createPetals(true);
+        };
+        
+        if (answerDisplay && answerDisplay.style.display === 'flex') {
+            answerDisplay.style.transition = 'opacity 0.5s ease-out';
+            answerDisplay.style.opacity = '0';
+            let done = false;
+            const doFinish = () => { if (!done) { done = true; finishReset(); } };
+            answerDisplay.addEventListener('transitionend', doFinish, { once: true });
+            setTimeout(doFinish, 600); // fallback if transitionend doesn't fire
+        } else {
+            finishReset();
+        }
     }
     
     /**

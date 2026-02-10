@@ -202,7 +202,9 @@ body {
 
 .question-display {
     padding: 30px 20px 20px;
-    background: unset;
+    background: linear-gradient(180deg, rgba(70, 179, 216, 0.4) 1%, rgba(142, 208, 235, 0) 100%);
+    backdrop-filter: blur(3.5px);
+    -webkit-backdrop-filter: blur(3.5px);
     color: white;
     text-align: center;
     min-height: 80px;
@@ -231,7 +233,7 @@ body {
 .question-text {
     font-size: 20px;
     font-weight: 600;
-    color: white;
+    color: rgba(66, 66, 66, 1);
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -359,13 +361,13 @@ body {
     height: 48px;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.9);
-    color: rgba(100, 100, 100, 0.9);
+    background: unset;
+    color: rgba(59, 59, 59, 0.9);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
     z-index: 20;
     transition: background 0.2s, transform 0.1s;
 }
