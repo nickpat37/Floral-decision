@@ -255,6 +255,14 @@ body {
     filter: drop-shadow(0 0 2px rgba(45, 80, 22, 0.5));
 }
 
+.flower-disc-wrapper {
+    pointer-events: none;
+}
+
+.flower-disc-wrapper > * {
+    pointer-events: auto;
+}
+
 .flower-disc {
     position: absolute;
     width: 120px !important;

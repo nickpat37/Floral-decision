@@ -60,6 +60,7 @@ class FlowerComponent {
         this.discSize = options.discSize || 120;
         this.originalDiscSize = options.discSize || 120; // Store original disc size for tap animation
         this.discElement = null;
+        this.discWrapper = null;
         this.isDraggingDisc = false;
         this.dragOffset = { x: 0, y: 0 };
         this.tapStartTime = 0;
@@ -175,10 +176,7 @@ class FlowerComponent {
         setTimeout(() => {
             if (this.discElement) {
                 this.discSize = this.originalDiscSize;
-                this.discElement.style.width = `${this.discSize}px`;
-                this.discElement.style.height = `${this.discSize}px`;
-                this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-                this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
+                this.updateDiscPosition();
             }
             
             // Ensure all petals maintain fixed size
@@ -212,9 +210,10 @@ class FlowerComponent {
         if (existingDiscs.length > 0 || existingPetals.length > 0 || detachedPetals.length > 0) {
             console.log(`🌸 Cleaning up ${existingDiscs.length} discs, ${existingPetals.length} petals, ${detachedPetals.length} detached petals`);
             
-            // Remove all existing discs
+            // Remove all existing discs (and their wrapper if present)
             existingDiscs.forEach(disc => {
-                disc.remove();
+                const wrapper = disc.closest('.flower-disc-wrapper');
+                (wrapper || disc).remove();
             });
             
             // Remove all existing petals
@@ -364,10 +363,7 @@ class FlowerComponent {
         this.discSize = this.originalDiscSize;
         
         // Update disc visual position and size
-        this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-        this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-        this.discElement.style.width = `${this.discSize}px`;
-        this.discElement.style.height = `${this.discSize}px`;
+        this.updateDiscPosition();
         
         // Update stem and petals
         this.updateStem();
@@ -532,10 +528,7 @@ class FlowerComponent {
             this.discY = this.originalDiscY + (this.tapDiscTargetY - this.originalDiscY) * discEase;
             
             // Update disc visual position and size
-            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-            this.discElement.style.width = `${this.discSize}px`;
-            this.discElement.style.height = `${this.discSize}px`;
+            this.updateDiscPosition();
             
             // Update stem
             this.updateStem();
@@ -564,10 +557,7 @@ class FlowerComponent {
             this.discSize = this.originalDiscSize;
             this.discX = this.originalDiscX;
             this.discY = this.originalDiscY;
-            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-            this.discElement.style.width = `${this.discSize}px`;
-            this.discElement.style.height = `${this.discSize}px`;
+            this.updateDiscPosition();
             
             // Reset petals
             this.petals.forEach(petal => {
@@ -583,6 +573,23 @@ class FlowerComponent {
             this.updateStem();
             this.updatePetals();
         }
+    }
+    
+    updateDiscPosition() {
+        if (!this.discElement) return;
+        const x = this.discX - this.discSize / 2;
+        const y = this.discY - this.discSize / 2;
+        if (this.discWrapper) {
+            this.discWrapper.style.left = `${x}px`;
+            this.discWrapper.style.top = `${y}px`;
+            this.discWrapper.style.width = `${this.discSize}px`;
+            this.discWrapper.style.height = `${this.discSize}px`;
+        } else {
+            this.discElement.style.left = `${x}px`;
+            this.discElement.style.top = `${y}px`;
+        }
+        this.discElement.style.width = `${this.discSize}px`;
+        this.discElement.style.height = `${this.discSize}px`;
     }
     
     updateDiscSpring() {
@@ -609,10 +616,7 @@ class FlowerComponent {
             this.discSize = this.originalDiscSize;
             
             // Update visual position
-            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-            this.discElement.style.width = `${this.discSize}px`;
-            this.discElement.style.height = `${this.discSize}px`;
+            this.updateDiscPosition();
             
             // Update stem
             this.updateStem();
@@ -627,10 +631,7 @@ class FlowerComponent {
             this.discSpringActive = false;
             
             // Final update
-            this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-            this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-            this.discElement.style.width = `${this.discSize}px`;
-            this.discElement.style.height = `${this.discSize}px`;
+            this.updateDiscPosition();
             this.updateStem();
             this.updatePetals();
         }
@@ -660,10 +661,7 @@ class FlowerComponent {
         this.discSize = this.originalDiscSize;
         
         // Update visual position
-        this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-        this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-        this.discElement.style.width = `${this.discSize}px`;
-        this.discElement.style.height = `${this.discSize}px`;
+        this.updateDiscPosition();
         
         // Update stem and petals
         this.updateStem();
@@ -903,28 +901,42 @@ class FlowerComponent {
         const existingDisc = this.container.querySelector('.flower-disc');
         if (existingDisc) {
             console.warn(`🌸 Existing disc found, removing before creating new one`);
-            existingDisc.remove();
+            existingDisc.parentElement?.remove();
         }
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flower-disc-wrapper';
+        wrapper.style.cssText = `
+            position: absolute;
+            width: ${this.discSize}px;
+            height: ${this.discSize}px;
+            left: ${this.discX - this.discSize / 2}px;
+            top: ${this.discY - this.discSize / 2}px;
+        `;
         
         const disc = document.createElement('img');
         disc.src = 'Disc.png';
         disc.className = 'flower-disc';
         disc.id = 'flowerDisc';
         
-        // Set explicit size immediately to prevent initial smaller size
-        disc.style.width = `${this.discSize}px`;
-        disc.style.height = `${this.discSize}px`;
-        disc.style.left = `${this.discX - this.discSize / 2}px`;
-        disc.style.top = `${this.discY - this.discSize / 2}px`;
+        disc.style.cssText = `
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: ${this.discSize}px;
+            height: ${this.discSize}px;
+        `;
         
-        // Ensure size is set after image loads (in case image hasn't loaded yet)
         disc.addEventListener('load', () => {
             disc.style.width = `${this.discSize}px`;
             disc.style.height = `${this.discSize}px`;
         });
         
+        wrapper.appendChild(disc);
+        this.discWrapper = wrapper;
         this.discElement = disc;
-        this.container.appendChild(disc);
+        this.container.appendChild(wrapper);
         
         // Disc drag handlers
         disc.addEventListener('mousedown', (e) => this.startDiscDrag(e));
@@ -1027,10 +1039,7 @@ class FlowerComponent {
         }
         
         // Update disc visual position
-        this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-        this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-        this.discElement.style.width = `${this.discSize}px`;
-        this.discElement.style.height = `${this.discSize}px`;
+        this.updateDiscPosition();
         
         // Update stem
         this.updateStem();
@@ -1835,15 +1844,17 @@ class FlowerComponent {
         restartBtn.className = 'flower-restart-button';
         restartBtn.setAttribute('aria-label', 'Reset petals');
         restartBtn.innerHTML = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
-        restartBtn.style.left = `${this.originalDiscX}px`;
-        restartBtn.style.top = `${this.originalDiscY}px`;
+        restartBtn.style.left = '50%';
+        restartBtn.style.top = '50%';
+        restartBtn.style.transform = 'translate(-50%, -50%)';
         restartBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             this.resetPetals();
         });
         
-        this.container.appendChild(restartBtn);
+        const parent = this.discWrapper || this.container;
+        parent.appendChild(restartBtn);
         this.restartButton = restartBtn;
     }
     
@@ -2324,10 +2335,7 @@ class FlowerComponent {
             
             // Update disc visual position and size
             if (this.discElement) {
-                this.discElement.style.left = `${this.discX - this.discSize / 2}px`;
-                this.discElement.style.top = `${this.discY - this.discSize / 2}px`;
-                this.discElement.style.width = `${this.discSize}px`;
-                this.discElement.style.height = `${this.discSize}px`;
+                this.updateDiscPosition();
             }
             
             // Update stem (will recalculate based on new positions)

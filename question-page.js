@@ -121,10 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     questionFlowerInstance.stemSVG.setAttribute('height', questionFlowerInstance.containerHeight);
                 }
                 
-                // Update disc position visually
+                // Update disc position visually (uses discWrapper when present)
                 if (questionFlowerInstance.discElement) {
-                    questionFlowerInstance.discElement.style.left = `${questionFlowerInstance.discX - questionFlowerInstance.discSize / 2}px`;
-                    questionFlowerInstance.discElement.style.top = `${questionFlowerInstance.discY - questionFlowerInstance.discSize / 2}px`;
+                    questionFlowerInstance.updateDiscPosition();
                 }
                 
                 // Update stem path to ensure it's drawn (critical after transition)
