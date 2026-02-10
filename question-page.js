@@ -56,8 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     function navigateToFlowerPage(question) {
-        // Store current question for saving later
+        // CRITICAL: Store question globally FIRST for saving - must be set before any async/conditional logic
         currentQuestion = question;
+        window.currentQuestion = question;
         
         const questionModal = document.getElementById('questionModal');
         const questionFlowerContainer = document.getElementById('questionFlowerContainer');
@@ -141,11 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Reuse the same instance
                 flowerPageInstance = questionFlowerInstance;
-                
-                // Store question globally for saving when answer is shown
-                window.currentQuestion = question;
             } else if (!flowerPageInstance) {
                 // Fallback: create new instance if moving failed
+                // window.currentQuestion already set at start of navigateToFlowerPage
                 flowerPageInstance = new FlowerComponent({
                     containerId: 'flowerContainer',
                     stemSVGId: 'stemSVG',

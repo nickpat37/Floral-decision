@@ -1487,7 +1487,9 @@ class FlowerComponent {
         
         // If this was the last petal, show the answer ONLY if we're on the flower page (question has been sent)
         // Don't show answer on the homepage (questionFlowerContainer)
-        const isOnFlowerPage = this.container && this.container.id === 'flowerContainer';
+        const containerId = this.container ? (this.container.id || (this.container.getAttribute && this.container.getAttribute('id'))) : '';
+        const isOnFlowerPage = containerId === 'flowerContainer' || 
+            (document.getElementById('flowerPage') && document.getElementById('flowerPage').classList.contains('active'));
         if (isLastPetal && !this.answerDisplayed && isOnFlowerPage) {
             this.showAnswer(petal.answer);
         }
@@ -1547,13 +1549,31 @@ class FlowerComponent {
         if (this.answerDisplayed) return; // Prevent showing answer multiple times
         this.answerDisplayed = true;
         
-        // Save flower to database if we have a question (save immediately when answer is shown)
-        if (typeof window.currentQuestion !== 'undefined' && window.currentQuestion) {
-            this.saveFlowerToDatabase(window.currentQuestion, answer).then(flowerId => {
+        // Get question: prefer window.currentQuestion, fallback to questionDisplay text
+        let question = (typeof window.currentQuestion !== 'undefined' && window.currentQuestion) 
+            ? window.currentQuestion 
+            : null;
+        if (!question) {
+            const questionTextEl = document.querySelector('.question-text');
+            if (questionTextEl) {
+                question = questionTextEl.textContent.replace(/^"|"$/g, '').trim();
+            }
+        }
+        
+        // Save flower to database - always attempt if we have question and answer
+        if (question && answer) {
+            this.saveFlowerToDatabase(question, answer).then(flowerId => {
                 if (flowerId) {
                     window.lastCreatedFlowerId = flowerId;
+                    console.log('🌸 Flower saved, lastCreatedFlowerId:', flowerId);
+                } else {
+                    console.error('🌸 Save returned null - flower was NOT saved to database');
                 }
+            }).catch(err => {
+                console.error('🌸 Save failed with error:', err);
             });
+        } else {
+            console.warn('🌸 Cannot save flower: missing question or answer', { hasQuestion: !!question, hasAnswer: !!answer });
         }
         
         // Hide instructions
@@ -1598,21 +1618,45 @@ class FlowerComponent {
             doneButton.addEventListener('click', async () => {
                 console.log('🌸 Done button clicked');
                 
-                // Save flower to database (if not already saved)
+                // Get question: prefer window.currentQuestion, fallback to questionDisplay
+                let question = (typeof window.currentQuestion !== 'undefined' && window.currentQuestion) 
+                    ? window.currentQuestion 
+                    : null;
+                if (!question) {
+                    const questionTextEl = document.querySelector('.question-text');
+                    if (questionTextEl) {
+                        question = questionTextEl.textContent.replace(/^"|"$/g, '').trim();
+                    }
+                }
+                
+                // Save flower to database (if not already saved) - MUST complete before navigating
                 let savedFlowerId = this.savedFlowerId;
-                if (!savedFlowerId && window.currentQuestion) {
-                    console.log('🌸 Saving flower to database...');
-                    savedFlowerId = await this.saveFlowerToDatabase(window.currentQuestion, answer);
-                    console.log('🌸 Flower saved with ID:', savedFlowerId);
+                if (!savedFlowerId && question && answer) {
+                    console.log('🌸 Saving flower to Supabase...');
+                    savedFlowerId = await this.saveFlowerToDatabase(question, answer);
+                    if (savedFlowerId) {
+                        console.log('✅ Flower saved to Supabase with ID:', savedFlowerId);
+                    } else {
+                        console.error('❌ Save failed - flower was not saved. Will not navigate to Garden.');
+                    }
                 } else if (savedFlowerId) {
                     console.log('🌸 Flower already saved with ID:', savedFlowerId);
-                } else {
-                    console.warn('🌸 No question available to save');
+                } else if (!question || !answer) {
+                    console.warn('🌸 No question or answer - flower will not appear in Garden');
+                }
+                
+                // Only navigate to Garden if we successfully saved (or had a previous save)
+                if (!savedFlowerId) {
+                    alert('Could not save your flower. Please try again.');
+                    return;
                 }
                 
                 // Store the saved flower ID for Garden page
                 window.lastCreatedFlowerId = savedFlowerId;
                 console.log('🌸 Set window.lastCreatedFlowerId:', savedFlowerId);
+                
+                // Brief delay so Supabase read-after-write sees the new flower
+                await new Promise(resolve => setTimeout(resolve, 400));
                 
                 // Navigate to Garden page
                 const flowerPage = document.getElementById('flowerPage');
@@ -1746,7 +1790,7 @@ class FlowerComponent {
      */
     async saveFlowerToDatabase(question, answer) {
         if (typeof flowerDB === 'undefined') {
-            console.warn('❌ Database not initialized');
+            console.error('❌ flowerDB is undefined - database.js may not have loaded');
             return null;
         }
         
@@ -1756,9 +1800,17 @@ class FlowerComponent {
             return this.savedFlowerId;
         }
         
+        if (!question || !answer) {
+            console.error('❌ saveFlowerToDatabase called with missing question or answer');
+            return null;
+        }
+        
         try {
             // Ensure database is initialized
             await flowerDB.init();
+            if (!flowerDB.useSupabase && !flowerDB.db) {
+                console.warn('⚠️ Database init completed but neither Supabase nor IndexedDB available');
+            }
             
             // Generate a unique ID for this flower
             const flowerId = Date.now().toString();

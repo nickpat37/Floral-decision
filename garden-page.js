@@ -753,8 +753,8 @@ class GardenPage {
             const positionedFlowers = [];
             
             const dbFlowersWithPositions = dbFlowers.map((flower, index) => {
-                // First few database flowers show questions (isolated)
-                const showsQuestion = index < 3;
+                // Database flowers with questions show question bubbles (first 10 for performance)
+                const showsQuestion = !!(flower.question) && index < 10;
                 const pos = this.getFlowerPosition(index, flower.seed || index, showsQuestion, positionedFlowers);
                 
                 const positionedFlower = {
@@ -1210,14 +1210,13 @@ class GardenPage {
             console.log(`🌸 Viewport+20%: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} newly rendered, ${removedCount} unloaded`);
         }
         
-        // Debug: Log if no flowers are visible but we have flowers
+        // Recovery: If viewport doesn't overlap any flowers, re-center to fix offset drift
         if (visibleCount === 0 && this.flowers.length > 0) {
-            console.warn(`🌸 WARNING: No flowers visible but ${this.flowers.length} flowers exist`);
-            console.warn(`🌸 Viewport bounds: L=${viewportLeft.toFixed(0)}, T=${viewportTop.toFixed(0)}, R=${viewportRight.toFixed(0)}, B=${viewportBottom.toFixed(0)}`);
-            console.warn(`🌸 Offset: X=${this.offsetX.toFixed(0)}, Y=${this.offsetY.toFixed(0)}`);
-            if (this.flowers.length > 0) {
-                const firstFlower = this.flowers[0];
-                console.warn(`🌸 First flower position: (${firstFlower.canvasX}, ${firstFlower.canvasY})`);
+            console.warn(`🌸 WARNING: No flowers visible but ${this.flowers.length} flowers exist - re-centering on flowers`);
+            const target = this.flowers.find(f => f.canvasX != null && f.canvasY != null) || this.flowers[0];
+            if (target && target.canvasX != null && target.canvasY != null) {
+                this.centerOn(target.canvasX, target.canvasY);
+                return; // centerOn calls updateVisibleFlowers; avoid double update
             }
         }
 
@@ -1837,7 +1836,10 @@ class GardenPage {
         
         console.log('🌸 Cleared all flowers and bubbles');
 
-        // Load fresh data
+        // Reset loading flag so loadAllFlowers doesn't skip (e.g. from stale previous load)
+        this.isLoading = false;
+
+        // Load fresh data from Supabase
         console.log('🌸 Calling loadAllFlowers()...');
         await this.loadAllFlowers();
         console.log('🌸 loadAllFlowers() completed. Flowers count:', this.flowers.length);
@@ -1863,6 +1865,15 @@ class GardenPage {
         console.log('🌸 Garden refresh complete');
         console.log(`🌸 Looking for flower ID: ${targetFlowerId}`);
         console.log(`🌸 Available flower IDs:`, this.flowers.map(f => f.id).slice(0, 10));
+
+        // If target flower not found (Supabase eventual consistency), retry load once
+        const targetFound = targetFlowerId && this.flowers.some(f => String(f.id) === String(targetFlowerId));
+        if (targetFlowerId && this.flowers.length > 0 && !targetFound) {
+            console.log('🌸 New flower not yet in results, retrying load after 500ms...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            this.isLoading = false;
+            await this.loadAllFlowers();
+        }
 
         // If we have a target flower, try to center on it
         if (targetFlowerId && this.flowers.length > 0) {

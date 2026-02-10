@@ -19,8 +19,14 @@ class FlowerDatabase {
     
     /**
      * Initialize Supabase client if credentials are available
+     * Only creates one client instance to avoid "Multiple GoTrueClient instances" warning
      */
     async initSupabase() {
+        // Reuse existing client - avoid creating multiple instances
+        if (this.supabaseClient) {
+            return true;
+        }
+        
         // Check if Supabase is available and configured
         if (typeof window.SUPABASE_URL === 'undefined' || !window.SUPABASE_URL) {
             return false;
@@ -32,23 +38,30 @@ class FlowerDatabase {
         }
         
         try {
-            // Dynamically import Supabase client
-            const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+            // Use globally loaded Supabase (from script tag) or dynamic import as fallback
+            let createClient;
+            if (typeof window.supabase !== 'undefined' && window.supabase && window.supabase.createClient) {
+                createClient = window.supabase.createClient.bind(window.supabase);
+            } else {
+                const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                createClient = mod.createClient;
+            }
             this.supabaseClient = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
             this.useSupabase = true;
-            console.log('Supabase initialized successfully');
+            console.log('✅ Supabase initialized successfully');
             return true;
         } catch (error) {
-            console.error('Failed to initialize Supabase:', error);
+            console.error('❌ Failed to initialize Supabase:', error);
             return false;
         }
     }
 
     /**
      * Initialize database connection
+     * Safe to call multiple times - reuses existing Supabase/IndexedDB connection
      */
     async init() {
-        // Try Supabase first
+        // Try Supabase first (initSupabase returns early if already initialized)
         const supabaseReady = await this.initSupabase();
         
         if (supabaseReady) {
@@ -103,21 +116,39 @@ class FlowerDatabase {
      * @returns {Promise<string>} - ID of saved flower
      */
     async saveFlower(flowerData) {
-        // Clamp numPetals to valid range: 12-30
+        // Validate required fields
+        const question = (flowerData.question != null && String(flowerData.question).trim()) 
+            ? String(flowerData.question).trim() 
+            : null;
+        const answer = (flowerData.answer != null && String(flowerData.answer).trim()) 
+            ? String(flowerData.answer).trim() 
+            : null;
+        if (!question || !answer) {
+            console.error('❌ Cannot save flower: question and answer are required', { question: !!question, answer: !!answer });
+            throw new Error('Question and answer are required to save a flower');
+        }
+        
+        // Clamp numPetals to valid range: 12-30 - must be integer for Supabase
         const requestedPetals = flowerData.numPetals || Math.floor(Math.random() * (30 - 12 + 1)) + 12;
         const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
         if (requestedPetals !== numPetals) {
             console.warn(`🌸 Saving flower: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
         }
         
+        // Supabase integer columns reject floats - ensure integers for num_petals, petal_radius, disc_size, timestamp
+        const petalRadius = Math.round(Number(flowerData.petalRadius) || 88);
+        const discSize = Math.round(Number(flowerData.discSize) || 120);
+        const timestamp = Math.floor(Number(flowerData.timestamp) || Date.now());
+        const seed = flowerData.seed != null && !isNaN(Number(flowerData.seed)) ? Number(flowerData.seed) : Math.random();
+        
         const flower = {
-            question: flowerData.question,
-            answer: flowerData.answer,
+            question: question,
+            answer: answer,
             num_petals: numPetals,
-            petal_radius: flowerData.petalRadius || 88,
-            disc_size: flowerData.discSize || 120,
-            seed: flowerData.seed || Math.random(),
-            timestamp: flowerData.timestamp || Date.now(),
+            petal_radius: petalRadius,
+            disc_size: discSize,
+            seed: seed,
+            timestamp: timestamp,
             created_at: flowerData.createdAt || new Date().toISOString()
         };
 
@@ -131,10 +162,12 @@ class FlowerDatabase {
                     .single();
                 
                 if (error) throw error;
-                console.log('✅ Flower saved to Supabase:', data.id);
+                console.log('✅ Flower saved to Supabase:', data.id, '- question:', question.length > 40 ? question.substring(0, 40) + '...' : question);
                 return data.id.toString();
             } catch (error) {
-                console.error('❌ Supabase save error, falling back to IndexedDB:', error.message);
+                console.error('❌ Supabase save error:', error.message);
+                if (error.details) console.error('❌ Supabase details:', error.details);
+                if (error.hint) console.error('❌ Supabase hint:', error.hint);
                 // Fall through to IndexedDB fallback
             }
         }
@@ -144,9 +177,9 @@ class FlowerDatabase {
             id: flowerData.id || Date.now().toString(),
             question: flower.question,
             answer: flower.answer,
-            numPetals: numPetals, // Use clamped value
-            petalRadius: flower.petal_radius,
-            discSize: flower.disc_size,
+            numPetals: numPetals,
+            petalRadius: petalRadius,
+            discSize: discSize,
             seed: flower.seed,
             timestamp: flower.timestamp,
             createdAt: flower.created_at
@@ -343,10 +376,11 @@ class FlowerDatabase {
                 const { data, error } = await this.supabaseClient
                     .from('flowers')
                     .select('*')
-                    .eq('id', parseInt(id))
-                    .single();
+                    .eq('id', id)
+                    .maybeSingle();
                 
                 if (error) throw error;
+                if (!data) return null;
                 
                 // Convert Supabase format to app format
                 // Clamp numPetals to valid range: 12-30

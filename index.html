@@ -97,13 +97,12 @@
         </div>
     </div>
 
-    <!-- Supabase Configuration -->
+    <!-- Supabase Configuration - Load Supabase via script tag for reliability -->
     <script>
-        // Supabase configuration
-        // TODO: Replace with your anon key from Supabase Dashboard → Settings → API
         window.SUPABASE_URL = 'https://tjwasramaaxyelufbypw.supabase.co';
-        window.SUPABASE_ANON_KEY = ''; // Paste your anon key here
+        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqd2FzcmFtYWF4eWVsdWZieXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY5MzEsImV4cCI6MjA4NTY3MjkzMX0.rAfEb7G8jAiOB5mvYXrVqDs1ph7XiwuT_RVodIfuqrQ';
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="database.js"></script>
     <script src="script.js"></script>
