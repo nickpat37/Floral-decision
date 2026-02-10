@@ -200,8 +200,26 @@ body {
     overflow: hidden;
 }
 
+/* Row 1: Navigation buttons */
+.flower-page-nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    z-index: 400;
+}
+
+.flower-page-nav .nav-button {
+    margin: 0;
+}
+
+/* Row 2: Question display */
 .question-display {
-    padding: 30px 20px 20px;
+    padding: 20px;
     background: linear-gradient(180deg, rgba(70, 179, 216, 0.4) 1%, rgba(142, 208, 235, 0) 100%);
     backdrop-filter: blur(3.5px);
     -webkit-backdrop-filter: blur(3.5px);
@@ -214,7 +232,7 @@ body {
     justify-content: center;
     z-index: 200;
     position: absolute;
-    top: 0;
+    top: 59px;
     left: 0;
     right: 0;
     opacity: 0;
@@ -225,7 +243,7 @@ body {
 .question-prefix {
     font-size: 14px;
     font-weight: 400;
-    color: white;
+    color: rgba(255, 255, 255, 1);
     margin-bottom: 4px;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -233,7 +251,7 @@ body {
 .question-text {
     font-size: 20px;
     font-weight: 600;
-    color: rgba(66, 66, 66, 1);
+    color: rgba(255, 255, 255, 1);
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -333,24 +351,26 @@ body {
     padding: 0 20px;
 }
 
-/* Answer Display - image behind flower, 80% width */
+/* Answer Display - 80vw width, max-height = viewport minus question + 24px gap (set via JS) */
 .answer-display {
     position: absolute;
-    top: 50%;
+    top: max(200px, 30vh); /* fallback; JS sets exact top for 24px gap below question */
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, 0);
     width: 80vw;
     z-index: 0;
     pointer-events: none;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    vertical-align: top;
 }
 
 .answer-display-image {
     width: 100%;
-    height: auto;
+    height: fit-content;
     object-fit: contain;
+    vertical-align: top;
 }
 
 /* Restart button - center of flower disc */

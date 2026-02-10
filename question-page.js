@@ -13,6 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const questionInput = document.getElementById('questionInput');
     const doneButton = document.getElementById('doneButton');
     const questionDisplay = document.getElementById('questionDisplay');
+    const backToHomeButton = document.getElementById('backToHomeButton');
+    const questionModal = document.getElementById('questionModal');
+    
+    // Back to homepage: flower page -> question page
+    if (backToHomeButton) {
+        backToHomeButton.addEventListener('click', () => {
+            flowerPage.classList.remove('active');
+            questionPage.classList.add('active');
+            if (questionModal) {
+                questionModal.style.transition = 'opacity 0.4s ease-in';
+                questionModal.style.opacity = '1';
+            }
+        });
+    }
     
     // Initialize flower component on question page
     if (questionPage && questionPage.classList.contains('active')) {

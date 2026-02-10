@@ -1645,6 +1645,19 @@ class FlowerComponent {
         answerDisplay.style.display = 'flex';
         answerDisplay.style.opacity = '0';
         
+        // Position answer 24px below question-display; constrain max-height to available space
+        const questionDisplay = document.getElementById('questionDisplay');
+        if (questionDisplay && flowerPageContainer) {
+            const questionRect = questionDisplay.getBoundingClientRect();
+            const containerRect = flowerPageContainer.getBoundingClientRect();
+            const gap = 24;
+            const topPx = (questionRect.bottom - containerRect.top) + gap;
+            answerDisplay.style.top = topPx + 'px';
+            const maxHeight = Math.max(0, containerRect.height - topPx);
+            answerDisplay.style.maxHeight = maxHeight + 'px';
+            answerDisplay.style.height = 'fit-content';
+        }
+        
         // Animate answer appearance
         setTimeout(() => {
             answerDisplay.style.transition = 'opacity 0.5s ease-in';
