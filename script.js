@@ -1587,17 +1587,22 @@ class FlowerComponent {
         // Get the flower page container (parent of this.container)
         const flowerPageContainer = this.container.parentElement;
         
-        // Create or get answer display element
+        // Create or get answer display element (image behind flower)
         let answerDisplay = document.getElementById('answerDisplay');
         if (!answerDisplay) {
             answerDisplay = document.createElement('div');
             answerDisplay.id = 'answerDisplay';
             answerDisplay.className = 'answer-display';
-            flowerPageContainer.appendChild(answerDisplay);
+            flowerPageContainer.insertBefore(answerDisplay, flowerPageContainer.firstChild);
         }
         
-        // Set answer text
-        answerDisplay.textContent = answer;
+        // Use image for YES/NO - clear and add img
+        answerDisplay.innerHTML = '';
+        const img = document.createElement('img');
+        img.alt = answer;
+        img.src = (answer === 'YES') ? 'YES.png' : 'NO.png';
+        img.className = 'answer-display-image';
+        answerDisplay.appendChild(img);
         answerDisplay.style.display = 'flex';
         answerDisplay.style.opacity = '0';
         
