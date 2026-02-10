@@ -754,7 +754,10 @@ class GardenPage {
             
             const dbFlowersWithPositions = dbFlowers.map((flower, index) => {
                 // Database flowers with questions show question bubbles (first 10 for performance)
-                const showsQuestion = !!(flower.question) && index < 10;
+                // Always show question for the newly created flower (matches lastCreatedFlowerId)
+                const isNewlyCreated = window.lastCreatedFlowerId && 
+                    (String(flower.id) === String(window.lastCreatedFlowerId));
+                const showsQuestion = !!(flower.question) && (index < 10 || isNewlyCreated);
                 const pos = this.getFlowerPosition(index, flower.seed || index, showsQuestion, positionedFlowers);
                 
                 const positionedFlower = {
@@ -1608,9 +1611,15 @@ class GardenPage {
             const flower = this.loadedFlowers.get(flowerId);
             if (!flower) return;
 
-            // Only create bubble if flower is successfully rendered
-            if (!flower.rendered || !flower.instance || !flower.wrapper) {
-                console.warn(`🌸 Skipping bubble creation for flower ${flowerId} - flower not fully rendered`);
+            // For recently created flower: show bubble immediately (wrapper exists from render start)
+            const isNewlyCreated = window.lastCreatedFlowerId && String(flowerId) === String(window.lastCreatedFlowerId);
+            const canShowBubble = isNewlyCreated 
+                ? (flower.wrapper && flower.data?.question)
+                : (flower.rendered && flower.instance && flower.wrapper);
+            if (!canShowBubble) {
+                if (!isNewlyCreated) {
+                    console.warn(`🌸 Skipping bubble creation for flower ${flowerId} - flower not fully rendered`);
+                }
                 return;
             }
 
@@ -1680,11 +1689,8 @@ class GardenPage {
             wrapper.appendChild(bubbleContainer);
         }
 
-        // Show bubble immediately for faster appearance
-        // Show bubble immediately for faster appearance (reduced transition time)
-        requestAnimationFrame(() => {
-            bubbleContainer.style.opacity = '1';
-        });
+        // Show bubble immediately - no delay for instant appearance
+        bubbleContainer.style.opacity = '1';
 
         return {
             element: bubbleContainer,
@@ -1908,7 +1914,7 @@ class GardenPage {
     }
 
     /**
-     * Scroll to a specific flower
+     * Scroll to a specific flower and show it with its question in the center
      */
     scrollToFlower(flowerId) {
         if (!flowerId) {
@@ -1925,6 +1931,30 @@ class GardenPage {
             console.log(`📍 Found flower! Centering on flower ${flowerId} at (${flower.canvasX}, ${flower.canvasY})`);
             this.centerOn(flower.canvasX, flower.canvasY);
             
+            // Ensure target flower shows question when it's the newly created one
+            const isNewlyCreated = String(flowerId) === String(window.lastCreatedFlowerId);
+            if (isNewlyCreated && flower && !flower.showsQuestion && flower.question) {
+                flower.showsQuestion = true;
+            }
+            
+            // Force show question bubble immediately when landing on garden with newly created flower
+            // centerFlowers controls which flower shows its question; force target to center
+            const showLandingBubble = () => {
+                const idStr = String(flowerId);
+                const flowerRef = this.loadedFlowers.get(idStr) || this.loadedFlowers.get(flowerId);
+                if (flowerRef && flowerRef.wrapper && flowerRef.data?.question) {
+                    const existingBubble = this.questionBubbles.find(b => String(b.flowerId) === idStr);
+                    if (!existingBubble) {
+                        this.centerFlowers = [idStr];
+                        this.updateQuestionBubbles();
+                    }
+                }
+            };
+            // Run immediately + rAF + 50ms (flower may need a frame to land in loadedFlowers)
+            showLandingBubble();
+            requestAnimationFrame(() => requestAnimationFrame(showLandingBubble));
+            setTimeout(showLandingBubble, 100);
+            
             // Highlight the flower briefly
             setTimeout(() => {
                 const flowerRef = this.loadedFlowers.get(flower.id);
@@ -1935,7 +1965,7 @@ class GardenPage {
                         flowerRef.wrapper.style.transform = 'translate(-50%, -50%) scale(1)';
                     }, 1500);
                 }
-            }, 500);
+            }, 50);
         } else {
             console.warn(`⏳ Flower ${flowerId} not found in ${this.flowers.length} flowers`);
             console.log('🌸 Available flower IDs:', this.flowers.map(f => `${f.id} (${typeof f.id})`).slice(0, 10));
