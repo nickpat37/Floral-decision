@@ -343,6 +343,34 @@ body {
     object-fit: contain;
 }
 
+/* Restart button - center of flower disc */
+.flower-restart-button {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: rgba(100, 100, 100, 0.9);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 20;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.flower-restart-button:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.flower-restart-button:active {
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
 .answer-buttons {
     position: absolute;
     bottom: 30px;

@@ -1119,7 +1119,9 @@ class FlowerComponent {
         });
     }
     
-    createPetals() {
+    createPetals(preserveAnswer = false) {
+        const savedFinalAnswer = preserveAnswer ? this.finalAnswer : null;
+        
         // CRITICAL: Clear existing petals from both array and DOM
         this.petals.forEach(petal => {
             if (petal.element && petal.element.parentNode) {
@@ -1127,8 +1129,13 @@ class FlowerComponent {
             }
         });
         this.petals = [];
-        this.finalAnswer = null;
-        this.answerDisplayed = false;
+        if (!preserveAnswer) this.finalAnswer = null;
+        this.answerDisplayed = false; // Always reset so user can play again
+        
+        if (this.container) {
+            this.container.querySelectorAll('.detached-petal').forEach(el => el.remove());
+        }
+        this.detachedPetals = [];
         
         // CRITICAL: Also remove any existing petal elements from DOM that might not be in array
         if (this.container) {
@@ -1147,8 +1154,10 @@ class FlowerComponent {
             console.error(`🌸 CRITICAL: Petal count was ${requestedPetals}, clamped to ${this.numPetals} (valid range: 12-30)`);
         }
         
-        // Assign YES/NO to petals: start randomly, then alternate
-        const startAnswer = Math.random() < 0.5 ? 'YES' : 'NO';
+        // Assign YES/NO to petals: preserve pattern when resetting, else random
+        const startAnswer = preserveAnswer && savedFinalAnswer
+            ? (savedFinalAnswer === 'YES' ? 'NO' : 'YES') // last petal (odd index) = opposite of start
+            : Math.random() < 0.5 ? 'YES' : 'NO';
         
         const angleStep = (2 * Math.PI) / this.numPetals;
         
@@ -1175,7 +1184,28 @@ class FlowerComponent {
             const answer = (i % 2 === 0) ? startAnswer : (startAnswer === 'YES' ? 'NO' : 'YES');
             const petal = this.createPetal(angle, i, answer);
             this.petals.push(petal);
+            
+            // Growth animation when resetting (same as regrowMissingPetals)
+            if (preserveAnswer) {
+                this.updatePetal(petal);
+                const baseTransform = petal.element.style.transform;
+                petal.element.style.transform = baseTransform + ' scale(0)';
+                petal.element.style.opacity = '0';
+                petal.element.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-out';
+                setTimeout(() => {
+                    requestAnimationFrame(() => {
+                        petal.element.style.opacity = '1';
+                        petal.element.style.transform = baseTransform + ' scale(1)';
+                        setTimeout(() => {
+                            petal.element.style.transition = '';
+                            this.updatePetal(petal);
+                        }, 600);
+                    });
+                }, i * 80); // Stagger each petal by 80ms
+            }
         }
+        
+        if (!preserveAnswer) this.updatePetals();
         
         // Verify we didn't exceed limits
         if (this.petals.length > 30) {
@@ -1197,7 +1227,7 @@ class FlowerComponent {
             this.finalAnswer = this.petals[this.petals.length - 1].answer;
         }
         
-        this.updatePetals();
+        if (!preserveAnswer) this.updatePetals();
     }
     
     regrowMissingPetals() {
@@ -1612,6 +1642,12 @@ class FlowerComponent {
             answerDisplay.style.opacity = '1';
         }, 100);
         
+        // Add restart icon in center of flower disc (only on flower page)
+        const containerId = this.container ? (this.container.id || '') : '';
+        if (containerId === 'flowerContainer' && this.discElement) {
+            this.showRestartIcon();
+        }
+        
         // Create action buttons
         let buttonContainer = document.getElementById('answerButtons');
         if (!buttonContainer) {
@@ -1789,6 +1825,45 @@ class FlowerComponent {
             buttonContainer.style.transition = 'opacity 0.5s ease-in';
             buttonContainer.style.opacity = '1';
         }, 600);
+    }
+    
+    showRestartIcon() {
+        this.hideRestartIcon();
+        if (!this.discElement || !this.container) return;
+        
+        const restartBtn = document.createElement('button');
+        restartBtn.className = 'flower-restart-button';
+        restartBtn.setAttribute('aria-label', 'Reset petals');
+        restartBtn.innerHTML = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+        restartBtn.style.left = `${this.originalDiscX}px`;
+        restartBtn.style.top = `${this.originalDiscY}px`;
+        restartBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.resetPetals();
+        });
+        
+        this.container.appendChild(restartBtn);
+        this.restartButton = restartBtn;
+    }
+    
+    hideRestartIcon() {
+        if (this.restartButton && this.restartButton.parentNode) {
+            this.restartButton.remove();
+            this.restartButton = null;
+        }
+    }
+    
+    resetPetals() {
+        this.hideRestartIcon();
+        const answerDisplay = document.getElementById('answerDisplay');
+        if (answerDisplay) answerDisplay.style.display = 'none';
+        const buttonContainer = document.getElementById('answerButtons');
+        if (buttonContainer) buttonContainer.style.display = 'none';
+        const instructions = document.querySelector('.instructions');
+        if (instructions) instructions.style.display = 'block';
+        
+        this.createPetals(true);
     }
     
     /**
