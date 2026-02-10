@@ -328,6 +328,9 @@ class GardenPage {
         // Apply transform
         this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
 
+        // Update center flower immediately during pan for faster bubble updates
+        this.updateCenterFlower();
+
         // Throttle updateVisibleFlowers to reduce lag during panning
         // Only if we have flowers loaded
         if (this.flowers.length > 0) {
@@ -1439,6 +1442,9 @@ class GardenPage {
                     console.warn(`🌸 WARNING: Disc element not found in container for flower ${flowerId}`);
                 } else if (allDiscs.length === 1) {
                     console.log(`🌸 Successfully created flower ${flowerId} with 1 disc and ${Math.min(petalElements.length, 30)} petals`);
+                    
+                    // Add disc tap functionality (same as original flower but without petal detachment)
+                    this.setupGardenDiscTap(discElement, flowerInstance, flowerId);
                 }
                 
                 if (petalElements.length === 0) {
@@ -1505,11 +1511,20 @@ class GardenPage {
 
             setTimeout(() => {
                 if (flower.wrapper && flower.wrapper.parentNode) {
-                    // Final cleanup: remove all flower elements
+                    // Final cleanup: remove all flower elements and event listeners
                     const container = flower.wrapper.querySelector('.garden-flower-container');
                     if (container) {
                         const discs = container.querySelectorAll('.flower-disc');
                         const petals = container.querySelectorAll('.flower-petal');
+                        
+                        // Clean up disc tap event listeners
+                        discs.forEach(disc => {
+                            if (disc._gardenDiscTapCleanup) {
+                                disc._gardenDiscTapCleanup();
+                                delete disc._gardenDiscTapCleanup;
+                            }
+                        });
+                        
                         discs.forEach(disc => disc.remove());
                         petals.forEach(petal => petal.remove());
                     }
@@ -1528,14 +1543,18 @@ class GardenPage {
         const centerX = -this.offsetX + window.innerWidth / 2;
         const centerY = -this.offsetY + window.innerHeight / 2;
 
-        // Find flowers near center (within 400px radius)
+        // Find flowers near center (within 500px radius - increased for better sensitivity)
         const nearbyFlowers = [];
         this.loadedFlowers.forEach((flower, id) => {
+            // Only consider flowers that have questions
+            if (!flower.data || !flower.data.question) return;
+            
             const dx = flower.data.canvasX - centerX;
             const dy = flower.data.canvasY - centerY;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < 400) {
+            // Increased radius from 400px to 500px for better sensitivity
+            if (distance < 500) {
                 nearbyFlowers.push({
                     id: id,
                     distance: distance,
@@ -1566,7 +1585,8 @@ class GardenPage {
         // Remove bubbles for flowers no longer in center
         this.questionBubbles = this.questionBubbles.filter(bubble => {
             if (!this.centerFlowers.includes(bubble.flowerId)) {
-                bubble.element.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                // Faster fade out - reduced from 0.3s to 0.15s
+                bubble.element.style.transition = 'opacity 0.15s ease-out, transform 0.15s ease-out';
                 bubble.element.style.opacity = '0';
                 bubble.element.style.transform = 'translateY(-10px)';
                 
@@ -1574,7 +1594,7 @@ class GardenPage {
                     if (bubble.element && bubble.element.parentNode) {
                         bubble.element.remove();
                     }
-                }, 300);
+                }, 150); // Reduced from 300ms to 150ms
                 
                 return false;
             }
@@ -1636,7 +1656,7 @@ class GardenPage {
             justify-content: flex-end;
             align-items: center;
             opacity: 0;
-            transition: opacity 0.4s ease-in;
+            transition: opacity 0.15s ease-in;
         `;
 
         // Create the bubble element
@@ -1661,6 +1681,8 @@ class GardenPage {
             wrapper.appendChild(bubbleContainer);
         }
 
+        // Show bubble immediately for faster appearance
+        // Show bubble immediately for faster appearance (reduced transition time)
         requestAnimationFrame(() => {
             bubbleContainer.style.opacity = '1';
         });
@@ -2017,3 +2039,34 @@ window.initializeGardenPage = initializeGardenPage;
 if (typeof window !== 'undefined') {
     window.GardenPage = GardenPage;
 }
+
+/**
+ * Setup disc tap functionality for garden flowers
+ * Behaves like original flower component but without petal detachment
+ */
+GardenPage.prototype.setupGardenDiscTap = function(discElement, flowerInstance, flowerId) {
+    if (!discElement || !flowerInstance) return;
+    
+    // Override detachRandomPetals to prevent petal detachment in garden
+    const originalDetachRandomPetals = flowerInstance.detachRandomPetals;
+    flowerInstance.detachRandomPetals = function(count) {
+        // Do nothing - prevent petal detachment in garden view
+        // The tap animation will still play, but petals won't be detached
+    };
+    
+    // Store original method for potential restoration
+    discElement._originalDetachMethod = originalDetachRandomPetals;
+    
+    // The FlowerComponent already has its own event listeners set up
+    // We just need to override the detachRandomPetals method
+    // The tap animation will work normally, but petals won't detach
+    
+    // Store cleanup function on the disc element for later restoration
+    discElement._gardenDiscTapCleanup = () => {
+        // Restore original detachRandomPetals method
+        if (discElement._originalDetachMethod && flowerInstance) {
+            flowerInstance.detachRandomPetals = discElement._originalDetachMethod;
+            delete discElement._originalDetachMethod;
+        }
+    };
+};
