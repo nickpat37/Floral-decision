@@ -378,8 +378,13 @@ body {
 }
 
 .answer-display-image {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
     width: 100%;
-    height: fit-content;
+    height: 100%;
+    max-height: 660px;
     object-fit: contain;
     vertical-align: top;
 }

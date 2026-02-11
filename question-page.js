@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const questionModal = document.getElementById('questionModal');
     
     // Back to homepage: flower page -> question page
+    // When returning home: clean up flower page and generate a fresh flower on the question page
     if (backToHomeButton) {
         backToHomeButton.addEventListener('click', () => {
             flowerPage.classList.remove('active');
@@ -25,6 +26,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 questionModal.style.transition = 'opacity 0.4s ease-in';
                 questionModal.style.opacity = '1';
             }
+            // Clean up the flower page instance (stop physics, remove elements from flowerContainer)
+            if (flowerPageInstance) {
+                if (flowerPageInstance.cleanupExistingElements) {
+                    flowerPageInstance.cleanupExistingElements();
+                }
+                if (flowerPageInstance.stopPhysicsLoop) {
+                    flowerPageInstance.stopPhysicsLoop();
+                }
+                flowerPageInstance = null;
+            }
+            // Generate a new flower for the question page (previous flower was moved to flower page)
+            setTimeout(() => {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            }, 100);
         });
     }
     
