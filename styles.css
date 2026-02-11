@@ -77,16 +77,17 @@ body {
 }
 
 .question-header h1 {
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 20px;
+    font-family: "Faculty Glyphic", serif;
+    font-size: 24px;
     font-weight: 400;
+    height: 30px;
     margin-bottom: 8px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .question-header p {
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 16px;
+    font-family: "Faculty Glyphic";
+    font-size: 20px;
     font-weight: 400;
     opacity: 0.9;
 }
@@ -96,7 +97,7 @@ body {
 .question-modal {
     width: calc(100% - 40px);
     max-width: 500px;
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.5);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border-radius: 12px;
@@ -118,7 +119,8 @@ body {
     color: rgba(10, 24, 1, 1);
     margin-bottom: 12px;
     padding-left: 4px;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: "Faculty Glyphic";
+    text-align: center;
 }
 
 .question-input-wrapper {
