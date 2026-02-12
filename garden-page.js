@@ -15,6 +15,9 @@ class GardenPage {
         this.centerFlowers = []; // Array of flowers near center (max 1)
         this.questionBubbles = []; // Array of active question bubbles
         this.maxBubbles = 1; // Maximum number of bubbles to show (only closest to center)
+        this.particlesWrapper = null; // Particles around newest flower
+        this.particlesAnimationId = null;
+        this.newestFlowerId = null; // Track which flower gets particles
 
         // Canvas settings
         this.canvasSize = 10000; // Virtual canvas size (10000x10000)
@@ -28,7 +31,7 @@ class GardenPage {
         
         // Throttling for updateVisibleFlowers to reduce lag
         this.updateVisibleFlowersThrottle = null;
-        this.updateVisibleFlowersDelay = 100; // Update every 100ms max
+        this.updateVisibleFlowersDelay = 150; // Update every 150ms max (smoother panning)
 
         // Pan/scroll state
         this.offsetX = 0;
@@ -73,6 +76,9 @@ class GardenPage {
 
         // Hide empty state initially (will be shown if no flowers)
         this.hideEmptyState();
+
+        // Add gradual blur behind top nav
+        this.setupGradualBlur();
 
         // Create the inner canvas element
         this.canvas = document.createElement('div');
@@ -236,6 +242,75 @@ class GardenPage {
             console.error('🌸 Error stack:', error.stack);
             this.initialized = false;
         }
+    }
+
+    /**
+     * Gradual blur behind top nav (vanilla port of GradualBlur - github.com/ansh-dhanani)
+     */
+    setupGradualBlur() {
+        const pageContainer = this.container && this.container.parentElement;
+        if (!pageContainer) return;
+
+        const config = {
+            position: 'top',
+            strength: 2,
+            height: '7rem',
+            divCount: 5,
+            curve: 'bezier',
+            exponential: true,
+            opacity: 1
+        };
+
+        const curveFunc = (p) => (config.curve === 'bezier' ? p * p * (3 - 2 * p) : p);
+        const direction = config.position === 'top' ? 'to top' : config.position === 'bottom' ? 'to bottom' : config.position === 'left' ? 'to left' : 'to right';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'garden-gradual-blur';
+        wrapper.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: ${config.height};
+            pointer-events: none;
+            z-index: 50;
+        `;
+
+        const increment = 100 / config.divCount;
+        for (let i = 1; i <= config.divCount; i++) {
+            let progress = i / config.divCount;
+            progress = curveFunc(progress);
+
+            let blurValue;
+            if (config.exponential) {
+                blurValue = Math.pow(2, progress * 4) * 0.0625 * config.strength;
+            } else {
+                blurValue = 0.0625 * (progress * config.divCount + 1) * config.strength;
+            }
+
+            const p1 = Math.round((increment * i - increment) * 10) / 10;
+            const p2 = Math.round(increment * i * 10) / 10;
+            const p3 = Math.round((increment * i + increment) * 10) / 10;
+            const p4 = Math.round((increment * i + increment * 2) * 10) / 10;
+
+            let gradient = `transparent ${p1}%, black ${p2}%`;
+            if (p3 <= 100) gradient += `, black ${p3}%`;
+            if (p4 <= 100) gradient += `, transparent ${p4}%`;
+
+            const div = document.createElement('div');
+            div.style.cssText = `
+                position: absolute;
+                inset: 0;
+                mask-image: linear-gradient(${direction}, ${gradient});
+                -webkit-mask-image: linear-gradient(${direction}, ${gradient});
+                backdrop-filter: blur(${blurValue.toFixed(3)}rem);
+                -webkit-backdrop-filter: blur(${blurValue.toFixed(3)}rem);
+                opacity: ${config.opacity};
+            `;
+            wrapper.appendChild(div);
+        }
+
+        pageContainer.insertBefore(wrapper, pageContainer.firstChild);
     }
 
     /**
@@ -1225,6 +1300,19 @@ class GardenPage {
 
         // Update center flower for question bubble
         this.updateCenterFlower();
+        // Update particles around newest flower
+        this.updateGardenParticles();
+        // Lazy grass: add grass only to flowers in core viewport (within 400px of center)
+        const coreRadius = 400;
+        visibleIds.forEach((id) => {
+            const ref = this.loadedFlowers.get(id);
+            if (!ref || !ref.wrapper || !ref.wrapper.isConnected) return;
+            const dx = ref.data.canvasX - viewportCenterX;
+            const dy = ref.data.canvasY - viewportCenterY;
+            if (Math.sqrt(dx * dx + dy * dy) > coreRadius) return;
+            if (ref.wrapper.querySelector('.garden-grass-layer')) return;
+            this.scheduleGrassGrowth(ref.wrapper);
+        });
     }
 
     /**
@@ -1313,6 +1401,7 @@ class GardenPage {
 
         flowerWrapper.appendChild(flowerContainer);
         this.canvas.appendChild(flowerWrapper);
+        /* Grass added lazily in updateVisibleFlowers (only for flowers in core viewport) */
 
         // Store reference placeholder with plain copy
         const flowerRef = {
@@ -1466,6 +1555,222 @@ class GardenPage {
                 });
             });
         });
+    }
+
+    /**
+     * Defer grass growth to avoid blocking initial flower render (smoother loading)
+     * Uses requestIdleCallback when available; staggers with random offset when many flowers load
+     */
+    scheduleGrassGrowth(flowerWrapper) {
+        const stagger = Math.random() * 60;
+        const run = () => {
+            if (!flowerWrapper.isConnected) return;
+            this.growGrassAroundFlower(flowerWrapper);
+        };
+        if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(() => setTimeout(run, stagger), { timeout: 250 });
+        } else {
+            setTimeout(run, 70 + stagger);
+        }
+    }
+
+    /**
+     * Grow grass around a flower - fewer blades, denser cluster, below stem
+     * Front layer is below flower stem; back/middle at stem base
+     */
+    growGrassAroundFlower(flowerWrapper) {
+        const sources = [
+            { src: 'Grass_1.svg', cls: 'grass-1' },
+            { src: 'Grass_2.svg', cls: 'grass-2' }
+        ];
+        const cx = 200;
+        const stemBottom = 400; // stem ends at container bottom (script.js stemBottomY)
+        const cy = stemBottom + 35; // grass center below stem; front layer base at ~420
+
+        // 2 tight rings, fewer blades (~12–14 total), denser
+        const rings = [
+            { radius: 26, stepDeg: 45 },
+            { radius: 50, stepDeg: 40 }
+        ];
+
+        const threshold = 12; // y within ±12 of stem = "same level"
+
+        const allBlades = [];
+        rings.forEach((ring) => {
+            for (let deg = 0; deg < 360; deg += ring.stepDeg) {
+                const rad = (deg * Math.PI) / 180;
+                const x = cx + ring.radius * Math.cos(rad);
+                const y = cy + ring.radius * Math.sin(rad);
+                // Layer by blade bottom y vs stem bottom: below=front(upper), above=back(behind)
+                let layer;
+                if (y > stemBottom + threshold) layer = 'front';  // below stem → upper layer
+                else if (y < stemBottom - threshold) layer = 'back'; // above stem → behind layer
+                else layer = 'middle';
+                allBlades.push({ x, y, layer, deg });
+            }
+        });
+
+        const types = this.assignGardenGrassTypes(allBlades.length);
+        const heightByLayer = { back: 135, middle: 115, front: 95 };
+
+        const layers = { back: [], middle: [], front: [] };
+        allBlades.forEach((b, i) => {
+            const idx = types[i];
+            const blade = document.createElement('img');
+            blade.src = sources[idx].src;
+            blade.alt = '';
+            blade.className = `grass-blade garden-grass-blade garden-grass-${b.layer} ${sources[idx].cls}`;
+            const h = heightByLayer[b.layer];
+            blade.style.left = `${b.x}px`;
+            blade.style.top = `${b.y - h}px`;
+            blade.style.height = `${h}px`;
+            blade.style.transformOrigin = 'center bottom';
+            const sizeScale = 0.65 + Math.random() * 0.3;
+            const tilt = (b.deg - 90) * 0.1;
+            blade.style.transform = `translate(-50%, 0) scale(${sizeScale}) scaleY(0) rotate(${tilt}deg)`;
+            blade.style.transitionDelay = `${0.35 + Math.random() * 0.9}s`; // staggered to reduce jank
+            blade.dataset.sizeScale = sizeScale;
+            blade.dataset.rotation = tilt;
+            layers[b.layer].push(blade);
+        });
+
+        if (!flowerWrapper.isConnected) return;
+
+        const order = ['back', 'middle', 'front'];
+        const layerDivs = order.map((layerName) => {
+            const layerDiv = document.createElement('div');
+            layerDiv.className = `garden-grass-layer garden-grass-layer-${layerName} garden-grass-circular-layer`;
+            layerDiv.setAttribute('aria-hidden', 'true');
+            layers[layerName].forEach((blade) => layerDiv.appendChild(blade));
+            return layerDiv;
+        });
+
+        const ref = flowerWrapper.firstChild;
+        flowerWrapper.insertBefore(layerDivs[0], ref);
+        flowerWrapper.appendChild(layerDivs[1]);
+        flowerWrapper.appendChild(layerDivs[2]);
+
+        const bladeEls = layerDivs.flatMap((d) => Array.from(d.querySelectorAll('.grass-blade')));
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                bladeEls.forEach((el) => {
+                    if (!el.isConnected) return;
+                    const s = parseFloat(el.dataset.sizeScale) || 1;
+                    const rot = parseFloat(el.dataset.rotation) || 0;
+                    el.classList.add('grow');
+                    el.style.transform = `translate(-50%, 0) scale(${s}) scaleY(1) rotate(${rot}deg)`;
+                });
+            });
+        });
+    }
+
+    assignGardenGrassTypes(n) {
+        const types = [];
+        for (let i = 0; i < n; i++) {
+            const prev = types[i - 1];
+            const prev2 = types[i - 2];
+            const sameAsPrev = prev === 0 || prev === 1;
+            const runOfTwo = sameAsPrev && prev2 === prev;
+            if (runOfTwo) {
+                types.push(1 - prev);
+            } else {
+                types.push(Math.random() < 0.5 ? 0 : 1);
+            }
+        }
+        return types;
+    }
+
+    /**
+     * Create or update particles around the newest flower
+     */
+    updateGardenParticles() {
+        const newest = this.flowers.length > 0 ? this.flowers[0] : null;
+        const newestId = newest ? String(newest.id) : null;
+
+        if (newestId !== this.newestFlowerId) {
+            if (this.particlesAnimationId) {
+                cancelAnimationFrame(this.particlesAnimationId);
+                this.particlesAnimationId = null;
+            }
+            if (this.particlesWrapper && this.particlesWrapper.parentNode) {
+                this.particlesWrapper.remove();
+                this.particlesWrapper = null;
+            }
+            this.newestFlowerId = newestId;
+        }
+
+        if (!newest || !this.canvas) return;
+
+        const isRendered = this.loadedFlowers.has(newestId);
+        if (!isRendered) return;
+
+        if (!this.particlesWrapper) {
+            this.particlesWrapper = document.createElement('div');
+            this.particlesWrapper.className = 'garden-particles-wrapper';
+            this.particlesWrapper.style.position = 'absolute';
+            this.particlesWrapper.style.left = `${newest.canvasX}px`;
+            this.particlesWrapper.style.top = `${newest.canvasY}px`;
+            this.particlesWrapper.style.transform = 'translate(-50%, -50%)';
+            this.particlesWrapper.style.width = '300px';
+            this.particlesWrapper.style.height = '300px';
+            this.particlesWrapper.style.pointerEvents = 'none';
+            this.particlesWrapper.style.zIndex = String(Math.floor(newest.canvasY) - 1);
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'garden-particles-canvas';
+            canvas.width = 300;
+            canvas.height = 300;
+            canvas.style.width = '300px';
+            canvas.style.height = '300px';
+            this.particlesWrapper.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+            const colors = [[255, 255, 255], [148, 227, 254]];
+            const particles = [];
+            for (let i = 0; i < 30; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const r = 50 + Math.random() * 120;
+                particles.push({
+                    x: 150 + Math.cos(a) * r,
+                    y: 150 + Math.sin(a) * r,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    phase: Math.random() * Math.PI * 2,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    radius: 2 + Math.random() * 2,
+                    alpha: 0.4 + Math.random() * 0.4
+                });
+            }
+
+            let startTime = performance.now();
+            const animate = () => {
+                const elapsed = (performance.now() - startTime) * 0.001 * 1.1;
+                ctx.clearRect(0, 0, 300, 300);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.x += Math.sin(elapsed + p.phase) * 0.5;
+                    p.y += Math.cos(elapsed * 0.7 + p.phase) * 0.5;
+                    if (p.x < 0 || p.x > 300) p.vx *= -1;
+                    if (p.y < 0 || p.y > 300) p.vy *= -1;
+                    p.x = Math.max(0, Math.min(300, p.x));
+                    p.y = Math.max(0, Math.min(300, p.y));
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${p.alpha * 0.5 + 0.25 * Math.sin(elapsed + p.phase)})`;
+                    ctx.fill();
+                });
+                if (this.particlesWrapper && this.particlesWrapper.parentNode) {
+                    this.particlesAnimationId = requestAnimationFrame(animate);
+                }
+            };
+            this.particlesAnimationId = requestAnimationFrame(animate);
+            this.canvas.appendChild(this.particlesWrapper);
+        } else {
+            this.particlesWrapper.style.left = `${newest.canvasX}px`;
+            this.particlesWrapper.style.top = `${newest.canvasY}px`;
+            this.particlesWrapper.style.zIndex = String(Math.floor(newest.canvasY) - 1);
+        }
     }
 
     /**
@@ -1839,7 +2144,13 @@ class GardenPage {
         });
         this.questionBubbles = [];
         
-        // Clear canvas
+        // Clear canvas and particles
+        if (this.particlesAnimationId) {
+            cancelAnimationFrame(this.particlesAnimationId);
+            this.particlesAnimationId = null;
+        }
+        this.particlesWrapper = null;
+        this.newestFlowerId = null;
         if (this.canvas) {
             this.canvas.innerHTML = '';
         }
