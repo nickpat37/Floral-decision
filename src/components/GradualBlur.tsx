@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import type { CSSProperties, PropsWithChildren } from 'react';
+import React, {
+  type CSSProperties,
+  type PropsWithChildren,
+  useEffect,
+  useRef,
+  useState,
+  useMemo
+} from 'react';
 import * as math from 'mathjs';
 
 type GradualBlurProps = PropsWithChildren<{
