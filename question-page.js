@@ -18,10 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Back to homepage: flower page -> question page
     // When returning home: clean up flower page and generate a fresh flower on the question page
-    if (backToHomeButton) {
+        if (backToHomeButton) {
         backToHomeButton.addEventListener('click', () => {
             flowerPage.classList.remove('active');
             questionPage.classList.add('active');
+            // Clear grass when returning home
+            const grassLayer = document.getElementById('grassLayer');
+            if (grassLayer) grassLayer.innerHTML = '';
             if (questionModal) {
                 questionModal.style.transition = 'opacity 0.4s ease-in';
                 questionModal.style.opacity = '1';
@@ -87,6 +90,74 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+    
+    function growGrassFromBottom() {
+        const grassLayer = document.getElementById('grassLayer');
+        if (!grassLayer) return;
+        grassLayer.innerHTML = '';
+        
+        const sources = [
+            { src: 'Grass_1.svg', cls: 'grass-1' },
+            { src: 'Grass_2.svg', cls: 'grass-2' },
+        ];
+        // Denser near flower: tight spacing in center, wider toward edges.
+        const offsets = [];
+        const centerStep = 18;
+        const outerStep = 55;
+        for (let o = -140; o <= 140; o += centerStep) offsets.push(o);
+        for (let o = -320; o < -140; o += outerStep) offsets.push(o);
+        for (let o = 150; o <= 330; o += outerStep) offsets.push(o);
+        offsets.sort((a, b) => a - b);
+        
+        const types = assignGrassTypes(offsets.length);
+        
+        for (let i = 0; i < offsets.length; i++) {
+            const idx = types[i];
+            const blade = document.createElement('img');
+            blade.src = sources[idx].src;
+            blade.alt = '';
+            blade.className = `grass-blade ${sources[idx].cls}`;
+            blade.style.left = `calc(50% + ${offsets[i]}px)`;
+            const sizeScale = 0.7 + Math.random() * 0.3;
+            blade.style.transform = `translateX(-50%) scale(${sizeScale}) scaleY(0)`;
+            blade.style.transitionDelay = `${Math.random() * 0.8}s`;
+            blade.dataset.sizeScale = sizeScale;
+            grassLayer.appendChild(blade);
+        }
+        
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                grassLayer.querySelectorAll('.grass-blade').forEach(el => {
+                    const s = parseFloat(el.dataset.sizeScale) || 1;
+                    el.classList.add('grow');
+                    el.style.transform = `translateX(-50%) scale(${s}) scaleY(1)`;
+                });
+            });
+        });
+    }
+    
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+    
+    function assignGrassTypes(n) {
+        const types = [];
+        for (let i = 0; i < n; i++) {
+            const prev = types[i - 1];
+            const prev2 = types[i - 2];
+            const sameAsPrev = prev === 0 || prev === 1;
+            const runOfTwo = sameAsPrev && prev2 === prev;
+            if (runOfTwo) {
+                types.push(1 - prev);
+            } else {
+                types.push(Math.random() < 0.5 ? 0 : 1);
+            }
+        }
+        return types;
+    }
     
     function navigateToFlowerPage(question) {
         // CRITICAL: Store question globally FIRST for saving - must be set before any async/conditional logic
@@ -186,6 +257,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Show flower page (overlay it on top, both pages visible during transition)
             flowerPage.classList.add('active');
+            
+            // Grow grass from bottom (Grass_1, Grass_2 ~30% larger than Grass_3)
+            growGrassFromBottom();
             
             // Step 4: After a brief delay, hide question page and fade in question display
             setTimeout(() => {
