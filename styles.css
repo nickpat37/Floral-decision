@@ -158,8 +158,8 @@ body {
 
 .done-button {
     position: absolute;
-    bottom: 12px;
-    right: 12px;
+    top: 75px;
+    left: 436px;
     padding: 8px;
     width: 32px;
     height: 32px;

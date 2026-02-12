@@ -1639,7 +1639,7 @@ class FlowerComponent {
         answerDisplay.innerHTML = '';
         const img = document.createElement('img');
         img.alt = answer;
-        img.src = (answer === 'YES') ? 'YES.png' : 'NO.png';
+        img.src = (answer === 'YES') ? 'YES.svg' : 'NO.svg';
         img.className = 'answer-display-image';
         answerDisplay.appendChild(img);
         answerDisplay.style.display = 'flex';
