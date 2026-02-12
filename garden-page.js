@@ -1802,7 +1802,11 @@ class GardenPage {
         if (backButton) {
             backButton.addEventListener('click', () => {
                 gardenPage.classList.remove('active');
-                flowerPage.classList.add('active');
+                if (typeof window.goToHomepageWithReset === 'function') {
+                    window.goToHomepageWithReset();
+                } else {
+                    document.getElementById('flowerPage').classList.add('active');
+                }
             });
         }
     }

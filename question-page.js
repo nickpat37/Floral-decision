@@ -16,37 +16,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToHomeButton = document.getElementById('backToHomeButton');
     const questionModal = document.getElementById('questionModal');
     
+    // Shared: go to homepage with a fresh flower reset (used by back from flower page and back from garden)
+    window.goToHomepageWithReset = () => {
+        const qPage = document.getElementById('questionPage');
+        const fPage = document.getElementById('flowerPage');
+        const qInput = document.getElementById('questionInput');
+        const qDisplay = document.getElementById('questionDisplay');
+        const doneBtn = document.getElementById('doneButton');
+
+        fPage.classList.remove('active');
+        qPage.classList.add('active');
+
+        // Clear grass when returning home
+        const grassLayer = document.getElementById('grassLayer');
+        if (grassLayer) grassLayer.innerHTML = '';
+
+        if (questionModal) {
+            questionModal.style.transition = 'opacity 0.4s ease-in';
+            questionModal.style.opacity = '1';
+        }
+
+        // Reset question input and display for fresh start
+        if (qInput) {
+            qInput.value = '';
+            qInput.placeholder = 'Type your question...';
+        }
+        if (qDisplay) qDisplay.innerHTML = '';
+        if (doneBtn) doneBtn.style.display = 'none';
+
+        // Clean up the flower page instance (stop physics, remove elements from flowerContainer)
+        if (flowerPageInstance) {
+            if (flowerPageInstance.cleanupExistingElements) {
+                flowerPageInstance.cleanupExistingElements();
+            }
+            if (flowerPageInstance.stopPhysicsLoop) {
+                flowerPageInstance.stopPhysicsLoop();
+            }
+            flowerPageInstance = null;
+        }
+
+        // Generate a new flower for the question page
+        setTimeout(() => {
+            questionFlowerInstance = new FlowerComponent({
+                containerId: 'questionFlowerContainer',
+                stemSVGId: 'questionStemSVG',
+                stemPathId: 'questionStemPath'
+            });
+        }, 100);
+    };
+
     // Back to homepage: flower page -> question page
-    // When returning home: clean up flower page and generate a fresh flower on the question page
-        if (backToHomeButton) {
+    if (backToHomeButton) {
         backToHomeButton.addEventListener('click', () => {
-            flowerPage.classList.remove('active');
-            questionPage.classList.add('active');
-            // Clear grass when returning home
-            const grassLayer = document.getElementById('grassLayer');
-            if (grassLayer) grassLayer.innerHTML = '';
-            if (questionModal) {
-                questionModal.style.transition = 'opacity 0.4s ease-in';
-                questionModal.style.opacity = '1';
-            }
-            // Clean up the flower page instance (stop physics, remove elements from flowerContainer)
-            if (flowerPageInstance) {
-                if (flowerPageInstance.cleanupExistingElements) {
-                    flowerPageInstance.cleanupExistingElements();
-                }
-                if (flowerPageInstance.stopPhysicsLoop) {
-                    flowerPageInstance.stopPhysicsLoop();
-                }
-                flowerPageInstance = null;
-            }
-            // Generate a new flower for the question page (previous flower was moved to flower page)
-            setTimeout(() => {
-                questionFlowerInstance = new FlowerComponent({
-                    containerId: 'questionFlowerContainer',
-                    stemSVGId: 'questionStemSVG',
-                    stemPathId: 'questionStemPath'
-                });
-            }, 100);
+            window.goToHomepageWithReset();
         });
     }
     
