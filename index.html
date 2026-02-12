@@ -1,121 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Interactive Flower</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Faculty+Glyphic&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <!-- Question Modal Page -->
-    <div id="questionPage" class="page active">
-        <div class="question-page-background">
-            <!-- Full-screen Flower Container (always present) -->
-            <div class="fullscreen-flower-container" id="questionFlowerContainer">
-                <!-- SVG for flexible stem -->
-                <svg id="questionStemSVG" class="stem-svg">
-                    <path id="questionStemPath" class="stem-path" />
-                </svg>
-                <!-- Disc, petals will be added here -->
-            </div>
-            
-            <!-- Overlay: Question Header -->
-            <div class="question-header">
-                <h1>Ask me anything!</h1>
-                <p>And count ... for the answer</p>
-            </div>
-            
-            <!-- Overlay: Question Modal -->
-            <div class="question-modal" id="questionModal">
-                <div class="question-modal-label">I want to know if...</div>
-                <div class="question-input-wrapper">
-                    <textarea 
-                        id="questionInput" 
-                        class="question-input" 
-                        placeholder="Type your question..."
-                        rows="3"
-                    ></textarea>
-                    <button id="doneButton" class="done-button" style="display: none;" aria-label="Submit">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="19" x2="12" y2="5"></line>
-                            <polyline points="5 12 12 5 19 12"></polyline>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Interactive Page -->
-    <div id="flowerPage" class="page">
-        <div class="flower-page-container">
-            <!-- Full-screen Flower Container (same as question page) -->
-            <div class="fullscreen-flower-container" id="flowerContainer">
-                <!-- SVG for flexible stem -->
-                <svg id="stemSVG" class="stem-svg">
-                    <path id="stemPath" class="stem-path" />
-                </svg>
-                <!-- Disc, petals will be added here -->
-            </div>
-            
-            <!-- Row 1: Navigation -->
-            <div class="flower-page-nav">
-                <button id="backToHomeButton" class="nav-button">← Home</button>
-                <button id="gardenButton" class="nav-button">
-                    <img src="Daisy_icon.png" alt="" class="garden-btn-flower">
-                    <img src="Daisy_icon.png" alt="" class="garden-btn-flower">
-                    <span class="garden-btn-arrow">→</span>
-                </button>
-            </div>
-            
-            <!-- Row 2: Question Display -->
-            <div class="question-display" id="questionDisplay"></div>
-            
-            <!-- Overlay: Instructions -->
-            <div class="instructions">
-                <p>Tap on me, or pluck the petal or whatever to get the universe answer</p>
-            </div>
-            
-            <!-- Grass layer: grows from bottom when page loads -->
-            <div id="grassLayer" class="grass-layer" aria-hidden="true"></div>
-        </div>
-    </div>
-
-    <!-- Garden Page -->
-    <div id="gardenPage" class="page">
-        <div class="garden-page-container">
-            <!-- Infinite scroll container -->
-            <div id="gardenContainer" class="garden-container"></div>
-            
-            <!-- Navigation Button -->
-            <button id="backButton" class="nav-button" style="position: absolute; top: 20px; left: 20px; z-index: 400;">
-                ← Back
-            </button>
-            
-            <!-- Header -->
-            <div class="garden-header">
-                <h1>The Garden</h1>
-                <p>Browse all questions ever asked</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Supabase Configuration - Load Supabase via script tag for reliability -->
-    <script>
-        window.SUPABASE_URL = 'https://tjwasramaaxyelufbypw.supabase.co';
-        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqd2FzcmFtYWF4eWVsdWZieXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY5MzEsImV4cCI6MjA4NTY3MjkzMX0.rAfEb7G8jAiOB5mvYXrVqDs1ph7XiwuT_RVodIfuqrQ';
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script src="database.js"></script>
-    <script src="particles.js"></script>
-    <script src="script.js"></script>
-    <script src="question-page.js"></script>
-    <script src="garden-page.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vite-app</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
