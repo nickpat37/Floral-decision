@@ -1708,7 +1708,7 @@ class GardenPage {
         wrapper.style.pointerEvents = 'none';
         wrapper.style.zIndex = Math.floor(ghost.canvasY) - 2;
         const img = document.createElement('img');
-        img.src = 'GHOST%20FLOWER.png';
+        img.src = 'GHOST_FLOWER.png';
         img.alt = '';
         img.className = 'ghost-flower-image';
         img.style.width = '100%';
