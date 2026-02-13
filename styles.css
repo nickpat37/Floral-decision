@@ -587,9 +587,11 @@ body {
 }
 
 .garden-header h1 {
+    font-family: "Faculty Glyphic", serif;
     font-size: 24px;
     font-weight: 600;
     margin-bottom: 4px;
+    color: rgba(255, 255, 255, 0.95);
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -597,6 +599,7 @@ body {
     font-size: 14px;
     font-weight: 400;
     opacity: 0.9;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .garden-flower-wrapper {
@@ -606,6 +609,18 @@ body {
     justify-content: center;
     pointer-events: none;
     overflow: visible; /* allow grass to extend below stem bottom */
+}
+
+/* Ghost flower: decorative image only, no question, no grass */
+.ghost-flower-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.ghost-flower-wrapper .ghost-flower-image {
+    object-fit: contain;
 }
 
 /* Grass around each garden flower - 3 layers as siblings for correct stacking */
@@ -734,6 +749,11 @@ body {
 }
 
 /* Navigation Button */
+#backButton {
+    color: rgba(255, 255, 255, 1);
+    font-weight: 400;
+}
+
 #backToHomeButton {
     background-color: unset;
     background: unset;

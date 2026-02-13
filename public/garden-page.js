@@ -12,6 +12,8 @@ class GardenPage {
         this.canvas = null;
         this.flowers = [];
         this.loadedFlowers = new Map(); // Track rendered flower instances
+        this.ghostFlowers = []; // Decorative ghost flowers (image only, no question/grass)
+        this.loadedGhostFlowers = new Map(); // Rendered ghost flower wrappers
         this.centerFlowers = []; // Array of flowers near center (max 1)
         this.questionBubbles = []; // Array of active question bubbles
         this.maxBubbles = 1; // Maximum number of bubbles to show (only closest to center)
@@ -26,6 +28,13 @@ class GardenPage {
         this.denseSpread = 160;
         this.minFlowerDistance = 140;
         this.viewportPaddingPercent = 0.03; // 3% buffer to avoid edge flicker; terminate when clearly out
+        // Ghost flower: image-only decorative flowers in empty gaps (max 30% overlap with real/ghost)
+        this.ghostFlowerDisplaySize = 400; // same as real flower wrapper (400x400)
+        this.ghostFlowerRadius = 150; // for overlap math (same visual extent as real flower)
+        this.realFlowerRadius = 150; // effective radius for overlap math
+        this.minGhostToReal = 180; // min center distance to keep overlap < 30% of real
+        this.minGhostToGhost = 160; // min center distance between ghost flowers
+        this.maxGhostFlowers = 120; // dense to fill empty space
         this.maxRenderedFlowers = 10; // Only 10 flowers rendered at a time
         this.minRenderedFlowers = 3; // Minimum for initial load edge cases
         
@@ -145,6 +154,7 @@ class GardenPage {
                     emergencyFlowersWithPositions.push(positionedFlower);
                 });
                 this.flowers = emergencyFlowersWithPositions;
+                this.generateGhostFlowers();
                 console.log(`🌸 Emergency: Generated ${this.flowers.length} flowers`);
                 if (this.flowers.length > 0) {
                     this.hideEmptyState();
@@ -672,6 +682,81 @@ class GardenPage {
     }
 
     /**
+     * Compute overlap area of two circles (radii r1, r2; center distance d)
+     * Used to enforce max 30% overlap with other flowers
+     */
+    circleOverlapArea(r1, r2, d) {
+        if (d >= r1 + r2) return 0;
+        if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+        const d2 = d * d;
+        const part = 4 * d2 * (r1 * r1 + r2 * r2) - d2 * d2 - Math.pow(r1 * r1 - r2 * r2, 2);
+        if (part <= 0) return 0;
+        return r1 * r1 * Math.acos((d2 + r1 * r1 - r2 * r2) / (2 * d * r1)) +
+               r2 * r2 * Math.acos((d2 + r2 * r2 - r1 * r1) / (2 * d * r2)) -
+               0.5 * Math.sqrt(part);
+    }
+
+    /**
+     * Check if ghost at (x,y) would overlap >30% with any real flower or other ghost
+     */
+    isGhostPositionValid(x, y, existingGhosts) {
+        const gR = this.ghostFlowerRadius;
+        const rR = this.realFlowerRadius;
+        const maxOverlapReal = 0.3 * Math.PI * rR * rR;
+        const maxOverlapGhost = 0.3 * Math.PI * gR * gR;
+        for (const f of this.flowers) {
+            if (f.canvasX == null || f.canvasY == null) continue;
+            const d = Math.hypot(x - f.canvasX, y - f.canvasY);
+            if (d < this.minGhostToReal) return false;
+            const overlap = this.circleOverlapArea(gR, rR, d);
+            if (overlap > maxOverlapReal) return false;
+        }
+        for (const g of existingGhosts) {
+            const d = Math.hypot(x - g.canvasX, y - g.canvasY);
+            if (d < this.minGhostToGhost) return false;
+            const overlap = this.circleOverlapArea(gR, gR, d);
+            if (overlap > maxOverlapGhost) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Generate ghost flower positions in empty gaps between real flowers.
+     * Uses same spiral pattern as real flowers + larger jitter for natural randomness.
+     * Does not modify this.flowers.
+     */
+    generateGhostFlowers() {
+        this.ghostFlowers = [];
+        if (this.flowers.length === 0) return;
+        const centerX = this.canvasSize / 2;
+        const centerY = this.canvasSize / 2;
+        const ghostSpread = 170; // tighter spiral to fill gaps between real flowers
+        const ghostJitter = 90;
+        const ghostSeed = 0.42;
+        let id = 0;
+        const maxCandidates = this.maxGhostFlowers * 6; // more attempts to fill dense gaps
+        for (let i = 0; i < maxCandidates && this.ghostFlowers.length < this.maxGhostFlowers; i++) {
+            const random = this.seededRandom(ghostSeed + i);
+            const random2 = this.seededRandom(ghostSeed + i + 1000);
+            const angle = i * 137.5 * (Math.PI / 180);
+            const radius = Math.sqrt(i) * ghostSpread;
+            const jitterX = (random - 0.5) * ghostJitter;
+            const jitterY = (random2 - 0.5) * ghostJitter;
+            const baseX = centerX + Math.cos(angle) * radius + jitterX;
+            const baseY = centerY + Math.sin(angle) * radius + jitterY;
+            const x = Math.max(0, Math.min(this.canvasSize, baseX));
+            const y = Math.max(0, Math.min(this.canvasSize, baseY));
+            if (!this.isGhostPositionValid(x, y, this.ghostFlowers)) continue;
+            this.ghostFlowers.push({
+                id: `ghost-${id++}`,
+                canvasX: x,
+                canvasY: y
+            });
+        }
+        console.log(`🌸 Generated ${this.ghostFlowers.length} ghost flowers`);
+    }
+
+    /**
      * Generate mock flowers for testing (limited number)
      */
     generateMockFlowers(count = 10) {
@@ -871,6 +956,8 @@ class GardenPage {
             
             this.flowers = allFlowers.slice(0, Math.max(this.maxFlowersToShow, 10)); // Ensure at least 10
 
+            this.generateGhostFlowers();
+
             console.log(`🌸 Total flowers in array: ${this.flowers.length}`);
             console.log(`🌸 Database flowers: ${dbFlowers.length}, Mock flowers: ${mockFlowers.length}`);
             console.log(`🌸 dbFlowersWithPositions: ${dbFlowersWithPositions.length}, mockFlowersWithPositions: ${mockFlowersWithPositions.length}`);
@@ -1012,6 +1099,7 @@ class GardenPage {
                 });
                 
                 this.flowers = mockFlowersWithPositions;
+                this.generateGhostFlowers();
                 console.log(`🌸 Fallback: Generated ${this.flowers.length} mock flowers`);
                 
                 if (this.flowers.length === 0) {
@@ -1047,6 +1135,7 @@ class GardenPage {
                         showsQuestion: false
                     };
                     this.flowers = [emergencyFlower];
+                    this.generateGhostFlowers();
                     this.hideEmptyState();
                     this.centerOn(emergencyFlower.canvasX, emergencyFlower.canvasY);
                     console.log('🌸 Emergency flower created');
@@ -1273,9 +1362,35 @@ class GardenPage {
                 removedCount++;
             }
         });
+
+        // Ghost flowers: render when in viewport, remove when out
+        const visibleGhostIds = new Set();
+        if (this.ghostFlowers.length > 0) {
+            for (const ghost of this.ghostFlowers) {
+                const inView = ghost.canvasX >= viewportLeft && ghost.canvasX <= viewportRight &&
+                    ghost.canvasY >= viewportTop && ghost.canvasY <= viewportBottom;
+                if (inView) {
+                    visibleGhostIds.add(ghost.id);
+                    if (!this.loadedGhostFlowers.has(ghost.id)) {
+                        this.renderGhostFlower(ghost);
+                    } else {
+                        const ref = this.loadedGhostFlowers.get(ghost.id);
+                        if (ref && ref.wrapper && ref.wrapper.parentNode) {
+                            ref.wrapper.style.visibility = 'visible';
+                            ref.wrapper.style.opacity = '1';
+                        }
+                    }
+                }
+            }
+            const ghostIdsToRemove = [];
+            this.loadedGhostFlowers.forEach((ref, id) => {
+                if (!visibleGhostIds.has(id)) ghostIdsToRemove.push(id);
+            });
+            ghostIdsToRemove.forEach(id => this.removeGhostFlower(id));
+        }
         
         if (visibleCount > 0 || removedCount > 0 || renderedCount > 0) {
-            console.log(`🌸 Viewport: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} loaded, ${removedCount} terminated`);
+            console.log(`🌸 Viewport: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} loaded, ${removedCount} terminated, ${visibleGhostIds.size} ghost flowers`);
         }
         
         // Recovery: If viewport doesn't overlap any flowers, re-center to fix offset drift
@@ -1570,6 +1685,54 @@ class GardenPage {
                 });
             });
         });
+    }
+
+    /**
+     * Render a ghost flower (image only, no question, no grass)
+     */
+    renderGhostFlower(ghost) {
+        if (!this.canvas || !ghost) return;
+        const id = String(ghost.id);
+        if (this.loadedGhostFlowers.has(id)) return;
+        const s = this.ghostFlowerDisplaySize;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'garden-flower-wrapper ghost-flower-wrapper';
+        wrapper.dataset.flowerId = id;
+        wrapper.id = `ghost-wrapper-${id}`;
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = `${ghost.canvasX}px`;
+        wrapper.style.top = `${ghost.canvasY}px`;
+        wrapper.style.transform = 'translate(-50%, -50%) scale(0)';
+        wrapper.style.width = `${s}px`;
+        wrapper.style.height = `${s}px`;
+        wrapper.style.pointerEvents = 'none';
+        wrapper.style.zIndex = Math.floor(ghost.canvasY) - 2;
+        const img = document.createElement('img');
+        img.src = 'GHOST%20FLOWER.png';
+        img.alt = '';
+        img.className = 'ghost-flower-image';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        wrapper.appendChild(img);
+        this.canvas.appendChild(wrapper);
+        this.loadedGhostFlowers.set(id, { wrapper, data: ghost });
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                wrapper.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                wrapper.style.transform = 'translate(-50%, -50%) scale(1)';
+            });
+        });
+    }
+
+    /**
+     * Remove a ghost flower from the canvas
+     */
+    removeGhostFlower(id) {
+        const ref = this.loadedGhostFlowers.get(id);
+        if (!ref || !ref.wrapper) return;
+        if (ref.wrapper.parentNode) ref.wrapper.remove();
+        this.loadedGhostFlowers.delete(id);
     }
 
     /**
