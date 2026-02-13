@@ -1588,8 +1588,8 @@ class GardenPage {
      */
     growGrassAroundFlower(flowerWrapper, isQuestionFlower = false) {
         const sources = [
-            { src: 'Grass 1.2.png', cls: 'grass-1' },
-            { src: 'Grass 2.2.png', cls: 'grass-2' }
+            { src: '/assets/Grass-1.2.png', cls: 'grass-1' },
+            { src: '/assets/Grass-2.2.png', cls: 'grass-2' }
         ];
         const cx = 200;
         const stemBottom = 400; // stem ends at container bottom (script.js stemBottomY)
