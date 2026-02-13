@@ -21,13 +21,13 @@ class GardenPage {
 
         // Canvas settings
         this.canvasSize = 10000; // Virtual canvas size (10000x10000)
-        this.flowerSpread = 400; // Spread between flowers
-        this.isolatedSpread = 400; // Spread for flowers showing questions (denser)
-        this.denseSpread = 150; // Spread for flowers not showing questions (much denser)
-        this.minFlowerDistance = 60; // Minimum distance between flower disc centers (px)
-        this.viewportPaddingPercent = 0.2; // 20% padding around viewport for lazy loading
-        this.maxRenderedFlowers = 50; // Maximum number of flowers to render at once (performance limit)
-        this.minRenderedFlowers = 5; // Minimum flowers to always render (ensures some flowers show)
+        this.flowerSpread = 300;
+        this.isolatedSpread = 280; // Flowers with questions
+        this.denseSpread = 160;
+        this.minFlowerDistance = 140;
+        this.viewportPaddingPercent = 0.03; // 3% buffer to avoid edge flicker; terminate when clearly out
+        this.maxRenderedFlowers = 10; // Only 10 flowers rendered at a time
+        this.minRenderedFlowers = 3; // Minimum for initial load edge cases
         
         // Throttling for updateVisibleFlowers to reduce lag
         this.updateVisibleFlowersThrottle = null;
@@ -46,7 +46,7 @@ class GardenPage {
         // Loading state
         this.isLoading = false;
         this.allFlowersLoaded = false;
-        this.maxFlowersToShow = 20; // Limit total flowers shown
+        this.maxFlowersToShow = 50; // Load more from DB; only 10 rendered at once (lazy)
         this.initialized = false; // Track if initialization is complete
 
         // Start initialization (async, but don't block constructor)
@@ -590,8 +590,8 @@ class GardenPage {
         const angle = index * 137.5 * (Math.PI / 180); // Golden angle
         const radius = Math.sqrt(index) * spread;
 
-        // Add some randomness (less for isolated flowers)
-        const jitterAmount = hasQuestion ? 100 : 150;
+        // Add some randomness (kept modest to respect minFlowerDistance)
+        const jitterAmount = hasQuestion ? 40 : 50;
         const jitterX = (random - 0.5) * jitterAmount;
         const jitterY = (random2 - 0.5) * jitterAmount;
 
@@ -1109,7 +1109,6 @@ class GardenPage {
             return;
         }
 
-        // Calculate 20% padding based on viewport dimensions (dynamic, not fixed pixels)
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         const viewportPaddingX = viewportWidth * this.viewportPaddingPercent;
@@ -1148,7 +1147,7 @@ class GardenPage {
             })
             .sort((a, b) => a.distance - b.distance); // Closest first
 
-        // Process flowers: only render those within viewport + 20% padding
+        // Process flowers: only render those within viewport (terminate when out, reload on return)
         // Prioritize closest flowers if we're at the limit
         let renderedCount = 0;
         
@@ -1266,26 +1265,17 @@ class GardenPage {
             }
         }
 
-        // Remove flowers no longer visible (outside viewport + 20% padding)
-        // BUT: Don't remove flowers if we have fewer than minimum rendered flowers
-        // This prevents removing all flowers if viewport calculation is off
+        // Terminate flowers outside viewport immediately (reload when user returns)
         let removedCount = 0;
         this.loadedFlowers.forEach((data, id) => {
             if (!visibleIds.has(id)) {
-                // Only remove if we have enough flowers rendered
-                if (this.loadedFlowers.size > this.minRenderedFlowers) {
-                    this.removeFlower(id);
-                    removedCount++;
-                } else {
-                    // Keep flower even if outside viewport if we're below minimum
-                    console.log(`🌸 Keeping flower ${id} (below minimum threshold: ${this.loadedFlowers.size}/${this.minRenderedFlowers})`);
-                }
+                this.removeFlower(id);
+                removedCount++;
             }
         });
         
-        // Log performance metrics
         if (visibleCount > 0 || removedCount > 0 || renderedCount > 0) {
-            console.log(`🌸 Viewport+20%: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} newly rendered, ${removedCount} unloaded`);
+            console.log(`🌸 Viewport: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} loaded, ${removedCount} terminated`);
         }
         
         // Recovery: If viewport doesn't overlap any flowers, re-center to fix offset drift
