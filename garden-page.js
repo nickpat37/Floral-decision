@@ -1588,8 +1588,8 @@ class GardenPage {
      */
     growGrassAroundFlower(flowerWrapper, isQuestionFlower = false) {
         const sources = [
-            { src: 'Grass_1.svg', cls: 'grass-1' },
-            { src: 'Grass_2.svg', cls: 'grass-2' }
+            { src: 'src/assets/Grass 1.2.png', cls: 'grass-1' },
+            { src: 'src/assets/Grass 2.2.png', cls: 'grass-2' }
         ];
         const cx = 200;
         const stemBottom = 400; // stem ends at container bottom (script.js stemBottomY)
@@ -1615,11 +1615,11 @@ class GardenPage {
                 const rad = (deg * Math.PI) / 180;
                 const x = cx + ring.radius * Math.cos(rad);
                 const y = cy + ring.radius * Math.sin(rad);
-                // Layer by blade bottom y vs stem bottom: below=front(upper), above=back(behind)
+                // Layer by blade bottom Y: lower Y = back (behind), higher Y = front (in front), middle Y = middle (in front of flower)
                 let layer;
-                if (y > stemBottom + threshold) layer = 'front';  // below stem → upper layer
-                else if (y < stemBottom - threshold) layer = 'back'; // above stem → behind layer
-                else layer = 'middle';
+                if (y < stemBottom - threshold) layer = 'back';   // lower Y → behind flower
+                else if (y > stemBottom + threshold) layer = 'front'; // higher Y → in front of flower
+                else layer = 'middle';  // middle Y → in front of flower (between back and front)
                 allBlades.push({ x, y, layer, deg });
             }
         });
@@ -1647,17 +1647,23 @@ class GardenPage {
             blade.style.transitionDelay = `${0.35 + Math.random() * 0.9}s`; // staggered to reduce jank
             blade.dataset.sizeScale = sizeScale;
             blade.dataset.rotation = tilt;
-            layers[b.layer].push(blade);
+            blade.dataset.bladeY = b.y;
+            layers[b.layer].push({ blade, y: b.y });
         });
 
         if (!flowerWrapper.isConnected) return;
+
+        // Within each layer: sort by Y ascending so lower Y (behind) first, higher Y (front) last in DOM
+        ['back', 'middle', 'front'].forEach((layerName) => {
+            layers[layerName].sort((a, b) => a.y - b.y);
+        });
 
         const order = ['back', 'middle', 'front'];
         const layerDivs = order.map((layerName) => {
             const layerDiv = document.createElement('div');
             layerDiv.className = `garden-grass-layer garden-grass-layer-${layerName} garden-grass-circular-layer`;
             layerDiv.setAttribute('aria-hidden', 'true');
-            layers[layerName].forEach((blade) => layerDiv.appendChild(blade));
+            layers[layerName].forEach(({ blade }) => layerDiv.appendChild(blade));
             return layerDiv;
         });
 
@@ -1678,6 +1684,29 @@ class GardenPage {
                 });
             });
         });
+    }
+
+    /**
+     * Shrink grass inward (reverse of grow) before removing flower
+     * @param {HTMLElement} flowerWrapper
+     * @returns {Promise<void>}
+     */
+    shrinkGrassAroundFlower(flowerWrapper) {
+        const blades = flowerWrapper ? flowerWrapper.querySelectorAll('.grass-blade') : [];
+        if (blades.length === 0) return Promise.resolve();
+
+        const SHRINK_DURATION_MS = 700;
+        blades.forEach((el) => {
+            if (!el.isConnected) return;
+            const s = parseFloat(el.dataset.sizeScale) || 1;
+            const rot = parseFloat(el.dataset.rotation) || 0;
+            el.classList.remove('grow');
+            el.style.transition = `transform ${SHRINK_DURATION_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
+            el.style.transitionDelay = '0ms';
+            el.style.transform = `translate(-50%, 0) scale(${s}) scaleY(0) rotate(${rot}deg)`;
+        });
+
+        return new Promise((resolve) => setTimeout(resolve, SHRINK_DURATION_MS));
     }
 
     assignGardenGrassTypes(n) {
@@ -1794,69 +1823,63 @@ class GardenPage {
      */
     removeFlower(flowerId) {
         const flower = this.loadedFlowers.get(flowerId);
-        if (flower && flower.wrapper) {
-            // CRITICAL: Clean up FlowerComponent instance before removing wrapper
-            if (flower.instance) {
-                // Stop animations
-                if (flower.instance.animationFrameId) {
-                    cancelAnimationFrame(flower.instance.animationFrameId);
-                    flower.instance.animationFrameId = null;
-                }
-                
-                // Clean up event listeners and elements
-                if (flower.instance.cleanupExistingElements) {
-                    flower.instance.cleanupExistingElements();
-                }
-                
-                // Clear references
-                flower.instance = null;
-            }
-            
-            // Also remove any associated question bubbles
-            const bubbleIndex = this.questionBubbles.findIndex(b => b.flowerId === flowerId);
-            if (bubbleIndex !== -1) {
-                const bubble = this.questionBubbles[bubbleIndex];
-                if (bubble.element && bubble.element.parentNode) {
-                    bubble.element.style.transition = 'opacity 0.3s ease-out';
-                    bubble.element.style.opacity = '0';
-                    setTimeout(() => {
-                        if (bubble.element && bubble.element.parentNode) {
-                            bubble.element.remove();
-                        }
-                    }, 300);
-                }
-                this.questionBubbles.splice(bubbleIndex, 1);
-            }
+        if (!flower || !flower.wrapper) return;
 
-            flower.wrapper.style.transition = 'transform 0.3s ease-in, opacity 0.3s ease-in';
-            flower.wrapper.style.transform = 'translate(-50%, -50%) scale(0)';
-            flower.wrapper.style.opacity = '0';
-
-            setTimeout(() => {
-                if (flower.wrapper && flower.wrapper.parentNode) {
-                    // Final cleanup: remove all flower elements and event listeners
-                    const container = flower.wrapper.querySelector('.garden-flower-container');
-                    if (container) {
-                        const discs = container.querySelectorAll('.flower-disc');
-                        const petals = container.querySelectorAll('.flower-petal');
-                        
-                        // Clean up disc tap event listeners
-                        discs.forEach(disc => {
-                            if (disc._gardenDiscTapCleanup) {
-                                disc._gardenDiscTapCleanup();
-                                delete disc._gardenDiscTapCleanup;
-                            }
-                        });
-                        
-                        discs.forEach(disc => disc.remove());
-                        petals.forEach(petal => petal.remove());
-                    }
-                    flower.wrapper.remove();
-                }
-            }, 300);
-
-            this.loadedFlowers.delete(flowerId);
+        // Stop animations only - defer cleanup until after fade (cleanup removes disc/petals and would cause instant disappear)
+        if (flower.instance && flower.instance.animationFrameId) {
+            cancelAnimationFrame(flower.instance.animationFrameId);
+            flower.instance.animationFrameId = null;
         }
+
+        // Remove any associated question bubbles
+        const bubbleIndex = this.questionBubbles.findIndex(b => b.flowerId === flowerId);
+        if (bubbleIndex !== -1) {
+            const bubble = this.questionBubbles[bubbleIndex];
+            if (bubble.element && bubble.element.parentNode) {
+                bubble.element.style.transition = 'opacity 0.3s ease-out';
+                bubble.element.style.opacity = '0';
+                setTimeout(() => {
+                    if (bubble.element && bubble.element.parentNode) {
+                        bubble.element.remove();
+                    }
+                }, 300);
+            }
+            this.questionBubbles.splice(bubbleIndex, 1);
+        }
+
+        // Start flower fade immediately (runs in parallel with grass shrink)
+        flower.wrapper.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+        flower.wrapper.style.webkitTransition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                flower.wrapper.style.opacity = '0';
+                flower.wrapper.style.transform = 'translate(-50%, -50%) scale(0.92)';
+            });
+        });
+
+        const doRemove = () => {
+            if (flower.instance && flower.instance.cleanupExistingElements) {
+                flower.instance.cleanupExistingElements();
+            }
+            flower.instance = null;
+            if (flower.wrapper && flower.wrapper.parentNode) {
+                const container = flower.wrapper.querySelector('.garden-flower-container');
+                if (container) {
+                    const discs = container.querySelectorAll('.flower-disc');
+                    discs.forEach(disc => {
+                        if (disc._gardenDiscTapCleanup) {
+                            disc._gardenDiscTapCleanup();
+                            delete disc._gardenDiscTapCleanup;
+                        }
+                    });
+                }
+                flower.wrapper.remove();
+            }
+            this.loadedFlowers.delete(flowerId);
+        };
+
+        // Shrink grass and fade flower in parallel; remove after both complete (max 0.7s grass, 0.5s fade)
+        this.shrinkGrassAroundFlower(flower.wrapper).then(doRemove);
     }
 
     /**

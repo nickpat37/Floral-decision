@@ -599,7 +599,7 @@ body {
     contain: layout;
 }
 
-/* Layer by position: blade bottom below stem → front (upper); above stem → back (behind) */
+/* Layer by Y position: lower Y → back (behind); higher Y → front (in front); middle Y → middle */
 .garden-grass-layer-back {
     z-index: 1; /* behind flower stem (flower z-index 2) */
 }

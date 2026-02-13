@@ -119,8 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
         grassLayer.innerHTML = '';
         
         const sources = [
-            { src: 'Grass_1.svg', cls: 'grass-1' },
-            { src: 'Grass_2.svg', cls: 'grass-2' },
+            { src: 'src/assets/Grass 1.2.png', cls: 'grass-1' },
+            { src: 'src/assets/Grass 2.2.png', cls: 'grass-2' },
         ];
         // Denser near flower: tight spacing in center, wider toward edges.
         const offsets = [];
