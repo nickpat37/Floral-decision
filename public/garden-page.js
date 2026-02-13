@@ -2109,10 +2109,11 @@ class GardenPage {
         if (backButton) {
             backButton.addEventListener('click', () => {
                 gardenPage.classList.remove('active');
+                flowerPage.classList.remove('active');
+                const questionPage = document.getElementById('questionPage');
+                if (questionPage) questionPage.classList.add('active');
                 if (typeof window.goToHomepageWithReset === 'function') {
                     window.goToHomepageWithReset();
-                } else {
-                    document.getElementById('flowerPage').classList.add('active');
                 }
             });
         }

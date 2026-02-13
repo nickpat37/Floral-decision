@@ -27,6 +27,25 @@ document.addEventListener('DOMContentLoaded', () => {
         fPage.classList.remove('active');
         qPage.classList.add('active');
 
+        // Clear global state to prevent stale answer/question from previous session
+        window.currentQuestion = null;
+        window.lastCreatedFlowerId = null;
+        currentQuestion = null;
+
+        // Hide and clear answer display (prevents old YES/NO from showing on next flower)
+        const answerDisplay = document.getElementById('answerDisplay');
+        if (answerDisplay) {
+            answerDisplay.innerHTML = '';
+            answerDisplay.style.display = 'none';
+            answerDisplay.style.opacity = '0';
+        }
+        const answerButtons = document.getElementById('answerButtons');
+        if (answerButtons) {
+            answerButtons.style.display = 'none';
+        }
+        const instructions = document.querySelector('.instructions');
+        if (instructions) instructions.style.display = 'block';
+
         // Clear grass when returning home
         const grassLayer = document.getElementById('grassLayer');
         if (grassLayer) grassLayer.innerHTML = '';
@@ -53,6 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 flowerPageInstance.stopPhysicsLoop();
             }
             flowerPageInstance = null;
+        }
+
+        // Clear flowerContainer of any leftover disc/petals (in case instance was null or cleanup missed anything)
+        const flowerContainer = document.getElementById('flowerContainer');
+        if (flowerContainer) {
+            flowerContainer.querySelectorAll('.flower-disc, .flower-disc-wrapper, .flower-petal, .detached-petal').forEach(el => el.remove());
         }
 
         // Generate a new flower for the question page
