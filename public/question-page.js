@@ -108,15 +108,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     }
     
-    // Show Done button when user starts typing
-    questionInput.addEventListener('input', () => {
-        const hasText = questionInput.value.trim().length > 0;
-        if (hasText) {
-            doneButton.style.display = 'block';
-        } else {
-            doneButton.style.display = 'none';
-        }
-    });
+    // Show Done button when user starts typing (multi-event for Safari compatibility)
+    const updateDoneButtonVisibility = () => {
+        requestAnimationFrame(() => {
+            const hasText = questionInput.value.trim().length > 0;
+            doneButton.style.display = hasText ? 'flex' : 'none';
+        });
+    };
+    questionInput.addEventListener('input', updateDoneButtonVisibility);
+    questionInput.addEventListener('keyup', updateDoneButtonVisibility);
+    questionInput.addEventListener('paste', updateDoneButtonVisibility);
     
     // Handle Done button click
     doneButton.addEventListener('click', () => {
