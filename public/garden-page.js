@@ -1364,7 +1364,8 @@ class GardenPage {
                     seed: seed,
                     numPetals: numPetals,
                     petalRadius: petalRadius,
-                    discSize: discSize
+                    discSize: discSize,
+                    allowDetachment: false
                 });
 
                 // Verify flower component was created successfully

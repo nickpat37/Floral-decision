@@ -147,6 +147,8 @@ class FlowerComponent {
         this.lastDragPosition = { x: 0, y: 0 }; // Last drag position for velocity calculation
         this.dragVelocityThreshold = 5; // Minimum velocity (pixels per frame) to trigger detachment
         
+        this.allowDetachment = options.allowDetachment !== false; // false for garden flowers
+        
         this.init();
     }
     
@@ -248,6 +250,7 @@ class FlowerComponent {
     
     // Start continuous petal detachment during swiping
     startSwipeDetach() {
+        if (!this.allowDetachment) return;
         // Clear any existing interval
         if (this.swipeDetachInterval) {
             clearInterval(this.swipeDetachInterval);
@@ -282,6 +285,7 @@ class FlowerComponent {
     
     // Start continuous petal detachment during forceful disc dragging
     startDragDetach() {
+        if (!this.allowDetachment) return;
         // Clear any existing interval
         if (this.dragDetachInterval) {
             clearInterval(this.dragDetachInterval);
@@ -1105,6 +1109,7 @@ class FlowerComponent {
     }
     
     detachRandomPetals(count) {
+        if (!this.allowDetachment) return;
         // Get only attached petals
         const attachedPetals = this.petals.filter(p => p.attached);
         
@@ -1489,8 +1494,9 @@ class FlowerComponent {
             newLength = Math.max(newLength, minLength);
             
             if (newLength > this.stretchingPetal.maxLength) {
-                // Detach petal immediately and stop handling
-                this.detachPetal(this.stretchingPetal, clientX, clientY);
+                if (this.allowDetachment) {
+                    this.detachPetal(this.stretchingPetal, clientX, clientY);
+                }
                 this.stopPetalStretch(e);
                 return;
             }
@@ -1508,6 +1514,7 @@ class FlowerComponent {
     
     detachPetal(petal, releaseX, releaseY) {
         if (!petal.attached) return;
+        if (!this.allowDetachment) return;
         
         // Check BEFORE detaching: is this the last remaining petal?
         const attachedCount = this.petals.filter(p => p.attached).length;
