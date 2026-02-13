@@ -1292,16 +1292,34 @@ class GardenPage {
         this.updateCenterFlower();
         // Update particles around newest flower
         this.updateGardenParticles();
-        // Lazy grass: add grass only to flowers in core viewport (within 400px of center)
-        const coreRadius = 400;
-        visibleIds.forEach((id) => {
-            const ref = this.loadedFlowers.get(id);
-            if (!ref || !ref.wrapper || !ref.wrapper.isConnected) return;
-            const dx = ref.data.canvasX - viewportCenterX;
-            const dy = ref.data.canvasY - viewportCenterY;
-            if (Math.sqrt(dx * dx + dy * dy) > coreRadius) return;
-            if (ref.wrapper.querySelector('.garden-grass-layer')) return;
-            this.scheduleGrassGrowth(ref.wrapper);
+        // Lazy grass: only on flower showing question + 3 closest to it (not all in viewport)
+        const focalId = this.centerFlowers[0] || null;
+        if (!focalId) return;
+        const focalRef = this.loadedFlowers.get(focalId);
+        if (!focalRef || !focalRef.data) return;
+        const fx = focalRef.data.canvasX;
+        const fy = focalRef.data.canvasY;
+        const candidateIds = new Set(visibleIds);
+        candidateIds.add(focalId);
+        const withDist = Array.from(candidateIds)
+            .map(id => ({ id, ref: this.loadedFlowers.get(id) }))
+            .filter(o => o.ref && o.ref.data)
+            .map(o => ({
+                id: o.id,
+                ref: o.ref,
+                dist: Math.hypot(o.ref.data.canvasX - fx, o.ref.data.canvasY - fy)
+            }))
+            .sort((a, b) => a.dist - b.dist);
+        const grassIds = new Set(withDist.slice(0, 4).map(o => o.id)); // focal + 3 closest
+        this.loadedFlowers.forEach((ref, id) => {
+            const hasGrass = ref.wrapper && ref.wrapper.querySelector('.garden-grass-layer');
+            if (grassIds.has(id)) {
+                if (!hasGrass && ref.wrapper && ref.wrapper.isConnected) {
+                    this.scheduleGrassGrowth(ref.wrapper);
+                }
+            } else if (hasGrass && ref.wrapper) {
+                ref.wrapper.querySelectorAll('.garden-grass-layer').forEach(el => el.remove());
+            }
         });
     }
 
