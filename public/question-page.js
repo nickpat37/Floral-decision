@@ -117,10 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const grassLayer = document.getElementById('grassLayer');
         if (!grassLayer) return;
         grassLayer.innerHTML = '';
-        
+        const asset = (p) => new URL(p, window.location.href).href;
         const sources = [
-            { src: '/assets/Grass-1.2.png', cls: 'grass-1' },
-            { src: '/assets/Grass-2.2.png', cls: 'grass-2' },
+            { src: asset('assets/Grass-1.2.png'), cls: 'grass-1' },
+            { src: asset('assets/Grass-2.2.png'), cls: 'grass-2' },
         ];
         // Denser near flower: tight spacing in center, wider toward edges.
         const offsets = [];

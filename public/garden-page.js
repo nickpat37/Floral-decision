@@ -1587,9 +1587,10 @@ class GardenPage {
      * Question flower: 2x radius, more blades
      */
     growGrassAroundFlower(flowerWrapper, isQuestionFlower = false) {
+        const asset = (p) => new URL(p, window.location.href).href;
         const sources = [
-            { src: '/assets/Grass-1.2.png', cls: 'grass-1' },
-            { src: '/assets/Grass-2.2.png', cls: 'grass-2' }
+            { src: asset('assets/Grass-1.2.png'), cls: 'grass-1' },
+            { src: asset('assets/Grass-2.2.png'), cls: 'grass-2' }
         ];
         const cx = 200;
         const stemBottom = 400; // stem ends at container bottom (script.js stemBottomY)
