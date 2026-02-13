@@ -124,68 +124,11 @@ class GardenPage {
         // Load flowers (limited number)
         await this.loadAllFlowers();
 
-        // Verify flowers were loaded
+        // Verify flowers were loaded - show empty state if no database flowers
         if (this.flowers.length === 0) {
-            console.error('🌸 CRITICAL: No flowers loaded after loadAllFlowers()!');
-            console.error('🌸 Attempting emergency mock flower generation...');
-            try {
-                const emergencyFlowers = this.generateMockFlowers(10);
-                if (emergencyFlowers.length === 0) {
-                    throw new Error('generateMockFlowers returned empty array');
-                }
-                
-                const emergencyFlowersWithPositions = [];
-                emergencyFlowers.forEach((flower, index) => {
-                    let pos;
-                    try {
-                        pos = this.getFlowerPosition(index, flower.seed, flower.showsQuestion, emergencyFlowersWithPositions);
-                    } catch (posError) {
-                        console.error('🌸 Error getting emergency position:', posError);
-                        pos = {
-                            x: this.canvasSize / 2 + (index * 200),
-                            y: this.canvasSize / 2 + (index * 200)
-                        };
-                    }
-                    const positionedFlower = {
-                        ...flower,
-                        canvasX: pos.x,
-                        canvasY: pos.y
-                    };
-                    emergencyFlowersWithPositions.push(positionedFlower);
-                });
-                this.flowers = emergencyFlowersWithPositions;
-                this.generateGhostFlowers();
-                console.log(`🌸 Emergency: Generated ${this.flowers.length} flowers`);
-                if (this.flowers.length > 0) {
-                    this.hideEmptyState();
-                    const newest = this.flowers[0];
-                    if (newest && newest.canvasX && newest.canvasY) {
-                        this.centerOn(newest.canvasX, newest.canvasY);
-                        // Ensure flowers are rendered immediately
-                        setTimeout(() => {
-                            if (this.updateVisibleFlowersThrottle) {
-                                clearTimeout(this.updateVisibleFlowersThrottle);
-                            }
-                            this.updateVisibleFlowers();
-                        }, 50);
-                    } else {
-                        this.centerOn(this.canvasSize / 2, this.canvasSize / 2);
-                        // Ensure flowers are rendered immediately
-                        setTimeout(() => {
-                            if (this.updateVisibleFlowersThrottle) {
-                                clearTimeout(this.updateVisibleFlowersThrottle);
-                            }
-                            this.updateVisibleFlowers();
-                        }, 50);
-                    }
-                } else {
-                    this.showEmptyState();
-                }
-            } catch (emergencyError) {
-                console.error('🌸 Emergency generation also failed:', emergencyError);
-                console.error('🌸 Emergency error stack:', emergencyError.stack);
-                this.showEmptyState();
-            }
+            console.log('🌸 No flowers from database - showing empty state');
+            this.showEmptyState();
+            this.generateGhostFlowers();
         } else {
             // Ensure empty state is hidden if we have flowers
             this.hideEmptyState();
@@ -757,102 +700,6 @@ class GardenPage {
     }
 
     /**
-     * Generate mock flowers for testing (limited number)
-     */
-    generateMockFlowers(count = 10) {
-        if (count <= 0) {
-            console.warn('🌸 generateMockFlowers called with count <= 0, using default 10');
-            count = 10;
-        }
-        
-        const mockFlowers = [];
-        const mockQuestions = [
-            'I got any luck on TOTO today',
-            'i shud continue my distance relationship',
-            'Will I get the job I applied for?',
-            'Should I move to a new city?',
-            'Is today a good day to make decisions?',
-            'Will it rain tomorrow?',
-            'Should I take the risk?',
-            'Am I making the right choice?',
-            'Will this work out for me?',
-            'Should I trust my instincts?'
-        ];
-
-        const mockAnswers = ['Yes', 'No', 'Maybe', 'Definitely', 'Probably not'];
-
-        // Track positioned flowers to prevent overlaps within this batch
-        const positionedMockFlowers = [];
-        
-        for (let i = 0; i < count; i++) {
-            try {
-                const seed = Math.random();
-                const hasQuestion = i < 3; // First 3 flowers show questions (isolated)
-                
-                // Ensure getFlowerPosition doesn't fail
-                let pos;
-                try {
-                    // Pass existing positioned mock flowers to prevent overlaps
-                    pos = this.getFlowerPosition(i, seed, hasQuestion, positionedMockFlowers);
-                } catch (posError) {
-                    console.error(`🌸 Error getting position for flower ${i}:`, posError);
-                    // Fallback position
-                    pos = {
-                        x: this.canvasSize / 2 + (i * 100),
-                        y: this.canvasSize / 2 + (i * 100)
-                    };
-                }
-                
-                const flower = {
-                    id: `mock-${i}`,
-                    question: mockQuestions[i % mockQuestions.length],
-                    answer: mockAnswers[i % mockAnswers.length],
-                    numPetals: Math.floor(Math.random() * (30 - 12 + 1)) + 12,
-                    petalRadius: 88,
-                    discSize: 120,
-                    seed: seed,
-                    timestamp: Date.now() - (i * 1000000),
-                    canvasX: pos.x,
-                    canvasY: pos.y,
-                    showsQuestion: hasQuestion
-                };
-                
-                // Validate flower has required properties
-                if (!flower.canvasX || !flower.canvasY) {
-                    console.error(`🌸 Flower ${i} missing position:`, flower);
-                    flower.canvasX = this.canvasSize / 2 + (i * 100);
-                    flower.canvasY = this.canvasSize / 2 + (i * 100);
-                }
-                
-                mockFlowers.push(flower);
-            } catch (error) {
-                console.error(`🌸 Error generating mock flower ${i}:`, error);
-                console.error(`🌸 Error stack:`, error.stack);
-                // Create a minimal flower even if generation fails
-                mockFlowers.push({
-                    id: `mock-${i}-emergency`,
-                    question: 'Emergency flower',
-                    answer: 'Yes',
-                    numPetals: 20,
-                    petalRadius: 88,
-                    discSize: 120,
-                    seed: Math.random(),
-                    timestamp: Date.now(),
-                    canvasX: this.canvasSize / 2 + (i * 200),
-                    canvasY: this.canvasSize / 2 + (i * 200),
-                    showsQuestion: false
-                });
-            }
-        }
-
-        console.log(`🌸 Generated ${mockFlowers.length} mock flowers (requested ${count})`);
-        if (mockFlowers.length === 0) {
-            console.error('🌸 CRITICAL: generateMockFlowers returned ZERO flowers!');
-        }
-        return mockFlowers;
-    }
-
-    /**
      * Load flowers from database (limited number)
      */
     async loadAllFlowers() {
@@ -893,23 +740,7 @@ class GardenPage {
                 console.warn('🌸 flowerDB is undefined');
             }
 
-            // ALWAYS generate at least 10 mock flowers to ensure something is displayed
-            // This is critical - we should never have zero flowers
-            const mockCount = Math.max(10, dbFlowers.length > 0 
-                ? Math.min(Math.max(0, this.maxFlowersToShow - dbFlowers.length), 10)
-                : 10);
-            
-            console.log('🌸 Generating mock flowers, count:', mockCount);
-            const mockFlowers = this.generateMockFlowers(mockCount);
-            console.log('🌸 Generated mock flowers:', mockFlowers.length);
-            if (mockFlowers.length === 0) {
-                console.error('🌸 CRITICAL: generateMockFlowers returned empty array!');
-            } else {
-                console.log('🌸 Mock flowers sample:', mockFlowers.slice(0, 2));
-            }
-
-            // Create copies of database flowers with positions (don't mutate readonly objects)
-            // Track existing flowers to prevent overlaps
+            // Use ONLY database flowers - no mock flowers
             const positionedFlowers = [];
             
             const dbFlowersWithPositions = dbFlowers.map((flower, index) => {
@@ -931,36 +762,14 @@ class GardenPage {
                 return positionedFlower;
             });
 
-            // Mock flowers after database flowers (dense)
-            const mockFlowersWithPositions = [];
-            mockFlowers.forEach((flower, index) => {
-                const dbIndex = dbFlowers.length + index;
-                const pos = this.getFlowerPosition(dbIndex, flower.seed, false, positionedFlowers);
-                
-                const positionedFlower = {
-                    ...flower,
-                    canvasX: pos.x,
-                    canvasY: pos.y
-                };
-                
-                positionedFlowers.push(positionedFlower);
-                mockFlowersWithPositions.push(positionedFlower);
-            });
-
-            // Combine flowers: database first, then mock
-            // IMPORTANT: Always include all mock flowers, don't slice them away
-            const allFlowers = [...dbFlowersWithPositions, ...mockFlowersWithPositions];
-            
             // Final verification: ensure no overlaps exist
-            this.ensureNoOverlaps(allFlowers);
+            this.ensureNoOverlaps(dbFlowersWithPositions);
             
-            this.flowers = allFlowers.slice(0, Math.max(this.maxFlowersToShow, 10)); // Ensure at least 10
+            this.flowers = dbFlowersWithPositions.slice(0, this.maxFlowersToShow);
 
             this.generateGhostFlowers();
 
-            console.log(`🌸 Total flowers in array: ${this.flowers.length}`);
-            console.log(`🌸 Database flowers: ${dbFlowers.length}, Mock flowers: ${mockFlowers.length}`);
-            console.log(`🌸 dbFlowersWithPositions: ${dbFlowersWithPositions.length}, mockFlowersWithPositions: ${mockFlowersWithPositions.length}`);
+            console.log(`🌸 Total flowers in array: ${this.flowers.length} (database only)`);
             console.log(`🌸 About to check if flowers.length === 0, current length: ${this.flowers.length}`);
             
             // CRITICAL: Hide empty state immediately if we have flowers
@@ -975,10 +784,7 @@ class GardenPage {
             }
             
             if (this.flowers.length === 0) {
-                console.log('🌸 Entering flowers.length === 0 block');
-                console.error('🌸 CRITICAL ERROR: Flowers array is empty after combining!');
-                console.error('🌸 dbFlowersWithPositions:', dbFlowersWithPositions);
-                console.error('🌸 mockFlowersWithPositions:', mockFlowersWithPositions);
+                console.log('🌸 No flowers in database - will show empty state');
             } else {
                 console.log('🌸 Entering else block (flowers.length > 0)');
                 console.log(`🌸 First few flower IDs:`, this.flowers.slice(0, 5).map(f => f.id));
@@ -1078,73 +884,8 @@ class GardenPage {
         } catch (error) {
             console.error('🌸 Error loading flowers:', error);
             console.error('🌸 Error stack:', error.stack);
-            // Fallback to mock flowers only - MUST succeed
-            try {
-                console.log('🌸 Attempting fallback mock flower generation...');
-                const mockFlowers = this.generateMockFlowers(10);
-                if (mockFlowers.length === 0) {
-                    throw new Error('generateMockFlowers returned empty array');
-                }
-                
-                const mockFlowersWithPositions = [];
-                mockFlowers.forEach((flower, index) => {
-                    // Use existing positioned flowers to prevent overlaps
-                    const pos = this.getFlowerPosition(index, flower.seed, flower.showsQuestion || false, mockFlowersWithPositions);
-                    const positionedFlower = {
-                        ...flower,
-                        canvasX: pos.x,
-                        canvasY: pos.y
-                    };
-                    mockFlowersWithPositions.push(positionedFlower);
-                });
-                
-                this.flowers = mockFlowersWithPositions;
-                this.generateGhostFlowers();
-                console.log(`🌸 Fallback: Generated ${this.flowers.length} mock flowers`);
-                
-                if (this.flowers.length === 0) {
-                    console.error('🌸 CRITICAL: Even fallback mock flowers failed!');
-                    this.showEmptyState();
-                } else {
-                    console.log('🌸 Fallback successful, hiding empty state');
-                    this.hideEmptyState();
-                    const newest = this.flowers[0];
-                    if (newest && newest.canvasX && newest.canvasY) {
-                        this.centerOn(newest.canvasX, newest.canvasY);
-                    } else {
-                        console.warn('🌸 Newest flower missing position, centering on canvas middle');
-                        this.centerOn(this.canvasSize / 2, this.canvasSize / 2);
-                    }
-                }
-            } catch (fallbackError) {
-                console.error('🌸 CRITICAL: Fallback also failed:', fallbackError);
-                console.error('🌸 Fallback error stack:', fallbackError.stack);
-                // Last resort: create a single flower manually
-                try {
-                    const emergencyFlower = {
-                        id: 'emergency-1',
-                        question: 'Emergency flower',
-                        answer: 'Yes',
-                        numPetals: 20,
-                        petalRadius: 88,
-                        discSize: 120,
-                        seed: Math.random(),
-                        timestamp: Date.now(),
-                        canvasX: this.canvasSize / 2,
-                        canvasY: this.canvasSize / 2,
-                        showsQuestion: false
-                    };
-                    this.flowers = [emergencyFlower];
-                    this.generateGhostFlowers();
-                    this.hideEmptyState();
-                    this.centerOn(emergencyFlower.canvasX, emergencyFlower.canvasY);
-                    console.log('🌸 Emergency flower created');
-                } catch (emergencyError) {
-                    console.error('🌸 Even emergency flower failed:', emergencyError);
-                    this.flowers = [];
-                    this.showEmptyState();
-                }
-            }
+            this.flowers = [];
+            this.showEmptyState();
         }
 
         this.isLoading = false;
