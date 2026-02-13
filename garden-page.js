@@ -1315,7 +1315,7 @@ class GardenPage {
             const hasGrass = ref.wrapper && ref.wrapper.querySelector('.garden-grass-layer');
             if (grassIds.has(id)) {
                 if (!hasGrass && ref.wrapper && ref.wrapper.isConnected) {
-                    this.scheduleGrassGrowth(ref.wrapper);
+                    this.scheduleGrassGrowth(ref.wrapper, id === focalId);
                 }
             } else if (hasGrass && ref.wrapper) {
                 ref.wrapper.querySelectorAll('.garden-grass-layer').forEach(el => el.remove());
@@ -1569,11 +1569,11 @@ class GardenPage {
      * Defer grass growth to avoid blocking initial flower render (smoother loading)
      * Uses requestIdleCallback when available; staggers with random offset when many flowers load
      */
-    scheduleGrassGrowth(flowerWrapper) {
+    scheduleGrassGrowth(flowerWrapper, isQuestionFlower = false) {
         const stagger = Math.random() * 60;
         const run = () => {
             if (!flowerWrapper.isConnected) return;
-            this.growGrassAroundFlower(flowerWrapper);
+            this.growGrassAroundFlower(flowerWrapper, isQuestionFlower);
         };
         if (typeof requestIdleCallback !== 'undefined') {
             requestIdleCallback(() => setTimeout(run, stagger), { timeout: 250 });
@@ -1584,9 +1584,9 @@ class GardenPage {
 
     /**
      * Grow grass around a flower - fewer blades, denser cluster, below stem
-     * Front layer is below flower stem; back/middle at stem base
+     * Question flower: 2x radius, more blades
      */
-    growGrassAroundFlower(flowerWrapper) {
+    growGrassAroundFlower(flowerWrapper, isQuestionFlower = false) {
         const sources = [
             { src: 'Grass_1.svg', cls: 'grass-1' },
             { src: 'Grass_2.svg', cls: 'grass-2' }
@@ -1595,11 +1595,17 @@ class GardenPage {
         const stemBottom = 400; // stem ends at container bottom (script.js stemBottomY)
         const cy = stemBottom + 35; // grass center below stem; front layer base at ~420
 
-        // 2 tight rings, fewer blades (~12–14 total), denser
-        const rings = [
-            { radius: 26, stepDeg: 45 },
-            { radius: 50, stepDeg: 40 }
-        ];
+        const radiusMult = isQuestionFlower ? 2 : 1;
+        const rings = isQuestionFlower
+            ? [
+                { radius: 26 * radiusMult, stepDeg: 22 },
+                { radius: 50 * radiusMult, stepDeg: 20 },
+                { radius: 75 * radiusMult, stepDeg: 18 }
+            ]
+            : [
+                { radius: 26, stepDeg: 45 },
+                { radius: 50, stepDeg: 40 }
+            ];
 
         const threshold = 12; // y within ±12 of stem = "same level"
 
@@ -1619,7 +1625,9 @@ class GardenPage {
         });
 
         const types = this.assignGardenGrassTypes(allBlades.length);
-        const heightByLayer = { back: 135, middle: 115, front: 95 };
+        const heightByLayer = isQuestionFlower
+            ? { back: 165, middle: 140, front: 115 }
+            : { back: 135, middle: 115, front: 95 };
 
         const layers = { back: [], middle: [], front: [] };
         allBlades.forEach((b, i) => {
