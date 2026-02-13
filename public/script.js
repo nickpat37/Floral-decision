@@ -1665,9 +1665,10 @@ class FlowerComponent {
         }, 100);
         
         // Add restart icon in center of flower disc (only on flower page)
+        // Delay 1.5s to avoid accidental click right after detaching last petal
         const containerId = this.container ? (this.container.id || '') : '';
         if (containerId === 'flowerContainer' && this.discElement) {
-            this.showRestartIcon();
+            setTimeout(() => this.showRestartIcon(), 1500);
         }
         
         // Create action buttons
