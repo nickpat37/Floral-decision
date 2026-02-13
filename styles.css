@@ -304,6 +304,27 @@ body {
     pointer-events: auto;
 }
 
+/* Garden: answer (YES/NO) overlay on disc when showing question */
+.garden-disc-answer {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.garden-disc-answer img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+}
+
 .flower-disc {
     position: absolute;
     width: 120px !important;

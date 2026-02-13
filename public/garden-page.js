@@ -1294,9 +1294,14 @@ class GardenPage {
         this.updateGardenParticles();
         // Lazy grass: only on flower showing question + 3 closest to it (not all in viewport)
         const focalId = this.centerFlowers[0] || null;
-        if (!focalId) return;
-        const focalRef = this.loadedFlowers.get(focalId);
-        if (!focalRef || !focalRef.data) return;
+        const focalRef = focalId ? this.loadedFlowers.get(focalId) : null;
+        if (!focalId || !focalRef || !focalRef.data) {
+            this.loadedFlowers.forEach((ref) => {
+                const disc = ref.wrapper?.querySelector('.flower-disc');
+                if (disc) this.removeAnswerFromDisc(disc);
+            });
+            return;
+        }
         const fx = focalRef.data.canvasX;
         const fy = focalRef.data.canvasY;
         const candidateIds = new Set(visibleIds);
@@ -1317,8 +1322,10 @@ class GardenPage {
                 if (!hasGrass && ref.wrapper && ref.wrapper.isConnected) {
                     this.scheduleGrassGrowth(ref.wrapper, id === focalId);
                 }
-            } else if (hasGrass && ref.wrapper) {
-                ref.wrapper.querySelectorAll('.garden-grass-layer').forEach(el => el.remove());
+            } else {
+                if (hasGrass && ref.wrapper) {
+                    ref.wrapper.querySelectorAll('.garden-grass-layer').forEach(el => el.remove());
+                }
             }
         });
     }
@@ -1710,6 +1717,51 @@ class GardenPage {
         return new Promise((resolve) => setTimeout(resolve, SHRINK_DURATION_MS));
     }
 
+    /**
+     * Add YES/NO answer overlay to disc when flower is showing a question
+     * @param {HTMLElement} discElement - The disc img element
+     * @param {string} answer - 'YES' or 'NO'
+     * @param {number} discSize - Disc size in px
+     */
+    addAnswerToDisc(discElement, answer, discSize = 120) {
+        const wrapper = discElement.closest('.flower-disc-wrapper');
+        if (!wrapper) return;
+        const normalized = String(answer || '').toUpperCase();
+        if (normalized !== 'YES' && normalized !== 'NO') return;
+        const existing = wrapper.querySelector('.garden-disc-answer');
+        // Skip if same answer already displayed - prevents blink when updateVisibleFlowers runs repeatedly
+        if (existing && existing.dataset.answer === normalized) return;
+        if (existing) existing.remove();
+        const asset = (p) => new URL(p, window.location.href).href;
+        const src = normalized === 'YES' ? asset('YES.svg') : asset('NO.svg');
+        const size = Math.round(discSize * 0.42);
+        const overlay = document.createElement('div');
+        overlay.className = 'garden-disc-answer';
+        overlay.dataset.answer = normalized;
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.style.cssText = `width:${size}px;height:${size}px;opacity:0;transition:opacity 0.15s ease-in`;
+        overlay.innerHTML = `<img src="${src}" alt="${normalized}">`;
+        wrapper.appendChild(overlay);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+            });
+        });
+    }
+
+    removeAnswerFromDisc(discElement) {
+        const overlay = discElement?.closest('.flower-disc-wrapper')?.querySelector('.garden-disc-answer');
+        if (!overlay) return;
+        // Already fading out - don't re-trigger
+        if (overlay.dataset.fading === 'out') return;
+        overlay.dataset.fading = 'out';
+        overlay.style.transition = 'opacity 0.15s ease-out';
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            if (overlay.parentNode) overlay.remove();
+        }, 150);
+    }
+
     assignGardenGrassTypes(n) {
         const types = [];
         for (let i = 0; i < n; i++) {
@@ -1929,20 +1981,22 @@ class GardenPage {
      * Update question bubbles for center flowers
      */
     updateQuestionBubbles() {
-        // Remove bubbles for flowers no longer in center
+        // Remove bubbles for flowers no longer in center (and fade out answer on disc in sync)
         this.questionBubbles = this.questionBubbles.filter(bubble => {
             if (!this.centerFlowers.includes(bubble.flowerId)) {
-                // Faster fade out - reduced from 0.3s to 0.15s
+                const flower = this.loadedFlowers.get(bubble.flowerId);
+                if (flower?.wrapper) {
+                    const disc = flower.wrapper.querySelector('.flower-disc');
+                    if (disc) this.removeAnswerFromDisc(disc);
+                }
                 bubble.element.style.transition = 'opacity 0.15s ease-out, transform 0.15s ease-out';
                 bubble.element.style.opacity = '0';
                 bubble.element.style.transform = 'translateY(-10px)';
-                
                 setTimeout(() => {
                     if (bubble.element && bubble.element.parentNode) {
                         bubble.element.remove();
                     }
-                }, 150); // Reduced from 300ms to 150ms
-                
+                }, 150);
                 return false;
             }
             return true;
@@ -1976,6 +2030,10 @@ class GardenPage {
 
             const bubble = this.createQuestionBubble(flower.data, flower.wrapper, index);
             this.questionBubbles.push(bubble);
+            if (flower.data?.answer) {
+                const disc = flower.wrapper.querySelector('.flower-disc');
+                if (disc) this.addAnswerToDisc(disc, flower.data.answer, flower.data.discSize || 120);
+            }
         });
     }
 
