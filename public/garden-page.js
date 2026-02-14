@@ -139,25 +139,19 @@ class GardenPage {
                 if (newest && newest.canvasX && newest.canvasY) {
                     console.log(`🌸 Centering on newest flower at (${newest.canvasX}, ${newest.canvasY})`);
                     this.centerOn(newest.canvasX, newest.canvasY);
-                    // Ensure flowers are rendered immediately
-                    setTimeout(() => {
-                        if (this.updateVisibleFlowersThrottle) {
-                            clearTimeout(this.updateVisibleFlowersThrottle);
-                        }
+                    // Ensure flowers and ghosts render (second pass catches async flower creation)
+                    [100, 400].forEach(ms => setTimeout(() => {
+                        if (this.updateVisibleFlowersThrottle) clearTimeout(this.updateVisibleFlowersThrottle);
                         this.updateVisibleFlowers();
-                        console.log(`🌸 Initial render complete: ${this.loadedFlowers.size} flowers rendered`);
-                    }, 100);
+                        console.log(`🌸 Render pass: ${this.loadedFlowers.size} flowers, ${this.loadedGhostFlowers.size} ghosts`);
+                    }, ms));
                 } else {
                     console.warn('🌸 Newest flower missing position, centering on canvas middle');
                     this.centerOn(this.canvasSize / 2, this.canvasSize / 2);
-                    // Ensure flowers are rendered immediately
-                    setTimeout(() => {
-                        if (this.updateVisibleFlowersThrottle) {
-                            clearTimeout(this.updateVisibleFlowersThrottle);
-                        }
+                    [100, 400].forEach(ms => setTimeout(() => {
+                        if (this.updateVisibleFlowersThrottle) clearTimeout(this.updateVisibleFlowersThrottle);
                         this.updateVisibleFlowers();
-                        console.log(`🌸 Initial render complete: ${this.loadedFlowers.size} flowers rendered`);
-                    }, 100);
+                    }, ms));
                 }
             }
         }
@@ -665,19 +659,40 @@ class GardenPage {
 
     /**
      * Generate ghost flower positions in empty gaps between real flowers.
-     * Uses same spiral pattern as real flowers + larger jitter for natural randomness.
-     * Does not modify this.flowers.
+     * Uses region around the VIEW CENTER (where user will look) so ghosts are visible on load.
+     * @param {number} [viewCenterX] - X of view center (e.g. newest flower); falls back to flower bounding box center
+     * @param {number} [viewCenterY] - Y of view center
      */
-    generateGhostFlowers() {
+    generateGhostFlowers(viewCenterX, viewCenterY) {
         this.ghostFlowers = [];
         if (this.flowers.length === 0) return;
-        const centerX = this.canvasSize / 2;
-        const centerY = this.canvasSize / 2;
-        const ghostSpread = 170; // tighter spiral to fill gaps between real flowers
+        const vw = typeof window !== 'undefined' ? window.innerWidth : 800;
+        const vh = typeof window !== 'undefined' ? window.innerHeight : 600;
+        const extend = Math.max(vw, vh) * 1.2;
+        let minX = this.canvasSize, maxX = 0, minY = this.canvasSize, maxY = 0;
+        for (const f of this.flowers) {
+            if (f.canvasX == null || f.canvasY == null) continue;
+            minX = Math.min(minX, f.canvasX);
+            maxX = Math.max(maxX, f.canvasX);
+            minY = Math.min(minY, f.canvasY);
+            maxY = Math.max(maxY, f.canvasY);
+        }
+        if (maxX < minX) minX = maxX = this.canvasSize / 2;
+        if (maxY < minY) minY = maxY = this.canvasSize / 2;
+        minX = Math.max(0, minX - extend);
+        maxX = Math.min(this.canvasSize, maxX + extend);
+        minY = Math.max(0, minY - extend);
+        maxY = Math.min(this.canvasSize, maxY + extend);
+        // Use view center (where we'll pan to) so ghosts appear on initial load
+        const centerX = (typeof viewCenterX === 'number' && typeof viewCenterY === 'number')
+            ? viewCenterX : (minX + maxX) / 2;
+        const centerY = (typeof viewCenterX === 'number' && typeof viewCenterY === 'number')
+            ? viewCenterY : (minY + maxY) / 2;
+        const ghostSpread = 170;
         const ghostJitter = 90;
         const ghostSeed = 0.42;
         let id = 0;
-        const maxCandidates = this.maxGhostFlowers * 6; // more attempts to fill dense gaps
+        const maxCandidates = this.maxGhostFlowers * 6;
         for (let i = 0; i < maxCandidates && this.ghostFlowers.length < this.maxGhostFlowers; i++) {
             const random = this.seededRandom(ghostSeed + i);
             const random2 = this.seededRandom(ghostSeed + i + 1000);
@@ -690,11 +705,7 @@ class GardenPage {
             const x = Math.max(0, Math.min(this.canvasSize, baseX));
             const y = Math.max(0, Math.min(this.canvasSize, baseY));
             if (!this.isGhostPositionValid(x, y, this.ghostFlowers)) continue;
-            this.ghostFlowers.push({
-                id: `ghost-${id++}`,
-                canvasX: x,
-                canvasY: y
-            });
+            this.ghostFlowers.push({ id: `ghost-${id++}`, canvasX: x, canvasY: y });
         }
         console.log(`🌸 Generated ${this.ghostFlowers.length} ghost flowers`);
     }
@@ -767,7 +778,24 @@ class GardenPage {
             
             this.flowers = dbFlowersWithPositions.slice(0, this.maxFlowersToShow);
 
-            this.generateGhostFlowers();
+            // Compute view center BEFORE generating ghosts so they appear where we'll look
+            let ghostCenterX, ghostCenterY;
+            if (window.lastCreatedFlowerId) {
+                const targetFlower = this.findFlowerById(window.lastCreatedFlowerId);
+                if (targetFlower && targetFlower.canvasX != null && targetFlower.canvasY != null) {
+                    ghostCenterX = targetFlower.canvasX;
+                    ghostCenterY = targetFlower.canvasY;
+                }
+            }
+            if (ghostCenterX == null && this.flowers.length > 0 && this.flowers[0].canvasX != null) {
+                ghostCenterX = this.flowers[0].canvasX;
+                ghostCenterY = this.flowers[0].canvasY;
+            }
+            if (ghostCenterX == null) {
+                ghostCenterX = this.canvasSize / 2;
+                ghostCenterY = this.canvasSize / 2;
+            }
+            this.generateGhostFlowers(ghostCenterX, ghostCenterY);
 
             console.log(`🌸 Total flowers in array: ${this.flowers.length} (database only)`);
             console.log(`🌸 About to check if flowers.length === 0, current length: ${this.flowers.length}`);
@@ -1104,22 +1132,27 @@ class GardenPage {
             }
         });
 
-        // Ghost flowers: render when in viewport, remove when out
+        // Ghost flowers: render when in viewport (use generous 25% padding for preloading)
         const visibleGhostIds = new Set();
+        const ghostPaddingX = viewportWidth * 0.25;
+        const ghostPaddingY = viewportHeight * 0.25;
+        const ghostViewportLeft = viewportLeft - ghostPaddingX;
+        const ghostViewportRight = viewportRight + ghostPaddingX;
+        const ghostViewportTop = viewportTop - ghostPaddingY;
+        const ghostViewportBottom = viewportBottom + ghostPaddingY;
         if (this.ghostFlowers.length > 0) {
             for (const ghost of this.ghostFlowers) {
-                const inView = ghost.canvasX >= viewportLeft && ghost.canvasX <= viewportRight &&
-                    ghost.canvasY >= viewportTop && ghost.canvasY <= viewportBottom;
+                const inView = ghost.canvasX >= ghostViewportLeft && ghost.canvasX <= ghostViewportRight &&
+                    ghost.canvasY >= ghostViewportTop && ghost.canvasY <= ghostViewportBottom;
                 if (inView) {
                     visibleGhostIds.add(ghost.id);
-                    if (!this.loadedGhostFlowers.has(ghost.id)) {
+                    const ref = this.loadedGhostFlowers.get(ghost.id);
+                    if (!ref || !ref.wrapper || !ref.wrapper.parentNode) {
+                        if (ref) this.loadedGhostFlowers.delete(ghost.id);
                         this.renderGhostFlower(ghost);
                     } else {
-                        const ref = this.loadedGhostFlowers.get(ghost.id);
-                        if (ref && ref.wrapper && ref.wrapper.parentNode) {
-                            ref.wrapper.style.visibility = 'visible';
-                            ref.wrapper.style.opacity = '1';
-                        }
+                        ref.wrapper.style.visibility = 'visible';
+                        ref.wrapper.style.opacity = '1';
                     }
                 }
             }
@@ -1450,9 +1483,14 @@ class GardenPage {
         wrapper.style.pointerEvents = 'none';
         wrapper.style.zIndex = Math.floor(ghost.canvasY) - 2;
         const img = document.createElement('img');
-        img.src = 'GHOST_FLOWER.png';
+        img.src = new URL('GHOST_FLOWER.png', window.location.href).href;
         img.alt = '';
         img.className = 'ghost-flower-image';
+        img.onerror = () => {
+            console.warn('🌸 Ghost flower image failed, trying GHOST FLOWER.png');
+            img.onerror = () => console.error('🌸 Ghost flower image load failed');
+            img.src = new URL('GHOST FLOWER.png', window.location.href).href;
+        };
         img.style.width = '100%';
         img.style.height = '100%';
         img.style.objectFit = 'contain';
@@ -2155,11 +2193,12 @@ class GardenPage {
         }
         this.particlesWrapper = null;
         this.newestFlowerId = null;
+        this.loadedGhostFlowers.clear();
         if (this.canvas) {
             this.canvas.innerHTML = '';
         }
         
-        console.log('🌸 Cleared all flowers and bubbles');
+        console.log('🌸 Cleared all flowers, ghosts, and bubbles');
 
         // Reset loading flag so loadAllFlowers doesn't skip (e.g. from stale previous load)
         this.isLoading = false;
@@ -2174,14 +2213,14 @@ class GardenPage {
             console.log('🌸 We have flowers, hiding empty state');
             this.hideEmptyState();
             
-            // Ensure flowers are rendered immediately after refresh
-            setTimeout(() => {
-                if (this.updateVisibleFlowersThrottle) {
-                    clearTimeout(this.updateVisibleFlowersThrottle);
-                }
+            // Ensure flowers and ghosts are rendered immediately after refresh
+            const doUpdate = () => {
+                if (this.updateVisibleFlowersThrottle) clearTimeout(this.updateVisibleFlowersThrottle);
                 this.updateVisibleFlowers();
-                console.log(`🌸 After refresh: ${this.loadedFlowers.size} flowers rendered`);
-            }, 100);
+                console.log(`🌸 After refresh: ${this.loadedFlowers.size} flowers, ${this.loadedGhostFlowers.size} ghosts`);
+            };
+            setTimeout(doUpdate, 100);
+            setTimeout(doUpdate, 400);
         } else {
             console.error('🌸 CRITICAL: No flowers after loadAllFlowers in refreshGarden!');
             this.showEmptyState();
@@ -2269,22 +2308,10 @@ class GardenPage {
                     }
                 }
             };
-            // Run immediately + rAF + 50ms (flower may need a frame to land in loadedFlowers)
+            // Run repeatedly until question shows (flower may need frames to render)
             showLandingBubble();
             requestAnimationFrame(() => requestAnimationFrame(showLandingBubble));
-            setTimeout(showLandingBubble, 100);
-            
-            // Highlight the flower briefly
-            setTimeout(() => {
-                const flowerRef = this.loadedFlowers.get(flower.id);
-                if (flowerRef && flowerRef.wrapper) {
-                    flowerRef.wrapper.style.transition = 'transform 0.5s ease-out';
-                    flowerRef.wrapper.style.transform = 'translate(-50%, -50%) scale(1.2)';
-                    setTimeout(() => {
-                        flowerRef.wrapper.style.transform = 'translate(-50%, -50%) scale(1)';
-                    }, 1500);
-                }
-            }, 50);
+            [50, 150, 300].forEach(ms => setTimeout(showLandingBubble, ms));
         } else {
             console.warn(`⏳ Flower ${flowerId} not found in ${this.flowers.length} flowers`);
             console.log('🌸 Available flower IDs:', this.flowers.map(f => `${f.id} (${typeof f.id})`).slice(0, 10));
