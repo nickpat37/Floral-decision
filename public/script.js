@@ -148,7 +148,8 @@ class FlowerComponent {
         this.dragVelocityThreshold = 5; // Minimum velocity (pixels per frame) to trigger detachment
         
         this.allowDetachment = options.allowDetachment !== false; // false for garden flowers
-        
+        this.disableInteractions = options.disableInteractions === true; // true for garden: no drag, stretch, swipe
+
         this.init();
     }
     
@@ -942,9 +943,11 @@ class FlowerComponent {
         this.discElement = disc;
         this.container.appendChild(wrapper);
         
-        // Disc drag handlers
-        disc.addEventListener('mousedown', (e) => this.startDiscDrag(e));
-        disc.addEventListener('touchstart', (e) => this.startDiscDrag(e), { passive: false });
+        // Disc drag handlers (skipped in garden - tap handled at container level)
+        if (!this.disableInteractions) {
+            disc.addEventListener('mousedown', (e) => this.startDiscDrag(e));
+            disc.addEventListener('touchstart', (e) => this.startDiscDrag(e), { passive: false });
+        }
     }
     
     startDiscDrag(e) {
@@ -1411,9 +1414,11 @@ class FlowerComponent {
             maxSwingAngle: 20 // Maximum swing angle in degrees
         };
         
-        // Petal stretch handlers
-        petalElement.addEventListener('mousedown', (e) => this.startPetalStretch(e, petal));
-        petalElement.addEventListener('touchstart', (e) => this.startPetalStretch(e, petal), { passive: false });
+        // Petal stretch handlers (skipped in garden - no petal pull/interaction)
+        if (!this.disableInteractions) {
+            petalElement.addEventListener('mousedown', (e) => this.startPetalStretch(e, petal));
+            petalElement.addEventListener('touchstart', (e) => this.startPetalStretch(e, petal), { passive: false });
+        }
         
         return petal;
     }
@@ -2151,6 +2156,25 @@ class FlowerComponent {
     }
     
     setupEventListeners() {
+        if (this.disableInteractions) {
+            // Garden mode: only resize handler (no swipe, drag, or petal interactions)
+            window.addEventListener('resize', () => {
+                const containerRect = this.container.getBoundingClientRect();
+                this.containerWidth = containerRect.width || window.innerWidth;
+                this.containerHeight = containerRect.height || window.innerHeight;
+                this.discSize = 120;
+                this.originalDiscSize = 120;
+                this.petalRadius = 88;
+                this.swipeAreaRadius = (this.discSize / 2) * 1.5;
+                this.originalDiscX = this.containerWidth / 2;
+                this.originalDiscY = this.containerHeight * 0.4;
+                this.stemBottomX = this.containerWidth / 2;
+                this.stemBottomY = this.containerHeight;
+                this.updateStem();
+            });
+            return;
+        }
+
         // Swipe detection for touch devices
         let touchStartX = 0;
         let touchStartY = 0;

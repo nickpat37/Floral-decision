@@ -267,12 +267,12 @@ class GardenPage {
         // Mouse drag
         this.container.addEventListener('mousedown', (e) => this.onDragStart(e));
         document.addEventListener('mousemove', (e) => this.onDragMove(e));
-        document.addEventListener('mouseup', () => this.onDragEnd());
+        document.addEventListener('mouseup', (e) => this.onDragEnd(e));
 
         // Touch drag
         this.container.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
         this.container.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
-        this.container.addEventListener('touchend', () => this.onDragEnd());
+        this.container.addEventListener('touchend', (e) => this.onDragEnd(e));
 
         // Mouse wheel for zoom/pan
         this.container.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
@@ -280,6 +280,10 @@ class GardenPage {
 
     onDragStart(e) {
         this.isDragging = true;
+        this.wasDrag = false;
+        this.tapStartX = e.clientX;
+        this.tapStartY = e.clientY;
+        this.tapStartTime = Date.now();
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
         this.container.style.cursor = 'grabbing';
@@ -287,26 +291,44 @@ class GardenPage {
 
     onDragMove(e) {
         if (!this.isDragging) return;
+        const dx = e.clientX - this.tapStartX;
+        const dy = e.clientY - this.tapStartY;
+        if (Math.sqrt(dx * dx + dy * dy) > 10) this.wasDrag = true;
 
         const deltaX = e.clientX - this.lastMouseX;
         const deltaY = e.clientY - this.lastMouseY;
-
         this.pan(deltaX, deltaY);
 
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
     }
 
-    onDragEnd() {
+    onDragEnd(e) {
+        const isTap = !this.wasDrag && this.tapStartTime && (Date.now() - this.tapStartTime) < 400;
+        let clientX = this.lastMouseX;
+        let clientY = this.lastMouseY;
+        if (e) {
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            } else if (e.clientX !== undefined) {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+        }
         this.isDragging = false;
         this.container.style.cursor = 'grab';
-        // Check if we've moved to a new area and need to lazy load
+        if (isTap) this.handleDiscTapAt(clientX, clientY);
         this.checkAndLazyLoad();
     }
 
     onTouchStart(e) {
         if (e.touches.length === 1) {
             this.isDragging = true;
+            this.wasDrag = false;
+            this.tapStartX = e.touches[0].clientX;
+            this.tapStartY = e.touches[0].clientY;
+            this.tapStartTime = Date.now();
             this.lastTouchX = e.touches[0].clientX;
             this.lastTouchY = e.touches[0].clientY;
         }
@@ -315,10 +337,12 @@ class GardenPage {
     onTouchMove(e) {
         if (!this.isDragging || e.touches.length !== 1) return;
         e.preventDefault();
+        const dx = e.touches[0].clientX - this.tapStartX;
+        const dy = e.touches[0].clientY - this.tapStartY;
+        if (Math.sqrt(dx * dx + dy * dy) > 10) this.wasDrag = true;
 
         const deltaX = e.touches[0].clientX - this.lastTouchX;
         const deltaY = e.touches[0].clientY - this.lastTouchY;
-
         this.pan(deltaX, deltaY);
 
         this.lastTouchX = e.touches[0].clientX;
@@ -357,6 +381,36 @@ class GardenPage {
         // Only if we have flowers loaded
         if (this.flowers.length > 0) {
             this.throttledUpdateVisibleFlowers();
+        }
+    }
+
+    /**
+     * Handle disc tap when user taps (without dragging) on the canvas.
+     * Hit-test to find which flower disc was tapped and trigger tap animation + show answer.
+     * @param {number} clientX - Screen X of tap
+     * @param {number} clientY - Screen Y of tap
+     */
+    handleDiscTapAt(clientX, clientY) {
+        if (!this.container || !this.canvas) return;
+        const rect = this.container.getBoundingClientRect();
+        const containerX = clientX - rect.left;
+        const containerY = clientY - rect.top;
+        const canvasX = containerX - this.offsetX;
+        const canvasY = containerY - this.offsetY;
+
+        const discRadius = 70; // Generous hit area for 120px disc
+        for (const [flowerId, flowerRef] of this.loadedFlowers) {
+            if (!flowerRef?.wrapper || !flowerRef?.instance) continue;
+            const data = flowerRef.data;
+            const dx = canvasX - (data.canvasX || 0);
+            const dy = canvasY - (data.canvasY || 0);
+            if (dx * dx + dy * dy <= discRadius * discRadius) {
+                const instance = flowerRef.instance;
+                if (instance.triggerTapAnimation) instance.triggerTapAnimation();
+                const disc = flowerRef.wrapper.querySelector('.flower-disc');
+                if (disc && data.answer) this.addAnswerToDisc(disc, data.answer, data.discSize || 120);
+                return;
+            }
         }
     }
 
@@ -1398,7 +1452,8 @@ class GardenPage {
                     numPetals: numPetals,
                     petalRadius: petalRadius,
                     discSize: discSize,
-                    allowDetachment: false
+                    allowDetachment: false,
+                    disableInteractions: true // No disc drag, petal stretch, or swipe - only tap via container
                 });
 
                 // Verify flower component was created successfully

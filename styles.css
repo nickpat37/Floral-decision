@@ -611,6 +611,15 @@ body {
     overflow: visible; /* allow grass to extend below stem bottom */
 }
 
+/* Ensure ALL garden flower elements pass through touches - canvas pan takes priority on mobile */
+.garden-flower-wrapper .flower-disc-wrapper,
+.garden-flower-wrapper .flower-disc,
+.garden-flower-wrapper .flower-disc-wrapper > *,
+.garden-flower-wrapper .flower-petal,
+.garden-flower-wrapper .garden-flower-container {
+    pointer-events: none !important;
+}
+
 /* Ghost flower: decorative image only, no question, no grass */
 .ghost-flower-wrapper {
     display: flex;
