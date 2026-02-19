@@ -920,7 +920,7 @@ class FlowerComponent {
         `;
         
         const disc = document.createElement('img');
-        disc.src = 'Disc.png';
+        disc.src = new URL('/Disc.png', window.location.origin).href;
         disc.className = 'flower-disc';
         disc.id = 'flowerDisc';
         
@@ -1365,7 +1365,7 @@ class FlowerComponent {
     
     createPetal(angle, index, answer = null) {
         const petalElement = document.createElement('img');
-        petalElement.src = 'Petal.png';
+        petalElement.src = new URL('/Petal.png', window.location.origin).href;
         petalElement.className = 'flower-petal';
         petalElement.setAttribute('data-index', index);
         petalElement.setAttribute('data-angle', angle);
