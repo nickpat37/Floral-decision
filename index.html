@@ -11,7 +11,9 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Faculty+Glyphic&amp;family=Kalam:wght@300;400;700&amp;display=swap">
     <link rel="stylesheet" href="styles.css">
     <script>
-        /* iOS Safari: 100vh extends behind bottom bar. Use innerHeight so content stays above it. */
+        /* iOS Safari: 100vh extends behind bottom bar. Use innerHeight so content stays above it.
+         * Do NOT update on visualViewport resize (keyboard) - that shrinks the page and exposes
+         * black body background. Only update on window resize / orientation. */
         (function() {
             var setVH = function() {
                 var h = window.innerHeight;
@@ -20,9 +22,6 @@
             setVH();
             window.addEventListener('resize', setVH);
             window.addEventListener('orientationchange', setVH);
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', setVH);
-            }
         })();
     </script>
 </head>
