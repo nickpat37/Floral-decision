@@ -5,16 +5,26 @@
     -webkit-tap-highlight-color: transparent;
 }
 
-/* iOS Safari: 100vh includes browser chrome, causing overflow. Use fallbacks. */
+/* iOS Safari: fixed background layer ensures #87CEEB shows behind keyboard & Safari chrome */
 html {
     height: 100%;
     -webkit-text-size-adjust: 100%;
+    background-color: #87CEEB;
+}
+
+html::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
     background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 body {
     font-family: 'Kalam', 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
-    background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
+    background-color: transparent;
     min-height: 100vh;
     min-height: var(--vh, 100vh);
     display: flex;
