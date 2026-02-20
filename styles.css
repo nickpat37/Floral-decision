@@ -122,6 +122,7 @@ body {
 
 
 /* Question Modal - Overlay */
+/* iOS Safari: bottom toolbar (~50–80px) overlays content; safe-area doesn't include it. Use larger offset on mobile. */
 .question-modal {
     width: calc(100% - 40px);
     max-width: 500px;
@@ -132,7 +133,7 @@ body {
     padding: 20px 12px 8px 12px;
     height: 180px;
     position: absolute;
-    bottom: max(30px, env(safe-area-inset-bottom));
+    bottom: max(30px, calc(env(safe-area-inset-bottom, 0px) + 30px));
     left: 50%;
     transform: translateX(-50%);
     box-shadow: none;
@@ -554,6 +555,13 @@ body {
     .answer-button {
         padding: 10px 20px;
         font-size: 14px;
+    }
+}
+
+/* iOS Safari: bottom toolbar (~50–80px) overlays content. Add offset so modal stays visible. */
+@media (max-width: 768px), (hover: none) {
+    .question-modal {
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 95px);
     }
 }
 
