@@ -1065,8 +1065,8 @@ class FlowerComponent {
         if (this.isTap) {
             // Trigger tap animation: increase petal size, swing petals, move disc
             this.triggerTapAnimation();
-            
-            // Calculate tap force/pressure
+                
+                // Calculate tap force/pressure
             let force = 0.5; // Default force for mouse clicks
             
             if (e && e.changedTouches && e.changedTouches.length > 0) {
@@ -1101,7 +1101,7 @@ class FlowerComponent {
                 this.detachRandomPetals(numToDetach);
             }, 100);
         } else {
-            // Start spring animation to bounce back to original position
+            // Start spring animation to bounce back to original position (was a drag, not tap)
             this.startDiscSpring();
         }
         

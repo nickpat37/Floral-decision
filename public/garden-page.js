@@ -398,19 +398,71 @@ class GardenPage {
         const canvasX = containerX - this.offsetX;
         const canvasY = containerY - this.offsetY;
 
-        const discRadius = 70; // Generous hit area for 120px disc
+        // Hit area: wrapper uses translate(-50%,-50%) so center is at (canvasX, canvasY)
+        const hitRadius = 120;
         for (const [flowerId, flowerRef] of this.loadedFlowers) {
             if (!flowerRef?.wrapper || !flowerRef?.instance) continue;
             const data = flowerRef.data;
-            const dx = canvasX - (data.canvasX || 0);
-            const dy = canvasY - (data.canvasY || 0);
-            if (dx * dx + dy * dy <= discRadius * discRadius) {
+            const centerX = data.canvasX || 0;
+            const centerY = data.canvasY || 0;
+            const dx = canvasX - centerX;
+            const dy = canvasY - centerY;
+            if (dx * dx + dy * dy <= hitRadius * hitRadius) {
                 const instance = flowerRef.instance;
                 if (instance.triggerTapAnimation) instance.triggerTapAnimation();
                 const disc = flowerRef.wrapper.querySelector('.flower-disc');
                 if (disc && data.answer) this.addAnswerToDisc(disc, data.answer, data.discSize || 120);
+                this.showGardenCommentSection(flowerId, flowerRef);
                 return;
             }
+        }
+        this.hideGardenCommentSection();
+    }
+
+    showGardenCommentSection(flowerId, flowerRef) {
+        const section = document.getElementById('gardenCommentSection');
+        const container = document.querySelector('.garden-page-container');
+        if (!section) return;
+        section.classList.add('visible');
+        section.setAttribute('aria-hidden', 'false');
+        section.dataset.flowerId = String(flowerId);
+        if (container) container.classList.add('comment-section-active');
+        this.centerFlowerAtTop(flowerRef?.data);
+    }
+
+    hideGardenCommentSection() {
+        const section = document.getElementById('gardenCommentSection');
+        const container = document.querySelector('.garden-page-container');
+        if (!section) return;
+        section.classList.remove('visible');
+        section.setAttribute('aria-hidden', 'true');
+        delete section.dataset.flowerId;
+        if (container) container.classList.remove('comment-section-active');
+    }
+
+    /**
+     * Position the selected flower and its question at the top of the view when comment section opens
+     */
+    centerFlowerAtTop(flowerData) {
+        if (!this.canvas || !flowerData) return;
+        const canvasX = flowerData.canvasX ?? 0;
+        const canvasY = flowerData.canvasY ?? 0;
+        const headerSpace = 80;
+        const targetY = headerSpace + window.innerHeight * 0.2;
+        this.offsetX = -canvasX + window.innerWidth / 2;
+        this.offsetY = -canvasY + targetY;
+        const maxOffset = this.canvasSize - window.innerWidth;
+        const maxOffsetY = this.canvasSize - window.innerHeight;
+        this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
+        this.offsetY = Math.max(-maxOffsetY, Math.min(0, this.offsetY));
+        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+        if (this.flowers.length > 0) {
+            if (this.updateVisibleFlowersThrottle) {
+                clearTimeout(this.updateVisibleFlowersThrottle);
+                this.updateVisibleFlowersThrottle = null;
+            }
+            this.updateVisibleFlowers();
+            this.updateCenterFlower();
         }
     }
 
@@ -2202,6 +2254,7 @@ class GardenPage {
 
         if (backButton) {
             backButton.addEventListener('click', () => {
+                this.hideGardenCommentSection();
                 gardenPage.classList.remove('active');
                 flowerPage.classList.remove('active');
                 const questionPage = document.getElementById('questionPage');

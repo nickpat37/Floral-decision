@@ -545,6 +545,208 @@ body {
     transform: translateY(0);
 }
 
+/* Comment section */
+.comment-section {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    padding-bottom: max(90px, env(safe-area-inset-bottom) + 60px); /* space for Done/Try another buttons */
+    transform: translateY(100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease, visibility 0.35s;
+}
+
+.comment-section.visible {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Garden comment panel: unified white panel, bottom ~2/3 of viewport */
+.garden-comment-panel {
+    padding-bottom: 0;
+}
+
+.garden-comment-panel .comment-panel-inner {
+    display: flex;
+    flex-direction: column;
+    height: min(65vh, 500px);
+    margin: 0 16px;
+    margin-bottom: max(16px, env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.garden-comment-panel .comment-card {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.garden-comment-panel .comment-list {
+    padding: 16px 16px 8px;
+}
+
+.garden-comment-panel .comment-input-bar {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 1);
+}
+
+.comment-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 16px;
+    margin-bottom: 12px;
+    max-height: min(35vh, 220px);
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.comment-list {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+}
+
+.comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.comment-item:last-child {
+    border-bottom: none;
+}
+
+.comment-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.comment-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.comment-author {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(13, 13, 13, 1);
+}
+
+.comment-time {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.comment-text {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: rgba(13, 13, 13, 1);
+    line-height: 1.45;
+    margin: 0 0 8px 0;
+    word-wrap: break-word;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.comment-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.comment-action:hover {
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.comment-action svg {
+    flex-shrink: 0;
+}
+
+.comment-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.comment-input-avatar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.comment-input-field {
+    flex: 1;
+    height: 44px;
+    padding: 0 16px;
+    background: rgba(0, 0, 0, 0.06);
+    border: none;
+    border-radius: 22px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    color: rgba(13, 13, 13, 1);
+    outline: none;
+}
+
+.comment-input-field::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
     /* Disc and petal sizes remain fixed - no scaling */
@@ -629,6 +831,11 @@ body {
     font-weight: 400;
     opacity: 0.9;
     color: rgba(255, 255, 255, 0.95);
+}
+
+/* Hide garden header when comment section is open */
+.garden-page-container.comment-section-active .garden-header {
+    visibility: hidden;
 }
 
 .garden-flower-wrapper {

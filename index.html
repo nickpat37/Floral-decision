@@ -128,6 +128,80 @@
                 <h1>The Garden</h1>
                 <p>Browse all questions ever asked</p>
             </div>
+
+            <!-- Comment section: separate panel (slides in when flower is tapped) -->
+            <div id="gardenCommentSection" class="comment-section garden-comment-panel" aria-hidden="true">
+                <div class="comment-panel-inner">
+                    <div class="comment-card">
+                        <div id="gardenCommentList" class="comment-list">
+                            <div class="comment-item" data-comment-id="sample-1">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Alex Chen</span>
+                                        <span class="comment-time">2h ago</span>
+                                    </div>
+                                    <p class="comment-text">Loved this lesson! The examples were clear and the pacing was perfect.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                            Reply
+                                        </button>
+                                        <button type="button" class="comment-action" aria-label="Like">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                            Like
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-2">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Alex Chen</span>
+                                        <span class="comment-time">2h ago</span>
+                                    </div>
+                                    <p class="comment-text">Loved this lesson! The examples were clear and the pacing was perfect.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                            Reply
+                                        </button>
+                                        <button type="button" class="comment-action" aria-label="Like">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                            Like
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-3">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Alex Chen</span>
+                                        <span class="comment-time">2h ago</span>
+                                    </div>
+                                    <p class="comment-text">Loved this lesson! The examples were clear and the pacing was perfect.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                            Reply
+                                        </button>
+                                        <button type="button" class="comment-action" aria-label="Like">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                            Like
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comment-input-bar">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" alt="" class="comment-input-avatar">
+                        <input type="text" id="gardenCommentInput" class="comment-input-field" placeholder="Add a comment..." autocomplete="off" aria-label="Add a comment">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
