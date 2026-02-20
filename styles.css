@@ -242,14 +242,14 @@ body {
     overflow: hidden;
 }
 
-/* Row 1: Navigation buttons */
+/* Row 1: Navigation buttons (garden button right; back button is separate, like garden page) */
 .flower-page-nav {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left));
     z-index: 400;
@@ -789,18 +789,24 @@ body {
     display: none; /* Hide answer in garden view, only show question */
 }
 
-/* Navigation Button */
+/* Navigation Button (back buttons on garden + flower page) */
 #backButton,
+#backToHomeButton,
 .nav-button-back {
     color: rgba(255, 255, 255, 1);
     font-weight: 400;
     position: absolute;
     top: max(20px, env(safe-area-inset-top));
     left: max(20px, env(safe-area-inset-left));
-    z-index: 400;
-}
-
-#backToHomeButton {
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
     background-color: unset;
     background: unset;
 }
