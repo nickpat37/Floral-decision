@@ -427,7 +427,9 @@ class GardenPage {
         section.setAttribute('aria-hidden', 'false');
         section.dataset.flowerId = String(flowerId);
         if (container) container.classList.add('comment-section-active');
-        this.centerFlowerAtTop(flowerRef?.data);
+        requestAnimationFrame(() => {
+            this.centerFlowerAtTop(flowerId, flowerRef);
+        });
     }
 
     hideGardenCommentSection() {
@@ -441,22 +443,32 @@ class GardenPage {
     }
 
     /**
-     * Position the selected flower centered with question bubble top 24px from screen top
+     * Position the selected flower centered with question bubble top 24px from viewport top
      */
-    centerFlowerAtTop(flowerData) {
-        if (!this.canvas || !flowerData) return;
+    centerFlowerAtTop(flowerId, flowerRef) {
+        if (!this.canvas || !this.container) return;
+        const flowerData = flowerRef?.data;
+        if (!flowerData) return;
         const canvasX = flowerData.canvasX ?? 0;
         const canvasY = flowerData.canvasY ?? 0;
-        // Bubble top: wrapper (400px) center at canvasY, bubble container top -120px
-        // => bubble top in canvas = canvasY - 200 - 120 = canvasY - 320
-        const bubbleTopInCanvas = canvasY - 320;
         const targetBubbleTop = 24; // 24px from top edge of viewport
-        this.offsetX = -canvasX + window.innerWidth / 2;
-        this.offsetY = -bubbleTopInCanvas + targetBubbleTop;
+        const rect = this.container.getBoundingClientRect();
+        // Measure actual question bubble (inner div) position from DOM
+        const bubbleEl = flowerRef?.wrapper?.querySelector('.garden-question-bubble');
+        let offsetY;
+        if (bubbleEl) {
+            const bubbleRect = bubbleEl.getBoundingClientRect();
+            const currentTop = bubbleRect.top;
+            offsetY = this.offsetY + (targetBubbleTop - currentTop);
+        } else {
+            const bubbleTopInCanvas = canvasY - 320;
+            offsetY = targetBubbleTop - rect.top - bubbleTopInCanvas;
+        }
+        this.offsetX = rect.width / 2 - canvasX;
         const maxOffset = this.canvasSize - window.innerWidth;
         const maxOffsetY = this.canvasSize - window.innerHeight;
         this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
-        this.offsetY = Math.max(-maxOffsetY, Math.min(0, this.offsetY));
+        this.offsetY = Math.max(-maxOffsetY, Math.min(0, offsetY));
         this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
         if (this.flowers.length > 0) {
             if (this.updateVisibleFlowersThrottle) {
