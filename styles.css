@@ -15,8 +15,7 @@ body {
     font-family: 'Kalam', 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
     background: #000000;
     min-height: 100vh;
-    min-height: -webkit-fill-available;
-    min-height: 100dvh;
+    min-height: var(--vh, 100vh);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -30,15 +29,14 @@ body {
 }
 
 /* Page Management */
-/* iOS: use 100dvh (dynamic) + fallbacks; 100% width avoids 100vw scrollbar overflow */
+/* iOS Safari: use --vh (actual visible height via JS) so bottom stays above browser bar */
 .page {
     display: none;
     width: 100%;
     max-width: 100vw;
     height: 100vh;
-    height: 100dvh;
-    height: -webkit-fill-available;
-    min-height: 100vh;
+    height: var(--vh, 100vh);
+    min-height: var(--vh, 100vh);
     position: fixed;
     top: 0;
     left: 0;
@@ -122,7 +120,7 @@ body {
 
 
 /* Question Modal - Overlay */
-/* iOS Safari: bottom toolbar (~50–80px) overlays content; safe-area doesn't include it. Use larger offset on mobile. */
+/* Viewport now uses --vh (above Safari bar); bottom is from visible edge. */
 .question-modal {
     width: calc(100% - 40px);
     max-width: 500px;
@@ -133,7 +131,7 @@ body {
     padding: 20px 12px 8px 12px;
     height: 180px;
     position: absolute;
-    bottom: max(30px, calc(max(env(safe-area-inset-bottom, 0px), 50px) + 30px));
+    bottom: max(30px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     box-shadow: none;
@@ -227,9 +225,7 @@ body {
 .flower-page-container {
     width: 100%;
     height: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: -webkit-fill-available;
+    min-height: var(--vh, 100vh);
     position: relative;
     background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
     overflow: hidden;
@@ -558,12 +554,6 @@ body {
     }
 }
 
-/* iOS Safari: bottom toolbar (~50–80px) overlays content. Add offset so modal stays visible. */
-@media (max-width: 768px), (hover: none) {
-    .question-modal {
-        bottom: calc(max(env(safe-area-inset-bottom, 0px), 50px) + 95px);
-    }
-}
 
 @media (orientation: landscape) and (max-height: 500px) {
     .instructions {
@@ -579,8 +569,7 @@ body {
 .garden-page-container {
     width: 100%;
     height: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: var(--vh, 100vh);
     position: relative;
     background: linear-gradient(180deg, #4A90E2 0%, #87CEEB 50%, #B0E0E6 100%);
     overflow: hidden;

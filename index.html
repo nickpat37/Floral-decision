@@ -10,6 +10,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Faculty+Glyphic&amp;family=Kalam:wght@300;400;700&amp;display=swap">
     <link rel="stylesheet" href="styles.css">
+    <script>
+        /* iOS Safari: 100vh extends behind bottom bar. Use innerHeight so content stays above it. */
+        (function() {
+            var setVH = function() {
+                var h = window.innerHeight;
+                document.documentElement.style.setProperty('--vh', h + 'px');
+            };
+            setVH();
+            window.addEventListener('resize', setVH);
+            window.addEventListener('orientationchange', setVH);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', setVH);
+            }
+        })();
+    </script>
 </head>
 <body>
     <!-- Question Modal Page -->
