@@ -465,8 +465,8 @@ body {
     z-index: 0;
     pointer-events: none;
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
+    align-items: flex-start;
+    justify-content: center;
     vertical-align: top;
 }
 
