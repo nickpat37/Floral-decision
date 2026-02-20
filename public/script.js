@@ -41,10 +41,12 @@ class FlowerComponent {
         }
         
         // Get container dimensions for positioning
+        // Use viewport as fallback when container has no dimensions (e.g. parent not yet laid out)
         const containerRect = this.container.getBoundingClientRect();
-        // Use explicit style dimensions if getBoundingClientRect returns zero (e.g., parent is scaled to 0)
-        const styleWidth = parseInt(this.container.style.width) || parseInt(window.getComputedStyle(this.container).width) || 400;
-        const styleHeight = parseInt(this.container.style.height) || parseInt(window.getComputedStyle(this.container).height) || 400;
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 400;
+        const viewportH = window.innerHeight || document.documentElement.clientHeight || 400;
+        const styleWidth = parseInt(this.container.style.width) || parseInt(window.getComputedStyle(this.container).width) || viewportW;
+        const styleHeight = parseInt(this.container.style.height) || parseInt(window.getComputedStyle(this.container).height) || viewportH;
         this.containerWidth = containerRect.width > 0 ? containerRect.width : styleWidth;
         this.containerHeight = containerRect.height > 0 ? containerRect.height : styleHeight;
         
@@ -157,6 +159,19 @@ class FlowerComponent {
         // CRITICAL: Clean up any existing flower elements before creating new ones
         // This prevents multiple discs/petals when FlowerComponent is initialized multiple times
         this.cleanupExistingElements();
+        
+        // Refresh dimensions (container may not have been laid out when constructor ran)
+        const containerRect = this.container.getBoundingClientRect();
+        if (containerRect.width > 0 && containerRect.height > 0) {
+            this.containerWidth = containerRect.width;
+            this.containerHeight = containerRect.height;
+            this.originalDiscX = this.containerWidth / 2;
+            this.originalDiscY = this.containerHeight * 0.4;
+            this.discX = this.originalDiscX;
+            this.discY = this.originalDiscY;
+            this.stemBottomX = this.containerWidth / 2;
+            this.stemBottomY = this.containerHeight;
+        }
         
         // Calculate fixed stem length based on original positions
         const dx = this.originalDiscX - this.stemBottomX;
@@ -684,10 +699,28 @@ class FlowerComponent {
         // Stem SVG is already in HTML, just update the path
         // Set SVG viewBox to match container
         if (this.stemSVG) {
-            // Update container dimensions in case they changed
+            // Refresh dimensions in case container was not laid out when constructor/init ran
             const containerRect = this.container.getBoundingClientRect();
-            this.containerWidth = containerRect.width || window.innerWidth;
-            this.containerHeight = containerRect.height || window.innerHeight;
+            const w = containerRect.width || window.innerWidth || 400;
+            const h = containerRect.height || window.innerHeight || 400;
+            if (w > 0 && h > 0 && (this.containerWidth !== w || this.containerHeight !== h)) {
+                this.containerWidth = w;
+                this.containerHeight = h;
+                this.originalDiscX = this.containerWidth / 2;
+                this.originalDiscY = this.containerHeight * 0.4;
+                this.discX = this.originalDiscX;
+                this.discY = this.originalDiscY;
+                this.stemBottomX = this.containerWidth / 2;
+                this.stemBottomY = this.containerHeight;
+                this.fixedStemLength = Math.sqrt(
+                    Math.pow(this.originalDiscX - this.stemBottomX, 2) +
+                    Math.pow(this.originalDiscY - this.stemBottomY, 2)
+                );
+                this.maxDiscMovement = this.fixedStemLength * 0.15;
+            } else {
+                this.containerWidth = w;
+                this.containerHeight = h;
+            }
             
             this.stemSVG.setAttribute('viewBox', `0 0 ${this.containerWidth} ${this.containerHeight}`);
             this.stemSVG.setAttribute('width', this.containerWidth);

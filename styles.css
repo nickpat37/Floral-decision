@@ -1025,6 +1025,14 @@ body {
     background: unset;
 }
 
+/* Garden page back button overrides */
+#backButton {
+    background-color: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8.6px);
+    -webkit-backdrop-filter: blur(8.6px);
+    color: rgba(97, 97, 97, 1);
+}
+
 #gardenButton {
     display: flex;
     align-items: center;

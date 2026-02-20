@@ -81,13 +81,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Generate a new flower for the question page
-        setTimeout(() => {
-            questionFlowerInstance = new FlowerComponent({
-                containerId: 'questionFlowerContainer',
-                stemSVGId: 'questionStemSVG',
-                stemPathId: 'questionStemPath'
-            });
-        }, 100);
+        // Wait for layout (page is now active) before creating flower
+        let retries = 0;
+        const maxRetries = 30;
+        const initFlower = () => {
+            const container = document.getElementById('questionFlowerContainer');
+            const rect = container?.getBoundingClientRect();
+            if (container && rect && rect.width > 0 && rect.height > 0) {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            } else if (retries < maxRetries) {
+                retries++;
+                requestAnimationFrame(initFlower);
+            } else {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            }
+        };
+        requestAnimationFrame(() => requestAnimationFrame(initFlower));
     };
 
     // Back to homepage: flower page -> question page
@@ -98,14 +115,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Initialize flower component on question page
+    // Use double requestAnimationFrame to ensure layout is ready (avoids zero-dimension container on slow devices)
     if (questionPage && questionPage.classList.contains('active')) {
-        setTimeout(() => {
-            questionFlowerInstance = new FlowerComponent({
-                containerId: 'questionFlowerContainer',
-                stemSVGId: 'questionStemSVG',
-                stemPathId: 'questionStemPath'
-            });
-        }, 100);
+        let retries = 0;
+        const maxRetries = 30; // ~500ms at 60fps
+        const initHomepageFlower = () => {
+            const container = document.getElementById('questionFlowerContainer');
+            const rect = container?.getBoundingClientRect();
+            if (container && rect && rect.width > 0 && rect.height > 0) {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            } else if (retries < maxRetries) {
+                retries++;
+                requestAnimationFrame(initHomepageFlower);
+            } else {
+                // Fallback: create anyway (FlowerComponent uses viewport fallback for dimensions)
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            }
+        };
+        requestAnimationFrame(() => requestAnimationFrame(initHomepageFlower));
     }
     
     // Show Done button when user starts typing (multi-event for Safari compatibility)
