@@ -577,9 +577,9 @@ body {
 .garden-comment-panel .comment-panel-inner {
     display: flex;
     flex-direction: column;
-    height: min(65vh, 500px);
-    margin: 0 16px;
-    margin-bottom: max(16px, env(safe-area-inset-bottom));
+    height: 400px;
+    margin: 0;
+    margin-bottom: 0;
     background: rgba(255, 255, 255, 0.98);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
@@ -668,7 +668,8 @@ body {
 }
 
 .comment-time {
-    font-size: 13px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
     font-weight: 400;
     color: rgba(0, 0, 0, 0.5);
 }
@@ -823,7 +824,6 @@ body {
     font-weight: 600;
     margin-bottom: 4px;
     color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .garden-header p {
@@ -833,9 +833,19 @@ body {
     color: rgba(255, 255, 255, 0.95);
 }
 
-/* Hide garden header when comment section is open */
+/* Hide garden header and gradual blur when comment section is open */
 .garden-page-container.comment-section-active .garden-header {
     visibility: hidden;
+}
+
+.garden-page-container.comment-section-active .garden-gradual-blur {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-out;
+}
+
+.garden-gradual-blur {
+    transition: opacity 0.3s ease-out;
 }
 
 .garden-flower-wrapper {
