@@ -5,27 +5,45 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+/* iOS Safari: 100vh includes browser chrome, causing overflow. Use fallbacks. */
+html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
 body {
     font-family: 'Kalam', 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
     background: #000000;
     min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    overflow-x: hidden;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
+    height: 100%;
+    width: 100%;
 }
 
 /* Page Management */
+/* iOS: use 100dvh (dynamic) + fallbacks; 100% width avoids 100vw scrollbar overflow */
 .page {
     display: none;
-    width: 100vw;
+    width: 100%;
+    max-width: 100vw;
     height: 100vh;
+    height: 100dvh;
+    height: -webkit-fill-available;
+    min-height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -75,7 +93,7 @@ body {
 .question-header {
     text-align: center;
     color: rgba(255, 255, 255, 0.95);
-    margin-top: 40px;
+    margin-top: max(40px, env(safe-area-inset-top));
     margin-bottom: 20px;
     z-index: 100;
     position: absolute;
@@ -114,7 +132,7 @@ body {
     padding: 20px 12px 8px 12px;
     height: 180px;
     position: absolute;
-    bottom: 30px;
+    bottom: max(30px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     box-shadow: none;
@@ -168,8 +186,9 @@ body {
 
 .done-button {
     position: absolute;
-    top: 75px;
-    left: 436px;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 12px;
     padding: 8px;
     width: 32px;
     height: 32px;
@@ -196,17 +215,20 @@ body {
 
 .done-button:hover {
     background: rgba(180, 130, 180, 0.95);
-    transform: scale(1.05);
+    transform: translateY(-50%) scale(1.05);
 }
 
 .done-button:active {
-    transform: scale(0.98);
+    transform: translateY(-50%) scale(0.98);
 }
 
 /* Interactive Page Styles (Flower Page) */
 .flower-page-container {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
     position: relative;
     background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
     overflow: hidden;
@@ -221,7 +243,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
+    padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left));
     z-index: 400;
     background-color: unset;
     background: unset;
@@ -380,7 +402,7 @@ body {
 
 .instructions {
     position: absolute;
-    bottom: 20px;
+    bottom: max(20px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     color: #ffffff;
@@ -482,7 +504,7 @@ body {
 
 .answer-buttons {
     position: absolute;
-    bottom: 30px;
+    bottom: max(30px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -547,8 +569,10 @@ body {
 
 /* Garden Page Styles */
 .garden-page-container {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     position: relative;
     background: linear-gradient(180deg, #4A90E2 0%, #87CEEB 50%, #B0E0E6 100%);
     overflow: hidden;
@@ -580,7 +604,7 @@ body {
     right: 0;
     text-align: center;
     color: rgba(255, 255, 255, 0.95);
-    padding: 20px;
+    padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left));
     z-index: 100;
     pointer-events: none;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -758,9 +782,14 @@ body {
 }
 
 /* Navigation Button */
-#backButton {
+#backButton,
+.nav-button-back {
     color: rgba(255, 255, 255, 1);
     font-weight: 400;
+    position: absolute;
+    top: max(20px, env(safe-area-inset-top));
+    left: max(20px, env(safe-area-inset-left));
+    z-index: 400;
 }
 
 #backToHomeButton {
