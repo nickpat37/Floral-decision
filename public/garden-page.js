@@ -441,16 +441,18 @@ class GardenPage {
     }
 
     /**
-     * Position the selected flower and its question at the top of the view when comment section opens
+     * Position the selected flower centered with question bubble top 24px from screen top
      */
     centerFlowerAtTop(flowerData) {
         if (!this.canvas || !flowerData) return;
         const canvasX = flowerData.canvasX ?? 0;
         const canvasY = flowerData.canvasY ?? 0;
-        const headerSpace = 80;
-        const targetY = headerSpace + window.innerHeight * 0.2;
+        // Bubble top: wrapper (400px) center at canvasY, bubble container top -120px
+        // => bubble top in canvas = canvasY - 200 - 120 = canvasY - 320
+        const bubbleTopInCanvas = canvasY - 320;
+        const targetBubbleTop = 24; // 24px from top edge of viewport
         this.offsetX = -canvasX + window.innerWidth / 2;
-        this.offsetY = -canvasY + targetY;
+        this.offsetY = -bubbleTopInCanvas + targetBubbleTop;
         const maxOffset = this.canvasSize - window.innerWidth;
         const maxOffsetY = this.canvasSize - window.innerHeight;
         this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
