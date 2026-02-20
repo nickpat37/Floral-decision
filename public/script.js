@@ -2296,6 +2296,18 @@ class FlowerComponent {
                 return;
             }
             
+            // CRITICAL: On desktop, only treat as swipe when mouse button is pressed.
+            // Hovering (mousemove without button) must NOT trigger petal detachment.
+            if (e.buttons === 0) {
+                if (isMouseSwiping || this.isSwiping) {
+                    this.stopSwipeDetach();
+                    this.startDiscSpring();
+                }
+                isMouseSwiping = false;
+                this.isSwiping = false;
+                return;
+            }
+            
             const currentX = e.clientX;
             const currentY = e.clientY;
             
@@ -2306,7 +2318,7 @@ class FlowerComponent {
             // Check if mouse is still in swipe area
             const inSwipeArea = this.isInSwipeArea(currentX, currentY);
             
-            // If swipe is active
+            // If swipe is active (mouse was pressed in mousedown)
             if (isMouseSwiping && this.isSwiping) {
                 if (!inSwipeArea) {
                     // Mouse moved out of swipe radius - stop detachment and return disc to original
@@ -2319,7 +2331,7 @@ class FlowerComponent {
                     this.updateDiscFollowSwipe(currentX, currentY);
                 }
             } else {
-                // Check if mouse moved into swipe area
+                // Check if mouse moved into swipe area while button is pressed (not on hover)
                 if (inSwipeArea) {
                     isMouseSwiping = true;
                     this.isSwiping = true;
