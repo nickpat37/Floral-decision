@@ -166,7 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
             blade.alt = '';
             blade.className = `grass-blade ${sources[idx].cls}`;
             blade.style.left = `calc(50% + ${offsets[i]}px)`;
-            const sizeScale = 0.7 + Math.random() * 0.3;
+            // Height variety: scale from 0.45 to 1.35 (was 0.7–1.0) for more varied blade heights
+            const sizeScale = 0.45 + Math.random() * 0.9;
             blade.style.transform = `translateX(-50%) scale(${sizeScale}) scaleY(0)`;
             blade.style.transitionDelay = `${Math.random() * 0.8}s`;
             blade.dataset.sizeScale = sizeScale;

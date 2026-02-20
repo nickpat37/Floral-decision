@@ -399,7 +399,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 45vh;
+    height: 35vh;
     pointer-events: none;
     z-index: 10;
     overflow: hidden;
@@ -421,7 +421,7 @@ body {
 
 .grass-blade.grass-1,
 .grass-blade.grass-2 {
-    height: 32.5vh;
+    height: 25vh;
     width: auto;
 }
 
