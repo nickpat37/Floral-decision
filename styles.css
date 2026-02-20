@@ -133,7 +133,7 @@ body {
     padding: 20px 12px 8px 12px;
     height: 180px;
     position: absolute;
-    bottom: max(30px, calc(env(safe-area-inset-bottom, 0px) + 30px));
+    bottom: max(30px, calc(max(env(safe-area-inset-bottom, 0px), 50px) + 30px));
     left: 50%;
     transform: translateX(-50%);
     box-shadow: none;
@@ -403,7 +403,7 @@ body {
 
 .instructions {
     position: absolute;
-    bottom: max(20px, env(safe-area-inset-bottom));
+    bottom: max(20px, max(env(safe-area-inset-bottom, 0px), 50px));
     left: 50%;
     transform: translateX(-50%);
     color: #ffffff;
@@ -505,7 +505,7 @@ body {
 
 .answer-buttons {
     position: absolute;
-    bottom: max(30px, env(safe-area-inset-bottom));
+    bottom: max(30px, max(env(safe-area-inset-bottom, 0px), 50px));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -561,7 +561,7 @@ body {
 /* iOS Safari: bottom toolbar (~50–80px) overlays content. Add offset so modal stays visible. */
 @media (max-width: 768px), (hover: none) {
     .question-modal {
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 95px);
+        bottom: calc(max(env(safe-area-inset-bottom, 0px), 50px) + 95px);
     }
 }
 
