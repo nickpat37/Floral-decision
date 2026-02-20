@@ -132,6 +132,9 @@
             <!-- Comment section: separate panel (slides in when flower is tapped) -->
             <div id="gardenCommentSection" class="comment-section garden-comment-panel" aria-hidden="true">
                 <div class="comment-panel-inner">
+                    <div id="gardenCommentDragHandle" class="comment-panel-drag-handle" aria-label="Drag to expand or close">
+                        <div class="comment-panel-drag-handle-bar"></div>
+                    </div>
                     <div class="comment-card">
                         <div id="gardenCommentList" class="comment-list">
                             <div class="comment-item" data-comment-id="sample-1">
@@ -191,6 +194,104 @@
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                                             Like
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-4">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Jordan Kim</span>
+                                        <span class="comment-time">5h ago</span>
+                                    </div>
+                                    <p class="comment-text">Great question! I had the same thought. Thanks for asking.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-5">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sam" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Sam Rivera</span>
+                                        <span class="comment-time">1d ago</span>
+                                    </div>
+                                    <p class="comment-text">This helped me so much! Really appreciate the clarity.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-6">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Casey" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Casey Lee</span>
+                                        <span class="comment-time">1d ago</span>
+                                    </div>
+                                    <p class="comment-text">Interesting perspective. I never thought of it that way before.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-7">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Morgan" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Morgan Taylor</span>
+                                        <span class="comment-time">2d ago</span>
+                                    </div>
+                                    <p class="comment-text">Saved this for later. Exactly what I was looking for.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-8">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Riley" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Riley Park</span>
+                                        <span class="comment-time">3d ago</span>
+                                    </div>
+                                    <p class="comment-text">Could you elaborate more on the second point? That part confused me.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-9">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Quinn" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Quinn Davis</span>
+                                        <span class="comment-time">4d ago</span>
+                                    </div>
+                                    <p class="comment-text">Totally agree! The examples made everything click for me.</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="comment-item" data-comment-id="sample-10">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Taylor" alt="" class="comment-avatar">
+                                <div class="comment-body">
+                                    <div class="comment-meta">
+                                        <span class="comment-author">Taylor Wright</span>
+                                        <span class="comment-time">1w ago</span>
+                                    </div>
+                                    <p class="comment-text">Been waiting for someone to ask this. Great discussion in the comments!</p>
+                                    <div class="comment-actions">
+                                        <button type="button" class="comment-action" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Reply</button>
+                                        <button type="button" class="comment-action" aria-label="Like"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Like</button>
                                     </div>
                                 </div>
                             </div>

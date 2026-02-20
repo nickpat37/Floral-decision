@@ -423,12 +423,21 @@ class GardenPage {
         const section = document.getElementById('gardenCommentSection');
         const container = document.querySelector('.garden-page-container');
         if (!section) return;
+        this.commentModeFlowerRef = flowerRef;
+        const listEl = document.getElementById('gardenCommentList');
+        if (listEl) listEl.scrollTop = 0;
         section.classList.add('visible');
         section.setAttribute('aria-hidden', 'false');
         section.dataset.flowerId = String(flowerId);
         if (container) container.classList.add('comment-section-active');
+        this.commentPanelDragHeight = 400;
         requestAnimationFrame(() => {
             this.centerFlowerAtTop(flowerId, flowerRef);
+            this.updateCommentPanelHeight();
+            this.setupCommentPanelHeightListeners();
+            requestAnimationFrame(() => {
+                this.setupCommentPanelDragHandle();
+            });
         });
     }
 
@@ -436,10 +445,130 @@ class GardenPage {
         const section = document.getElementById('gardenCommentSection');
         const container = document.querySelector('.garden-page-container');
         if (!section) return;
+        this.commentModeFlowerRef = null;
+        this.removeCommentPanelHeightListeners();
+        this.removeCommentPanelDragHandle();
         section.classList.remove('visible');
         section.setAttribute('aria-hidden', 'true');
         delete section.dataset.flowerId;
         if (container) container.classList.remove('comment-section-active');
+    }
+
+    /**
+     * Update comment panel height - expands on scroll until 32px spacing to the question div
+     */
+    updateCommentPanelHeight() {
+        if (this._isDraggingCommentPanel) return;
+        const panelInner = document.querySelector('.garden-comment-panel .comment-panel-inner');
+        const questionEl = this.commentModeFlowerRef?.wrapper?.querySelector('.question-bubble-text');
+        const listEl = document.getElementById('gardenCommentList');
+        if (!panelInner || !listEl) return;
+        let maxHeight = window.innerHeight - 24;
+        if (questionEl) {
+            const questionRect = questionEl.getBoundingClientRect();
+            maxHeight = Math.min(maxHeight, window.innerHeight - questionRect.bottom - 32);
+        }
+        maxHeight = Math.max(200, maxHeight);
+        const baseHeight = Math.max(400, this.commentPanelDragHeight || 400);
+        const scrollTop = listEl.scrollTop;
+        const targetHeight = Math.min(baseHeight + scrollTop, maxHeight);
+        panelInner.style.height = `${targetHeight}px`;
+    }
+
+    setupCommentPanelDragHandle() {
+        this.removeCommentPanelDragHandle();
+        const handle = document.getElementById('gardenCommentDragHandle');
+        const panelInner = document.querySelector('.garden-comment-panel .comment-panel-inner');
+        if (!handle || !panelInner) return;
+
+        let startY = 0, startHeight = 0;
+        const minHeight = 200;
+        const getMaxHeight = () => Math.max(minHeight, window.innerHeight - 24);
+        const closeThreshold = 120;
+
+        const onPointerMove = (e) => {
+            if (e.cancelable) e.preventDefault();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const deltaY = startY - clientY;
+            let newHeight = Math.round(startHeight + deltaY);
+            newHeight = Math.max(minHeight, Math.min(getMaxHeight(), newHeight));
+            this.commentPanelDragHeight = newHeight;
+            panelInner.style.height = `${newHeight}px`;
+        };
+
+        const onPointerUp = () => {
+            this._isDraggingCommentPanel = false;
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchmove', onPointerMove, { capture: true });
+            document.removeEventListener('touchend', onPointerUp, { capture: true });
+            const h = parseFloat(panelInner.style.height) || 400;
+            if (h < closeThreshold) {
+                this.hideGardenCommentSection();
+            } else {
+                this.updateCommentPanelHeight();
+            }
+        };
+
+        const onPointerDown = (e) => {
+            e.stopPropagation();
+            this._isDraggingCommentPanel = true;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            startHeight = parseFloat(panelInner.style.height) || 400;
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchmove', onPointerMove, { passive: false, capture: true });
+            document.addEventListener('touchend', onPointerUp, { once: true, capture: true });
+        };
+
+        const onMouseDown = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPointerDown(e);
+        };
+        const onTouchStart = (e) => {
+            e.stopPropagation();
+            onPointerDown(e);
+        };
+        handle.addEventListener('mousedown', onMouseDown, { capture: true });
+        handle.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+        this._commentDragHandleCleanup = () => {
+            handle.removeEventListener('mousedown', onMouseDown, { capture: true });
+            handle.removeEventListener('touchstart', onTouchStart, { capture: true });
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchmove', onPointerMove, { capture: true });
+            document.removeEventListener('touchend', onPointerUp, { capture: true });
+        };
+    }
+
+    removeCommentPanelDragHandle() {
+        if (typeof this._commentDragHandleCleanup === 'function') {
+            this._commentDragHandleCleanup();
+        }
+        this._commentDragHandleCleanup = null;
+    }
+
+    setupCommentPanelHeightListeners() {
+        this.removeCommentPanelHeightListeners();
+        const listEl = document.getElementById('gardenCommentList');
+        const boundUpdate = () => this.updateCommentPanelHeight();
+        this._commentPanelScrollHandler = boundUpdate;
+        this._commentPanelResizeHandler = () => this.updateCommentPanelHeight();
+        if (listEl) listEl.addEventListener('scroll', boundUpdate);
+        window.addEventListener('resize', this._commentPanelResizeHandler);
+    }
+
+    removeCommentPanelHeightListeners() {
+        const listEl = document.getElementById('gardenCommentList');
+        if (listEl && this._commentPanelScrollHandler) {
+            listEl.removeEventListener('scroll', this._commentPanelScrollHandler);
+        }
+        if (this._commentPanelResizeHandler) {
+            window.removeEventListener('resize', this._commentPanelResizeHandler);
+        }
+        this._commentPanelScrollHandler = null;
+        this._commentPanelResizeHandler = null;
     }
 
     /**
