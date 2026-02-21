@@ -3,6 +3,38 @@
  * Manages the question modal page and navigation to flower page
  */
 
+const QUESTION_TEXT_FONT_SIZE = 20;
+const QUESTION_TEXT_LINE_HEIGHT = 1.35;
+const PETAL_RADIUS = 88;
+const PETAL_HEIGHT = 80;
+
+/**
+ * Truncate text using line-based calculation.
+ * maxAllowedHeight = (lineHeight + lineSpacing) × maxLines.
+ * If content height would equal or exceed container: remove the overflowing line,
+ * truncate the line above with "..." at the last word.
+ */
+function truncateToLastWord(text, containerHeightPx, measureElement) {
+    const t = (text || '').replace(/^"|"$/g, '').trim();
+    if (!t) return { display: '""', truncated: false };
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length === 0 || !measureElement) return { display: `"${t}"`, truncated: false };
+    const lineHeightPx = QUESTION_TEXT_FONT_SIZE * QUESTION_TEXT_LINE_HEIGHT;
+    const lineSpacing = 0;
+    const heightPerLine = lineHeightPx + lineSpacing;
+    const maxLines = Math.max(1, Math.floor(containerHeightPx / heightPerLine));
+    const maxAllowedHeight = maxLines * heightPerLine;
+    let visible = '';
+    for (let i = 0; i < words.length; i++) {
+        const candidate = visible ? visible + ' ' + words[i] : words[i];
+        measureElement.textContent = `"${candidate}"`;
+        if (measureElement.offsetHeight >= maxAllowedHeight) break;
+        visible = candidate;
+    }
+    const truncated = visible.length < t.length;
+    return { display: `"${visible}${truncated ? '...' : ''}"`, truncated };
+}
+
 let questionFlowerInstance;
 let flowerPageInstance;
 let currentQuestion = null; // Store current question for saving
@@ -295,13 +327,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     instance.containerWidth = containerRect.width || window.innerWidth;
                     instance.containerHeight = containerRect.height || window.innerHeight;
                     const containerH = instance.containerHeight;
-                    const discSize = instance.discSize || 120;
                     const questionTop = 59;
-                    const gap = 24;
-                    const discTopAt40 = containerH * 0.4 - discSize / 2;
-                    const discTopAt50 = containerH * 0.5 - discSize / 2;
-                    const maxQuestionHeightAt40 = Math.max(0, discTopAt40 - questionTop - gap);
-                    const maxQuestionHeightAt50 = Math.max(0, discTopAt50 - questionTop - gap);
+                    const gap = 16;
+                    const petalRadius = instance.petalRadius ?? PETAL_RADIUS;
+                    const petalHeight = PETAL_HEIGHT;
+                    const flowerTopExtension = petalRadius + petalHeight / 2;
+                    const discYAt40 = containerH * 0.4;
+                    const discYAt50 = containerH * 0.5;
+                    const flowerTopAt40 = discYAt40 - flowerTopExtension;
+                    const flowerTopAt50 = discYAt50 - flowerTopExtension;
+                    const maxQuestionHeightAt40 = Math.max(0, flowerTopAt40 - questionTop - gap);
+                    const maxQuestionHeightAt50 = Math.max(0, flowerTopAt50 - questionTop - gap);
                     questionDisplay.style.maxHeight = '';
                     const questionNaturalHeight = questionDisplay.scrollHeight;
                     const useLowerPosition = questionNaturalHeight > maxQuestionHeightAt40;
@@ -315,12 +351,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     instance.stemBottomX = instance.containerWidth / 2;
                     instance.stemBottomY = instance.containerHeight;
                     questionDisplay.style.maxHeight = maxQuestionHeight + 'px';
+                    questionDisplay.style.overflow = 'hidden';
                     const questionText = questionDisplay.querySelector('.question-text');
+                    const questionPrefix = questionDisplay.querySelector('.question-prefix');
                     if (questionText) {
-                        const lineHeight = 28;
-                        const maxLines = Math.max(1, Math.floor(maxQuestionHeight / lineHeight));
-                        questionText.style.webkitLineClamp = maxLines;
-                        questionText.style.lineClamp = maxLines;
+                        questionText.style.webkitLineClamp = 'unset';
+                        questionText.style.lineClamp = 'unset';
+                        questionText.style.display = 'block';
+                        questionText.style.overflow = 'visible';
+                        const fullQuestion = questionText.textContent.replace(/^"|"$/g, '').trim();
+                        const prefixHeight = questionPrefix ? questionPrefix.offsetHeight : 22;
+                        const textContainerHeight = Math.max(27, questionDisplay.clientHeight - prefixHeight);
+                        const { display } = truncateToLastWord(fullQuestion, textContainerHeight, questionText);
+                        questionText.textContent = display;
+                        questionText.style.overflow = 'hidden';
                     }
                     const dx = instance.originalDiscX - instance.stemBottomX;
                     const dy = instance.originalDiscY - instance.stemBottomY;
