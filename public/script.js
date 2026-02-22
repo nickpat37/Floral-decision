@@ -1977,7 +1977,10 @@ class FlowerComponent {
             if (!flowerDB.useSupabase && !flowerDB.db) {
                 console.warn('⚠️ Database init completed but neither Supabase nor IndexedDB available');
             }
-            
+
+            // Flowers can be created anonymously (user_id = null) or with account (user_id set)
+            // Comments require sign-in; flowers do not
+
             // Generate a unique ID for this flower
             const flowerId = Date.now().toString();
             

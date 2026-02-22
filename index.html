@@ -89,6 +89,10 @@
 
             <!-- Row 1: Navigation -->
             <div class="flower-page-nav">
+                <button id="flowerPageAuthButton" class="auth-button auth-button-compact" aria-label="Account" title="Sign in to comment">
+                    <img id="flowerPageAuthAvatar" class="auth-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Guest" alt="">
+                    <span id="flowerPageAuthLabel">Sign in</span>
+                </button>
                 <button id="gardenButton" class="nav-button">
                     <img src="/Daisy_icon.png" alt="" class="garden-btn-flower">
                     <img src="/Daisy_icon.png" alt="" class="garden-btn-flower">
@@ -125,8 +129,18 @@
             
             <!-- Header -->
             <div class="garden-header">
-                <h1>The Garden</h1>
-                <p>Browse all questions ever asked</p>
+                <div class="garden-header-content">
+                    <div>
+                        <h1>The Garden</h1>
+                        <p>Browse all questions ever asked</p>
+                    </div>
+                    <div class="auth-header-area">
+                        <button type="button" id="authButton" class="auth-button" aria-label="Account">
+                            <img id="authAvatar" class="auth-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Guest" alt="">
+                            <span id="authLabel">Sign in</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Comment section: separate panel (slides in when flower is tapped) -->
@@ -181,13 +195,52 @@
         </div>
     </div>
 
+    <!-- Auth Modals -->
+    <div id="authModal" class="auth-modal" aria-hidden="true">
+        <div class="auth-modal-backdrop"></div>
+        <div class="auth-modal-content">
+            <button type="button" class="auth-modal-close" aria-label="Close">&times;</button>
+            <div id="authModalSignIn" class="auth-form-panel">
+                <h2>Sign in</h2>
+                <form id="authSignInForm" class="auth-form">
+                    <input type="email" id="authSignInEmail" placeholder="Email" required autocomplete="email">
+                    <input type="password" id="authSignInPassword" placeholder="Password" required autocomplete="current-password">
+                    <div id="authSignInError" class="auth-error" style="display:none;"></div>
+                    <button type="submit" class="auth-submit">Sign in</button>
+                </form>
+                <p class="auth-switch">Don't have an account? <button type="button" id="authShowSignUp" class="auth-link">Sign up</button></p>
+            </div>
+            <div id="authModalSignUp" class="auth-form-panel" style="display:none;">
+                <h2>Sign up</h2>
+                <form id="authSignUpForm" class="auth-form">
+                    <input type="text" id="authSignUpDisplayName" placeholder="Display name" autocomplete="name">
+                    <input type="email" id="authSignUpEmail" placeholder="Email" required autocomplete="email">
+                    <input type="password" id="authSignUpPassword" placeholder="Password (min 6 characters)" required autocomplete="new-password" minlength="6">
+                    <div id="authSignUpError" class="auth-error" style="display:none;"></div>
+                    <button type="submit" class="auth-submit">Sign up</button>
+                </form>
+                <p class="auth-switch">Already have an account? <button type="button" id="authShowSignIn" class="auth-link">Sign in</button></p>
+            </div>
+            <div id="authModalSignedIn" class="auth-form-panel" style="display:none;">
+                <h2>Account</h2>
+                <div class="auth-signed-in-info">
+                    <img id="authSignedInAvatar" class="auth-avatar-large" src="" alt="">
+                    <span id="authSignedInName"></span>
+                </div>
+                <button type="button" id="authSignOutBtn" class="auth-submit auth-sign-out">Sign out</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Supabase Configuration - Load Supabase via script tag for reliability -->
     <script>
         window.SUPABASE_URL = 'https://tjwasramaaxyelufbypw.supabase.co';
         window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqd2FzcmFtYWF4eWVsdWZieXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY5MzEsImV4cCI6MjA4NTY3MjkzMX0.rAfEb7G8jAiOB5mvYXrVqDs1ph7XiwuT_RVodIfuqrQ';
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
+    <script src="/auth.js"></script>
+    <script src="/auth-ui.js"></script>
     <script src="/database.js"></script>
     <script src="/particles.js"></script>
     <script src="/script.js"></script>

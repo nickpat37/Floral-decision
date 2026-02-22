@@ -155,6 +155,9 @@ class FlowerDatabase {
         // Try Supabase first
         if (this.useSupabase && this.supabaseClient) {
             try {
+                const { data: { user } } = await this.supabaseClient.auth.getUser();
+                if (user) flower.user_id = user.id;
+
                 const { data, error } = await this.supabaseClient
                     .from('flowers')
                     .insert([flower])
@@ -583,10 +586,17 @@ class FlowerDatabase {
             const authorName = (commentData.authorName || 'Anonymous').trim() || 'Anonymous';
             const authorAvatarSeed = (commentData.authorAvatarSeed || authorName).trim() || 'Anonymous';
 
+            const { data: { user } } = await this.supabaseClient.auth.getUser();
+            if (!user) {
+                console.error('❌ saveComment: user must be signed in');
+                return null;
+            }
+
             const { data, error } = await this.supabaseClient
                 .from('comments')
                 .insert([{
                     flower_id: flowerIdNum,
+                    user_id: user.id,
                     author_name: authorName,
                     author_avatar_seed: authorAvatarSeed,
                     text: text,

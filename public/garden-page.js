@@ -116,6 +116,10 @@ class GardenPage {
         // Setup comment input (arrow button, auto-expand textarea)
         this.setupCommentInput();
 
+        // Update comment placeholder when auth state changes
+        window.onAuthStateChangedCallbacks = window.onAuthStateChangedCallbacks || [];
+        window.onAuthStateChangedCallbacks.push(() => this.updateCommentInputAuthState());
+
         // Event delegation for comment Like buttons
         this.setupCommentListDelegation();
 
@@ -441,6 +445,7 @@ class GardenPage {
         if (container) container.classList.add('comment-section-active');
         this.commentPanelDragHeight = 400;
         this.loadAndRenderComments(flowerId);
+        this.updateCommentInputAuthState();
         requestAnimationFrame(() => {
             this.centerFlowerAtTop(flowerId, flowerRef);
             this.updateCommentPanelHeight();
@@ -2378,8 +2383,19 @@ class GardenPage {
                 console.warn('Cannot submit comment: no flower selected');
                 return;
             }
-            const authorName = (typeof localStorage !== 'undefined' && localStorage.getItem('commentAuthorName')) || 'Anonymous';
-            const authorAvatarSeed = authorName;
+
+            const auth = typeof window.auth !== 'undefined' ? window.auth : null;
+            const profile = auth ? await auth.getProfile() : null;
+            if (!profile) {
+                if (typeof window.authUI !== 'undefined' && window.authUI.openAuthModal) {
+                    window.authUI.openAuthModal('signIn');
+                } else {
+                    alert('Please sign in to comment');
+                }
+                return;
+            }
+            const authorName = profile.displayName || 'Anonymous';
+            const authorAvatarSeed = profile.avatarSeed || authorName;
 
             // Optimistic: add comment to list immediately so user sees it
             const listEl = document.getElementById('gardenCommentList');
@@ -2525,6 +2541,19 @@ class GardenPage {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    async updateCommentInputAuthState() {
+        const inputEl = document.getElementById('gardenCommentInput');
+        const avatarEl = document.querySelector('.garden-comment-panel .comment-input-avatar');
+        if (!inputEl) return;
+        const auth = typeof window.auth !== 'undefined' ? window.auth : null;
+        const profile = auth ? await auth.getProfile() : null;
+        inputEl.placeholder = profile ? 'Add a comment...' : 'Sign in to add a comment...';
+        if (avatarEl) {
+            const seed = profile ? (profile.avatarSeed || 'You') : 'You';
+            avatarEl.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(seed);
+        }
     }
 
     showQuestionPopup(fullQuestion, flowerData = {}) {

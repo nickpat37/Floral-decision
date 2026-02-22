@@ -249,12 +249,22 @@ body {
     left: 0;
     right: 0;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left));
     z-index: 400;
     background-color: unset;
     background: unset;
+}
+
+.auth-button-compact {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.auth-button-compact .auth-avatar {
+    width: 24px;
+    height: 24px;
 }
 
 .flower-page-nav .nav-button {
@@ -927,12 +937,184 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    text-align: center;
     color: rgba(255, 255, 255, 0.95);
     padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left));
     z-index: 100;
     pointer-events: none;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.garden-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    pointer-events: none;
+}
+
+.garden-header-content > div:first-child {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+}
+
+.auth-header-area {
+    flex-shrink: 0;
+    pointer-events: auto;
+}
+
+.auth-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.auth-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Auth Modal */
+.auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.auth-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.auth-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.auth-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.auth-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: none;
+    font-size: 24px;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.auth-form-panel h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #111;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-form input {
+    padding: 12px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    font-size: 16px;
+    font-family: inherit;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #87CEEB;
+    box-shadow: 0 0 0 2px rgba(135, 206, 235, 0.3);
+}
+
+.auth-error {
+    color: #c0392b;
+    font-size: 14px;
+}
+
+.auth-submit {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #87CEEB, #B0E0E6);
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.auth-sign-out {
+    background: rgba(0, 0, 0, 0.08);
+    margin-top: 12px;
+}
+
+.auth-switch {
+    margin-top: 16px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.auth-link {
+    background: none;
+    border: none;
+    color: #87CEEB;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.auth-signed-in-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.auth-avatar-large {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
 .garden-header h1 {
