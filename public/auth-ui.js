@@ -9,9 +9,6 @@
     const authButton = document.getElementById('authButton');
     const authAvatar = document.getElementById('authAvatar');
     const authLabel = document.getElementById('authLabel');
-    const flowerPageAuthButton = document.getElementById('flowerPageAuthButton');
-    const flowerPageAuthAvatar = document.getElementById('flowerPageAuthAvatar');
-    const flowerPageAuthLabel = document.getElementById('flowerPageAuthLabel');
 
     const signInPanel = document.getElementById('authModalSignIn');
     const signUpPanel = document.getElementById('authModalSignUp');
@@ -52,27 +49,35 @@
         if (!modal) return;
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
+        window.authOpenedFromFlowerPage = false;
     }
 
     function updateAuthButton(profile) {
         const updates = [
-            [authAvatar, authLabel],
-            [flowerPageAuthAvatar, flowerPageAuthLabel]
+            [authAvatar, authLabel, 'Sign in'],
+            [null, document.getElementById('flowerPageAuthLabel'), 'Save your flower?']
         ];
-        updates.forEach(([avatar, label]) => {
-            if (!avatar || !label) return;
+        updates.forEach(([avatar, label, signedOutLabel]) => {
+            if (!label) return;
             if (profile) {
-                avatar.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(profile.avatarSeed || 'user');
-                avatar.alt = profile.displayName;
+                if (avatar) {
+                    avatar.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(profile.avatarSeed || 'user');
+                    avatar.alt = profile.displayName;
+                }
                 label.textContent = profile.displayName;
             } else {
-                avatar.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest';
-                avatar.alt = 'Guest';
-                label.textContent = 'Sign in';
+                if (avatar) {
+                    avatar.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest';
+                    avatar.alt = 'Guest';
+                }
+                label.textContent = signedOutLabel || 'Sign in';
             }
         });
+        const flowerPageAuthBtn = document.getElementById('flowerPageAuthButton');
+        const signInBelowDisc = document.getElementById('signInBelowDisc');
         if (authButton) authButton.title = profile ? 'Account' : 'Sign in to comment';
-        if (flowerPageAuthButton) flowerPageAuthButton.title = profile ? 'Account' : 'Sign in to comment';
+        if (flowerPageAuthBtn) flowerPageAuthBtn.title = profile ? 'Account' : 'Save your flower to the garden';
+        if (signInBelowDisc) signInBelowDisc.style.display = profile ? 'none' : '';
     }
 
     async function refreshAuthUI() {
@@ -89,7 +94,6 @@
         });
     }
     if (authButton) authButton.addEventListener('click', onAuthButtonClick);
-    if (flowerPageAuthButton) flowerPageAuthButton.addEventListener('click', onAuthButtonClick);
 
     if (backdrop || closeBtn) {
         [backdrop, closeBtn].forEach(el => {
@@ -99,6 +103,37 @@
 
     if (showSignUpBtn) showSignUpBtn.addEventListener('click', () => openAuthModal('signUp'));
     if (showSignInBtn) showSignInBtn.addEventListener('click', () => openAuthModal('signIn'));
+
+    function showToast(message) {
+        const existing = document.getElementById('flowerSavedToast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.id = 'flowerSavedToast';
+        toast.className = 'flower-saved-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('visible'));
+        setTimeout(() => {
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+
+    async function onAuthSuccessFromFlowerPage(user) {
+        const flowerId = window.lastCreatedFlowerId;
+        if (flowerId && typeof flowerDB !== 'undefined') {
+            await flowerDB.updateFlowerUserId(flowerId);
+        }
+        closeAuthModal();
+        refreshAuthUI();
+        (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
+        showToast('Your flower has been saved!');
+        setTimeout(() => {
+            if (typeof window.goToGardenWithFlower === 'function') {
+                window.goToGardenWithFlower(flowerId);
+            }
+        }, 2000);
+    }
 
     if (signInForm) {
         signInForm.addEventListener('submit', async (e) => {
@@ -113,9 +148,13 @@
                 signInError.style.display = 'block';
                 return;
             }
-            closeAuthModal();
-            refreshAuthUI();
-            (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
+            if (window.authOpenedFromFlowerPage) {
+                await onAuthSuccessFromFlowerPage(user);
+            } else {
+                closeAuthModal();
+                refreshAuthUI();
+                (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
+            }
         });
     }
 
@@ -133,9 +172,13 @@
                 signUpError.style.display = 'block';
                 return;
             }
-            closeAuthModal();
-            refreshAuthUI();
-            (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
+            if (window.authOpenedFromFlowerPage) {
+                await onAuthSuccessFromFlowerPage(user);
+            } else {
+                closeAuthModal();
+                refreshAuthUI();
+                (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
+            }
         });
     }
 

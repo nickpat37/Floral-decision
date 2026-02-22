@@ -75,6 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (answerButtons) {
             answerButtons.style.display = 'none';
         }
+        const signInBelowDisc = document.getElementById('signInBelowDisc');
+        if (signInBelowDisc) {
+            signInBelowDisc.style.display = 'none';
+        }
         const instructions = document.querySelector('.instructions');
         if (instructions) instructions.style.display = 'block';
 

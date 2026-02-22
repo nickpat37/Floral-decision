@@ -215,6 +215,35 @@ class FlowerDatabase {
     }
 
     /**
+     * Link an existing flower to the current user (after sign-in)
+     * @param {string} flowerId - ID of flower to update
+     * @returns {Promise<boolean>} - true if updated
+     */
+    async updateFlowerUserId(flowerId) {
+        if (!flowerId) return false;
+        if (!this.useSupabase || !this.supabaseClient) return false;
+        try {
+            const { data: { user } } = await this.supabaseClient.auth.getUser();
+            if (!user) return false;
+
+            const flowerIdNum = parseInt(flowerId, 10);
+            if (isNaN(flowerIdNum)) return false;
+
+            const { error } = await this.supabaseClient
+                .from('flowers')
+                .update({ user_id: user.id })
+                .eq('id', flowerIdNum);
+
+            if (error) throw error;
+            console.log('✅ Flower', flowerId, 'linked to user');
+            return true;
+        } catch (error) {
+            console.error('❌ updateFlowerUserId error:', error.message);
+            return false;
+        }
+    }
+
+    /**
      * Get all flowers
      * @param {Object} options - { limit, offset, orderBy }
      * @returns {Promise<Array>}

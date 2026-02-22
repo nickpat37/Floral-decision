@@ -1886,8 +1886,84 @@ class FlowerComponent {
             buttonContainer.appendChild(doneButton);
             buttonContainer.appendChild(tryAnotherButton);
             flowerPageContainer.appendChild(buttonContainer);
+
+            const signInWrapper = document.createElement('div');
+            signInWrapper.id = 'signInBelowDisc';
+            signInWrapper.className = 'sign-in-below-disc';
+            signInWrapper.style.pointerEvents = 'auto';
+            const discBottom = this.discY + (this.discSize || 120) / 2;
+            signInWrapper.style.top = `${discBottom + 24}px`;
+            signInWrapper.style.opacity = '0';
+
+            const signInButton = document.createElement('button');
+            signInButton.id = 'flowerPageAuthButton';
+            signInButton.className = 'auth-button auth-button-compact';
+            signInButton.setAttribute('aria-label', 'Save your flower');
+            signInButton.title = 'Save your flower to the garden';
+            const signInLabel = document.createElement('span');
+            signInLabel.id = 'flowerPageAuthLabel';
+            signInLabel.textContent = 'Save your flower?';
+            signInButton.appendChild(signInLabel);
+            signInButton.addEventListener('click', () => {
+                window.authOpenedFromFlowerPage = true;
+                if (typeof window.authUI !== 'undefined' && window.authUI.openAuthModal) {
+                    window.authUI.openAuthModal('signIn');
+                }
+            });
+
+            if (typeof window.authUI !== 'undefined' && window.authUI.refreshAuthUI) {
+                window.authUI.refreshAuthUI();
+            }
+            window.onAuthStateChangedCallbacks = window.onAuthStateChangedCallbacks || [];
+            window.onAuthStateChangedCallbacks.push(() => {
+                if (typeof window.authUI !== 'undefined' && window.authUI.refreshAuthUI) {
+                    window.authUI.refreshAuthUI();
+                }
+            });
+
+            signInWrapper.appendChild(signInButton);
+            flowerPageContainer.appendChild(signInWrapper);
+            setTimeout(() => {
+                signInWrapper.style.transition = 'opacity 0.5s ease-in';
+                signInWrapper.style.opacity = '1';
+            }, 600);
+        } else {
+            const existingWrapper = document.getElementById('signInBelowDisc');
+            if (existingWrapper) {
+                existingWrapper.style.display = '';
+                existingWrapper.style.visibility = 'visible';
+                existingWrapper.style.top = `${this.discY + (this.discSize || 120) / 2 + 24}px`;
+                existingWrapper.style.opacity = '1';
+            } else {
+                // Create sign-in if missing (e.g. from DOM cleanup)
+                const signInWrapper = document.createElement('div');
+                signInWrapper.id = 'signInBelowDisc';
+                signInWrapper.className = 'sign-in-below-disc';
+                signInWrapper.style.pointerEvents = 'auto';
+                signInWrapper.style.top = `${this.discY + (this.discSize || 120) / 2 + 24}px`;
+                const signInButton = document.createElement('button');
+                signInButton.id = 'flowerPageAuthButton';
+                signInButton.className = 'auth-button auth-button-compact';
+                signInButton.setAttribute('aria-label', 'Save your flower');
+                signInButton.title = 'Save your flower to the garden';
+                const signInLabel = document.createElement('span');
+                signInLabel.id = 'flowerPageAuthLabel';
+                signInLabel.textContent = 'Save your flower?';
+                signInButton.appendChild(signInLabel);
+                signInButton.addEventListener('click', () => {
+                    window.authOpenedFromFlowerPage = true;
+                    if (typeof window.authUI !== 'undefined' && window.authUI.openAuthModal) {
+                        window.authUI.openAuthModal('signIn');
+                    }
+                });
+                signInWrapper.appendChild(signInButton);
+                flowerPageContainer.appendChild(signInWrapper);
+                if (typeof window.authUI !== 'undefined' && window.authUI.refreshAuthUI) {
+                    window.authUI.refreshAuthUI();
+                }
+            }
         }
-        
+
         buttonContainer.style.display = 'flex';
         buttonContainer.style.opacity = '0';
         setTimeout(() => {
@@ -1933,6 +2009,8 @@ class FlowerComponent {
         const finishReset = () => {
             if (answerDisplay) answerDisplay.style.display = 'none';
             if (buttonContainer) buttonContainer.style.display = 'none';
+            const signInBelow = document.getElementById('signInBelowDisc');
+            if (signInBelow) signInBelow.style.display = 'none';
             const instructions = document.querySelector('.instructions');
             if (instructions) instructions.style.display = 'block';
             this.createPetals(true);
@@ -2488,6 +2566,45 @@ document.addEventListener('DOMContentLoaded', () => {
         flowerInstance = new FlowerComponent();
     }
 });
+
+/**
+ * Navigate to garden page and scroll to a specific flower.
+ * Used by Done button and post-auth "Save your flower" flow.
+ */
+window.goToGardenWithFlower = async function(flowerId) {
+    const flowerPage = document.getElementById('flowerPage');
+    const gardenPage = document.getElementById('gardenPage');
+    if (!flowerPage || !gardenPage) return;
+
+    flowerPage.classList.remove('active');
+    gardenPage.classList.add('active');
+
+    const runNavigation = async () => {
+        if (!window.gardenPageInstance && typeof window.initializeGardenPage === 'function') {
+            window.initializeGardenPage();
+        }
+        let attempts = 0;
+        while (attempts < 50) {
+            if (window.gardenPageInstance?.initialized) {
+                try {
+                    await window.gardenPageInstance.refreshGarden();
+                    if (flowerId) {
+                        setTimeout(() => {
+                            window.gardenPageInstance?.scrollToFlower(flowerId);
+                        }, 800);
+                    }
+                } catch (err) {
+                    console.error('🌸 goToGardenWithFlower error:', err);
+                }
+                return;
+            }
+            await new Promise(r => setTimeout(r, 100));
+            attempts++;
+        }
+    };
+
+    setTimeout(runNavigation, 100);
+};
 
 // Prevent default touch behaviors (only for attached elements)
 document.addEventListener('touchmove', (e) => {
