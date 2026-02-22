@@ -761,7 +761,7 @@ body {
 
 .comment-input-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 12px;
     padding: 12px 20px;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -778,21 +778,67 @@ body {
     background: rgba(0, 0, 0, 0.08);
 }
 
+.comment-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+}
+
 .comment-input-field {
     flex: 1;
-    height: 44px;
-    padding: 0 16px;
+    min-height: 44px;
+    max-height: 120px;
+    padding: 10px 44px 10px 16px;
     background: rgba(0, 0, 0, 0.06);
     border: none;
     border-radius: 22px;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
+    line-height: 1.4;
     color: rgba(13, 13, 13, 1);
     outline: none;
+    resize: none;
+    overflow-y: auto;
 }
 
 .comment-input-field::placeholder {
     color: rgba(0, 0, 0, 0.4);
+}
+
+.comment-submit-button {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    padding: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(219, 189, 229, 0.9);
+    color: rgba(13, 13, 13, 1);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.1s ease;
+}
+
+.comment-submit-button svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.comment-submit-button:hover {
+    background: rgba(180, 130, 180, 0.95);
+    transform: scale(1.05);
+}
+
+.comment-submit-button:active {
+    transform: scale(0.98);
 }
 
 /* Responsive adjustments */

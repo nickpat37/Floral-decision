@@ -299,7 +299,15 @@
                     </div>
                     <div class="comment-input-bar">
                         <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" alt="" class="comment-input-avatar">
-                        <input type="text" id="gardenCommentInput" class="comment-input-field" placeholder="Add a comment..." autocomplete="off" aria-label="Add a comment">
+                        <div class="comment-input-wrapper">
+                            <textarea id="gardenCommentInput" class="comment-input-field" placeholder="Add a comment..." autocomplete="off" aria-label="Add a comment" rows="1"></textarea>
+                            <button type="button" id="gardenCommentSubmit" class="comment-submit-button" style="display: none;" aria-label="Submit comment">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                                    <polyline points="5 12 12 5 19 12"></polyline>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

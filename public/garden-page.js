@@ -113,6 +113,9 @@ class GardenPage {
         // Setup question popup (tap truncated question to view full)
         this.setupQuestionPopup();
 
+        // Setup comment input (arrow button, auto-expand textarea)
+        this.setupCommentInput();
+
         // Setup window resize handler to update viewport calculations
         window.addEventListener('resize', () => {
             // Clear throttle to allow immediate update on resize
@@ -2321,6 +2324,63 @@ class GardenPage {
         const backdrop = this.questionPopupEl.querySelector('.garden-question-popup-backdrop');
         if (closeBtn) closeBtn.addEventListener('click', () => this.hideQuestionPopup());
         if (backdrop) backdrop.addEventListener('click', () => this.hideQuestionPopup());
+    }
+
+    setupCommentInput() {
+        const inputEl = document.getElementById('gardenCommentInput');
+        const submitBtn = document.getElementById('gardenCommentSubmit');
+        if (!inputEl || !submitBtn) return;
+
+        const MAX_LINES = 5;
+        const LINE_HEIGHT = 21; // ~15px font * 1.4 line-height
+        const MIN_HEIGHT = 44;
+        const MAX_HEIGHT = LINE_HEIGHT * MAX_LINES;
+
+        const updateSubmitVisibility = () => {
+            requestAnimationFrame(() => {
+                const hasText = inputEl.value.trim().length > 0;
+                submitBtn.style.display = hasText ? 'flex' : 'none';
+            });
+        };
+
+        const autoExpandTextarea = () => {
+            requestAnimationFrame(() => {
+                inputEl.style.height = 'auto';
+                const newHeight = Math.min(Math.max(inputEl.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
+                inputEl.style.height = newHeight + 'px';
+            });
+        };
+
+        inputEl.addEventListener('input', () => {
+            updateSubmitVisibility();
+            autoExpandTextarea();
+        });
+        inputEl.addEventListener('keyup', updateSubmitVisibility);
+        inputEl.addEventListener('paste', () => {
+            setTimeout(() => {
+                updateSubmitVisibility();
+                autoExpandTextarea();
+            }, 0);
+        });
+
+        const submitComment = () => {
+            const text = inputEl.value.trim();
+            if (!text) return;
+            // TODO: persist comment to backend when API is ready
+            console.log('Comment submitted:', text);
+            inputEl.value = '';
+            inputEl.style.height = MIN_HEIGHT + 'px';
+            updateSubmitVisibility();
+        };
+
+        submitBtn.addEventListener('click', submitComment);
+
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitComment();
+            }
+        });
     }
 
     showQuestionPopup(fullQuestion, flowerData = {}) {
