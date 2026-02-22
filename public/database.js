@@ -516,10 +516,135 @@ class FlowerDatabase {
             return [];
         }
     }
+
+    // ========== Comments (Supabase only - no IndexedDB fallback) ==========
+
+    /**
+     * Get comments for a flower
+     * @param {string} flowerId - Flower ID
+     * @param {Object} options - { limit, offset } (optional)
+     * @returns {Promise<Array>} Array of comment objects
+     */
+    async getCommentsByFlowerId(flowerId, options = {}) {
+        if (!flowerId) return [];
+        if (!this.useSupabase || !this.supabaseClient) {
+            console.warn('Comments require Supabase');
+            return [];
+        }
+        try {
+            const { limit = 100, offset = 0 } = options;
+            const flowerIdNum = parseInt(flowerId, 10);
+            if (isNaN(flowerIdNum)) return [];
+
+            const { data, error } = await this.supabaseClient
+                .from('comments')
+                .select('*')
+                .eq('flower_id', flowerIdNum)
+                .is('parent_id', null)
+                .order('created_at', { ascending: true })
+                .range(offset, offset + limit - 1);
+
+            if (error) throw error;
+            return (data || []).map(c => ({
+                id: String(c.id),
+                flowerId: String(c.flower_id),
+                authorName: c.author_name || 'Anonymous',
+                authorAvatarSeed: c.author_avatar_seed || 'Anonymous',
+                text: c.text || '',
+                likeCount: c.like_count || 0,
+                createdAt: c.created_at
+            }));
+        } catch (error) {
+            console.error('❌ getCommentsByFlowerId error:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Save a new comment
+     * @param {Object} commentData - { flowerId, authorName?, authorAvatarSeed?, text }
+     * @returns {Promise<string|null>} Comment ID or null on failure
+     */
+    async saveComment(commentData) {
+        const flowerId = commentData.flowerId;
+        const text = (commentData.text || '').trim();
+        if (!flowerId || !text) {
+            console.error('❌ saveComment: flowerId and text are required');
+            return null;
+        }
+        if (!this.useSupabase || !this.supabaseClient) {
+            console.warn('Comments require Supabase');
+            return null;
+        }
+        try {
+            const flowerIdNum = parseInt(flowerId, 10);
+            if (isNaN(flowerIdNum)) return null;
+
+            const authorName = (commentData.authorName || 'Anonymous').trim() || 'Anonymous';
+            const authorAvatarSeed = (commentData.authorAvatarSeed || authorName).trim() || 'Anonymous';
+
+            const { data, error } = await this.supabaseClient
+                .from('comments')
+                .insert([{
+                    flower_id: flowerIdNum,
+                    author_name: authorName,
+                    author_avatar_seed: authorAvatarSeed,
+                    text: text,
+                    like_count: 0,
+                    parent_id: null
+                }])
+                .select('id')
+                .single();
+
+            if (error) throw error;
+            console.log('✅ Comment saved:', data?.id);
+            return data ? String(data.id) : null;
+        } catch (error) {
+            console.error('❌ saveComment error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Increment like count for a comment
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<number|null>} New like count or null on failure
+     */
+    async incrementCommentLike(commentId) {
+        if (!commentId) return null;
+        if (!this.useSupabase || !this.supabaseClient) {
+            console.warn('Comments require Supabase');
+            return null;
+        }
+        try {
+            const commentIdNum = parseInt(commentId, 10);
+            if (isNaN(commentIdNum)) return null;
+
+            const { data: current } = await this.supabaseClient
+                .from('comments')
+                .select('like_count')
+                .eq('id', commentIdNum)
+                .single();
+
+            const newCount = (current?.like_count ?? 0) + 1;
+
+            const { error } = await this.supabaseClient
+                .from('comments')
+                .update({ like_count: newCount })
+                .eq('id', commentIdNum);
+
+            if (error) throw error;
+            return newCount;
+        } catch (error) {
+            console.error('❌ incrementCommentLike error:', error.message);
+            return null;
+        }
+    }
 }
 
 // Export singleton instance
 const flowerDB = new FlowerDatabase();
+if (typeof window !== 'undefined') window.flowerDB = flowerDB;
 
 // Initialize on load
 flowerDB.init().catch(console.error);

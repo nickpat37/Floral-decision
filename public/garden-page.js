@@ -116,6 +116,9 @@ class GardenPage {
         // Setup comment input (arrow button, auto-expand textarea)
         this.setupCommentInput();
 
+        // Event delegation for comment Like buttons
+        this.setupCommentListDelegation();
+
         // Setup window resize handler to update viewport calculations
         window.addEventListener('resize', () => {
             // Clear throttle to allow immediate update on resize
@@ -437,6 +440,7 @@ class GardenPage {
         section.dataset.flowerId = String(flowerId);
         if (container) container.classList.add('comment-section-active');
         this.commentPanelDragHeight = 400;
+        this.loadAndRenderComments(flowerId);
         requestAnimationFrame(() => {
             this.centerFlowerAtTop(flowerId, flowerRef);
             this.updateCommentPanelHeight();
@@ -2331,6 +2335,8 @@ class GardenPage {
         const submitBtn = document.getElementById('gardenCommentSubmit');
         if (!inputEl || !submitBtn) return;
 
+        const self = this;
+
         const MAX_LINES = 5;
         const LINE_HEIGHT = 21; // ~15px font * 1.4 line-height
         const MIN_HEIGHT = 44;
@@ -2363,14 +2369,63 @@ class GardenPage {
             }, 0);
         });
 
-        const submitComment = () => {
+        const submitComment = async () => {
             const text = inputEl.value.trim();
             if (!text) return;
-            // TODO: persist comment to backend when API is ready
-            console.log('Comment submitted:', text);
+            const section = document.getElementById('gardenCommentSection');
+            const flowerId = section?.dataset?.flowerId;
+            if (!flowerId) {
+                console.warn('Cannot submit comment: no flower selected');
+                return;
+            }
+            const authorName = (typeof localStorage !== 'undefined' && localStorage.getItem('commentAuthorName')) || 'Anonymous';
+            const authorAvatarSeed = authorName;
+
+            // Optimistic: add comment to list immediately so user sees it
+            const listEl = document.getElementById('gardenCommentList');
+            const tempId = 'pending-' + Date.now();
+            const emptyState = listEl?.querySelector('.comment-empty-state');
+            if (emptyState) emptyState.remove();
+            const optimisticComment = {
+                id: tempId,
+                text,
+                authorName,
+                authorAvatarSeed,
+                likeCount: 0,
+                createdAt: new Date().toISOString()
+            };
+            const optimisticHtml = self.renderCommentItemHtml(optimisticComment);
+            if (listEl) listEl.insertAdjacentHTML('beforeend', optimisticHtml);
+
             inputEl.value = '';
             inputEl.style.height = MIN_HEIGHT + 'px';
             updateSubmitVisibility();
+
+            // Persist to Supabase
+            const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
+            if (!db) {
+                console.warn('flowerDB not available - comment not persisted');
+                return;
+            }
+            try {
+                const commentId = await db.saveComment({ flowerId, authorName, authorAvatarSeed, text });
+                const pendingEl = listEl?.querySelector('[data-comment-id="' + tempId + '"]');
+                if (commentId && pendingEl) {
+                    pendingEl.dataset.commentId = commentId;
+                } else if (!commentId && pendingEl) {
+                    pendingEl.remove();
+                    if (listEl && !listEl.querySelector('.comment-item')) {
+                        listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to save comment:', err);
+                const pendingEl = listEl?.querySelector('[data-comment-id="' + tempId + '"]');
+                if (pendingEl) pendingEl.remove();
+                if (listEl && !listEl.querySelector('.comment-item')) {
+                    listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                }
+            }
         };
 
         submitBtn.addEventListener('click', submitComment);
@@ -2381,6 +2436,95 @@ class GardenPage {
                 submitComment();
             }
         });
+    }
+
+    setupCommentListDelegation() {
+        const listEl = document.getElementById('gardenCommentList');
+        if (!listEl) return;
+        listEl.addEventListener('click', async (e) => {
+            const likeBtn = e.target.closest('.comment-action[aria-label="Like"]');
+            if (!likeBtn) return;
+            const item = likeBtn.closest('.comment-item');
+            const commentId = item?.dataset?.commentId;
+            if (!commentId || String(commentId).startsWith('pending-')) return;
+            const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
+            if (db) {
+                const newCount = await db.incrementCommentLike(commentId);
+                if (newCount !== null) {
+                    let countEl = likeBtn.querySelector('.comment-like-count');
+                    if (!countEl) {
+                        countEl = document.createElement('span');
+                        countEl.className = 'comment-like-count';
+                        likeBtn.appendChild(countEl);
+                    }
+                    countEl.textContent = String(newCount);
+                }
+            }
+        });
+    }
+
+    formatCommentTime(createdAt) {
+        if (!createdAt) return '';
+        const date = new Date(createdAt);
+        if (isNaN(date.getTime())) return '';
+        const now = Date.now();
+        const diffMs = now - date.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHr = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHr / 24);
+        const diffWk = Math.floor(diffDay / 7);
+        if (diffSec < 60) return 'just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffHr < 24) return `${diffHr}h ago`;
+        if (diffDay < 7) return `${diffDay}d ago`;
+        if (diffWk < 4) return `${diffWk}w ago`;
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+    }
+
+    renderCommentItemHtml(c) {
+        const avatarBase = 'https://api.dicebear.com/7.x/avataaars/svg?seed=';
+        const timeStr = this.formatCommentTime(c.createdAt);
+        const likeCount = c.likeCount || 0;
+        const likeCountHtml = likeCount > 0 ? ` <span class="comment-like-count">${likeCount}</span>` : '';
+        return `<div class="comment-item" data-comment-id="${this.escapeHtml(String(c.id))}">
+            <img src="${avatarBase}${encodeURIComponent(c.authorAvatarSeed || c.authorName || 'Anonymous')}" alt="" class="comment-avatar">
+            <div class="comment-body">
+                <div class="comment-meta">
+                    <span class="comment-author">${this.escapeHtml(c.authorName)}</span>
+                    <span class="comment-time">${this.escapeHtml(timeStr)}</span>
+                </div>
+                <p class="comment-text">${this.escapeHtml(c.text)}</p>
+                <div class="comment-actions">
+                    <button type="button" class="comment-action" aria-label="Reply">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        Reply
+                    </button>
+                    <button type="button" class="comment-action" aria-label="Like">
+                        <img src="/Daisy_icon.png" alt="" class="comment-like-icon"> Like${likeCountHtml}
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    async loadAndRenderComments(flowerId) {
+        const listEl = document.getElementById('gardenCommentList');
+        if (!listEl) return;
+        const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
+        const comments = db ? await db.getCommentsByFlowerId(flowerId) : [];
+        if (comments.length === 0) {
+            listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+            return;
+        }
+        listEl.innerHTML = comments.map(c => this.renderCommentItemHtml(c)).join('');
+    }
+
+    escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     showQuestionPopup(fullQuestion, flowerData = {}) {

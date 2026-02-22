@@ -677,6 +677,20 @@ body {
     padding: 16px;
 }
 
+.comment-empty-state {
+    padding: 24px;
+    text-align: center;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.comment-like-count {
+    margin-left: 4px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+}
+
 .comment-item {
     display: flex;
     gap: 12px;
