@@ -109,7 +109,10 @@ class GardenPage {
 
         // Setup navigation
         this.setupNavigation();
-        
+
+        // Setup question popup (tap truncated question to view full)
+        this.setupQuestionPopup();
+
         // Setup window resize handler to update viewport calculations
         window.addEventListener('resize', () => {
             // Clear throttle to allow immediate update on resize
@@ -2267,14 +2270,25 @@ class GardenPage {
         const bubble = document.createElement('div');
         bubble.className = 'garden-question-bubble';
 
-        // Format: Two-line format - "I want to know if..." (prefix) + question + flower space
+        const fullQuestion = flowerData.question || '';
+        const truncatedDisplay = this.truncateText(fullQuestion, 80);
+        const isTruncated = fullQuestion.length > 80;
+
         bubble.innerHTML = `
             <div class="question-bubble-prefix">I want to know if...</div>
-            <div class="question-bubble-text">${this.truncateText(flowerData.question || '', 80)}</div>
+            <div class="question-bubble-text">${truncatedDisplay}</div>
             <div class="question-bubble-flower-space"></div>
         `;
 
-        // Add bubble to container
+        const textEl = bubble.querySelector('.question-bubble-text');
+        if (isTruncated && textEl) {
+            textEl.classList.add('is-truncated');
+            textEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showQuestionPopup(fullQuestion, flowerData);
+            });
+        }
+
         bubbleContainer.appendChild(bubble);
 
         // Insert container before the flower container so it appears behind
@@ -2298,6 +2312,53 @@ class GardenPage {
         if (!text) return '';
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
+    }
+
+    setupQuestionPopup() {
+        this.questionPopupEl = document.getElementById('gardenQuestionPopup');
+        if (!this.questionPopupEl) return;
+        const closeBtn = this.questionPopupEl.querySelector('.garden-question-popup-close');
+        const backdrop = this.questionPopupEl.querySelector('.garden-question-popup-backdrop');
+        if (closeBtn) closeBtn.addEventListener('click', () => this.hideQuestionPopup());
+        if (backdrop) backdrop.addEventListener('click', () => this.hideQuestionPopup());
+    }
+
+    showQuestionPopup(fullQuestion, flowerData = {}) {
+        if (!this.questionPopupEl) return;
+        const textEl = this.questionPopupEl.querySelector('.garden-question-popup-text');
+        if (textEl) textEl.textContent = fullQuestion ? `"${fullQuestion}"` : '';
+
+        const creatorNameEl = this.questionPopupEl.querySelector('.garden-question-popup-creator-name');
+        const creatorDateEl = this.questionPopupEl.querySelector('.garden-question-popup-creator-date');
+        const avatarEl = this.questionPopupEl.querySelector('.garden-question-popup-avatar');
+        if (creatorNameEl) creatorNameEl.textContent = flowerData.creatorName || 'Anonymous';
+        if (creatorDateEl) {
+            const dateStr = this.formatCreatedDate(flowerData.timestamp || flowerData.createdAt);
+            creatorDateEl.textContent = dateStr || '—';
+        }
+        if (avatarEl) {
+            const seed = flowerData.creatorName || flowerData.id || flowerData.seed || 'Creator';
+            avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(String(seed))}`;
+            avatarEl.alt = flowerData.creatorName || 'Creator avatar';
+        }
+
+        this.questionPopupEl.classList.add('is-open');
+        this.questionPopupEl.setAttribute('aria-hidden', 'false');
+    }
+
+    formatCreatedDate(timestamp) {
+        if (!timestamp) return '';
+        const date = typeof timestamp === 'number'
+            ? new Date(timestamp)
+            : new Date(timestamp);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    hideQuestionPopup() {
+        if (!this.questionPopupEl) return;
+        this.questionPopupEl.classList.remove('is-open');
+        this.questionPopupEl.setAttribute('aria-hidden', 'true');
     }
 
     /**
