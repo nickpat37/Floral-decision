@@ -1241,8 +1241,8 @@ class GardenPage {
         const viewportHeight = window.innerHeight;
         const viewportPaddingX = viewportWidth * this.viewportPaddingPercent;
         const viewportPaddingY = viewportHeight * this.viewportPaddingPercent;
-        
-        // Calculate visible area bounds
+
+        // Calculate visible area bounds (zoom is visual only - coord system unchanged)
         const viewportLeft = -this.offsetX - viewportPaddingX;
         const viewportTop = -this.offsetY - viewportPaddingY;
         const viewportRight = viewportLeft + viewportWidth + viewportPaddingX * 2;
@@ -2197,7 +2197,9 @@ class GardenPage {
     updateQuestionBubbles() {
         // Remove bubbles for flowers no longer in center (and fade out answer on disc in sync)
         this.questionBubbles = this.questionBubbles.filter(bubble => {
-            if (!this.centerFlowers.includes(bubble.flowerId)) {
+            const bubbleIdStr = String(bubble.flowerId);
+            const inCenter = this.centerFlowers.some(id => String(id) === bubbleIdStr);
+            if (!inCenter) {
                 const flower = this.loadedFlowers.get(bubble.flowerId);
                 if (flower?.wrapper) {
                     const disc = flower.wrapper.querySelector('.flower-disc');
@@ -2218,23 +2220,16 @@ class GardenPage {
 
         // Add bubbles for new center flowers
         this.centerFlowers.forEach((flowerId, index) => {
-            const existingBubble = this.questionBubbles.find(b => b.flowerId === flowerId);
+            const idStr = String(flowerId);
+            const existingBubble = this.questionBubbles.find(b => String(b.flowerId) === idStr);
             if (existingBubble) return;
 
-            const flower = this.loadedFlowers.get(flowerId);
+            const flower = this.loadedFlowers.get(flowerId) || this.loadedFlowers.get(idStr);
             if (!flower) return;
 
-            // For recently created flower: show bubble immediately (wrapper exists from render start)
-            const isNewlyCreated = window.lastCreatedFlowerId && String(flowerId) === String(window.lastCreatedFlowerId);
-            const canShowBubble = isNewlyCreated 
-                ? (flower.wrapper && flower.data?.question)
-                : (flower.rendered && flower.instance && flower.wrapper);
-            if (!canShowBubble) {
-                if (!isNewlyCreated) {
-                    console.warn(`🌸 Skipping bubble creation for flower ${flowerId} - flower not fully rendered`);
-                }
-                return;
-            }
+            // Show bubble when wrapper and question exist (no need to wait for FlowerComponent)
+            const canShowBubble = flower.wrapper && flower.data?.question;
+            if (!canShowBubble) return;
 
             // Verify wrapper is still in DOM
             if (!flower.wrapper.parentNode) {
@@ -2505,16 +2500,21 @@ class GardenPage {
     }
 
     renderCommentItemHtml(c) {
-        const authorName = c.authorName || 'Anonymous';
-        const initial = String(authorName).trim().charAt(0).toUpperCase() || '?';
+        const authorName = (c.authorName || '').trim() || 'Anonymous';
+        const isAnonymous = !authorName || String(authorName).toLowerCase() === 'anonymous';
+        const initial = String(authorName).charAt(0).toUpperCase() || '?';
+        const displayName = isAnonymous ? 'Anonymous' : authorName;
         const timeStr = this.formatCommentTime(c.createdAt);
         const likeCount = c.likeCount || 0;
         const likeCountHtml = likeCount > 0 ? ` <span class="comment-like-count">${likeCount}</span>` : '';
+        const avatarHtml = isAnonymous
+            ? '<div class="comment-avatar avatar-flower-wrap" role="img" aria-label="Anonymous user"><span class="avatar-flower" aria-hidden="true"><img src="/Daisy_icon.png" alt="" width="24" height="24"></span></div>'
+            : `<div class="comment-avatar avatar-initial-wrap" role="img" aria-label="${this.escapeHtml(displayName)} avatar"><span class="avatar-initial">${this.escapeHtml(initial)}</span></div>`;
         return `<div class="comment-item" data-comment-id="${this.escapeHtml(String(c.id))}">
-            <div class="comment-avatar avatar-initial-wrap" role="img" aria-label="${this.escapeHtml(authorName)} avatar"><span class="avatar-initial">${this.escapeHtml(initial)}</span></div>
+            ${avatarHtml}
             <div class="comment-body">
                 <div class="comment-meta">
-                    <span class="comment-author">${this.escapeHtml(c.authorName)}</span>
+                    <span class="comment-author">${this.escapeHtml(displayName)}</span>
                     <span class="comment-time">${this.escapeHtml(timeStr)}</span>
                 </div>
                 <p class="comment-text">${this.escapeHtml(c.text)}</p>
@@ -2583,9 +2583,18 @@ class GardenPage {
             creatorDateEl.textContent = dateStr || '—';
         }
         if (avatarEl) {
-            const seed = flowerData.creatorName || flowerData.id || flowerData.seed || 'Creator';
-            avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(String(seed))}`;
-            avatarEl.alt = flowerData.creatorName || 'Creator avatar';
+            const creatorName = flowerData.creatorName || '';
+            const isAnonymous = !creatorName || String(creatorName).toLowerCase() === 'anonymous';
+            const label = isAnonymous ? 'Anonymous user' : `${creatorName} avatar`;
+            avatarEl.setAttribute('aria-label', label);
+            if (isAnonymous) {
+                avatarEl.className = 'garden-question-popup-avatar avatar-flower-wrap';
+                avatarEl.innerHTML = '<span class="avatar-flower" aria-hidden="true"><img src="/Daisy_icon.png" alt="" width="24" height="24"></span>';
+            } else {
+                const initial = String(creatorName).trim().charAt(0).toUpperCase() || '?';
+                avatarEl.className = 'garden-question-popup-avatar avatar-initial-wrap';
+                avatarEl.innerHTML = `<span class="avatar-initial" aria-hidden="true">${this.escapeHtml(initial)}</span>`;
+            }
         }
 
         this.questionPopupEl.classList.add('is-open');

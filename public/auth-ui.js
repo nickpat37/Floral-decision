@@ -110,7 +110,7 @@
             if (profile) {
                 authButton.innerHTML = `<span class="auth-button-initial">${escapeHtml(initial)}</span>`;
             } else {
-                authButton.innerHTML = `<svg class="auth-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+                authButton.innerHTML = `<span class="auth-button-flower" aria-hidden="true"><img src="/Daisy_icon.png" alt="" width="20" height="20"></span>`;
             }
         }
 

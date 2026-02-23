@@ -785,6 +785,24 @@ body {
     background: rgba(5, 82, 77, 0.8);
 }
 
+.comment-avatar.avatar-flower-wrap {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.comment-avatar.avatar-flower-wrap .avatar-flower {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comment-avatar.avatar-flower-wrap .avatar-flower img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
 .comment-avatar.avatar-initial-wrap .avatar-initial {
     width: 100%;
     height: 100%;
@@ -1025,6 +1043,8 @@ body {
     position: relative;
     overflow: hidden;
     cursor: grab;
+    /* Zoom out 20% so user sees 20% more content */
+    zoom: 0.833;
 }
 
 .garden-container:active {
@@ -1121,6 +1141,20 @@ body {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
     color: rgba(255, 255, 255, 1);
     background: rgba(5, 82, 77, 0.8);
+}
+
+#authButton .auth-button-flower {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#authButton .auth-button-flower img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 /* Auth Modal */
@@ -1635,8 +1669,39 @@ body {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.garden-question-popup-avatar.avatar-initial-wrap {
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.garden-question-popup-avatar.avatar-initial-wrap .avatar-initial {
+    font-size: 18px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+}
+
+.garden-question-popup-avatar.avatar-flower-wrap {
     background: rgba(0, 0, 0, 0.08);
+}
+
+.garden-question-popup-avatar.avatar-flower-wrap .avatar-flower {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.garden-question-popup-avatar.avatar-flower-wrap .avatar-flower img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
 }
 
 .garden-question-popup-creator-meta {
