@@ -506,8 +506,10 @@ class GardenPage {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const deltaY = startY - clientY;
             let newHeight = Math.round(startHeight + deltaY);
-            newHeight = Math.max(minHeight, Math.min(getMaxHeight(), newHeight));
-            this.commentPanelDragHeight = newHeight;
+            /* Allow shrinking below minHeight so user can drag down to close (< closeThreshold). */
+            const dragMin = 40;
+            newHeight = Math.max(dragMin, Math.min(getMaxHeight(), newHeight));
+            this.commentPanelDragHeight = Math.max(minHeight, newHeight);
             panelInner.style.height = `${newHeight}px`;
         };
 
@@ -521,6 +523,8 @@ class GardenPage {
             if (h < closeThreshold) {
                 this.hideGardenCommentSection();
             } else {
+                panelInner.style.minHeight = '';
+                panelInner.style.transition = '';
                 this.updateCommentPanelHeight();
             }
         };
@@ -528,6 +532,8 @@ class GardenPage {
         const onPointerDown = (e) => {
             e.stopPropagation();
             this._isDraggingCommentPanel = true;
+            panelInner.style.minHeight = '0';
+            panelInner.style.transition = 'none';
             startY = e.touches ? e.touches[0].clientY : e.clientY;
             startHeight = parseFloat(panelInner.style.height) || 400;
             document.addEventListener('mousemove', onPointerMove);
