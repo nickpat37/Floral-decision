@@ -27,7 +27,8 @@ class GardenPage {
         this.isolatedSpread = 280; // Flowers with questions
         this.denseSpread = 160;
         this.minFlowerDistance = 140;
-        this.viewportPaddingPercent = 0.03; // 3% buffer to avoid edge flicker; terminate when clearly out
+        this.viewportPaddingPercent = 0.03; // 3% buffer to avoid edge flicker
+        this.flowerOffloadRadius = 220; // Flower visual extent (half of 400px wrapper + petal margin); only offload when completely outside screen
         // Ghost flower: image-only decorative flowers in empty gaps (max 30% overlap with real/ghost)
         this.ghostFlowerDisplaySize = 400; // same as real flower wrapper (400x400)
         this.ghostFlowerRadius = 150; // for overlap math (same visual extent as real flower)
@@ -41,6 +42,10 @@ class GardenPage {
         // Throttling for updateVisibleFlowers to reduce lag
         this.updateVisibleFlowersThrottle = null;
         this.updateVisibleFlowersDelay = 150; // Update every 150ms max (smoother panning)
+
+        // "To the center" button: debounce hide to prevent blinking when near boundary
+        this.toCenterButtonHideTimeout = null;
+        this.toCenterButtonHideDelay = 500;
 
         // Pan/scroll state
         this.offsetX = 0;
@@ -1393,10 +1398,30 @@ class GardenPage {
             }
         }
 
-        // Terminate flowers outside viewport immediately (reload when user returns)
+        // Offload flowers only when completely outside screen (not just center-based). Keep if any part is on screen.
+        const screenLeft = -this.offsetX;
+        const screenTop = -this.offsetY;
+        const screenRight = screenLeft + viewportWidth;
+        const screenBottom = screenTop + viewportHeight;
+        const R = this.flowerOffloadRadius;
         let removedCount = 0;
         this.loadedFlowers.forEach((data, id) => {
-            if (!visibleIds.has(id)) {
+            if (visibleIds.has(id)) return;
+            const flowerData = this.flowers.find(f => String(f.id) === String(id));
+            const cx = flowerData?.canvasX;
+            const cy = flowerData?.canvasY;
+            if (cx == null || cy == null) {
+                this.removeFlower(id);
+                removedCount++;
+                return;
+            }
+            const flowerLeft = cx - R;
+            const flowerRight = cx + R;
+            const flowerTop = cy - R;
+            const flowerBottom = cy + R;
+            const completelyOutside = flowerRight < screenLeft || flowerLeft > screenRight ||
+                flowerBottom < screenTop || flowerTop > screenBottom;
+            if (completelyOutside) {
                 this.removeFlower(id);
                 removedCount++;
             }
@@ -1437,14 +1462,15 @@ class GardenPage {
             console.log(`🌸 Viewport: ${visibleCount} visible, ${this.loadedFlowers.size} rendered (max: ${this.maxRenderedFlowers}), ${renderedCount} loaded, ${removedCount} terminated, ${visibleGhostIds.size} ghost flowers`);
         }
         
-        // Recovery: If viewport doesn't overlap any flowers, re-center to fix offset drift
+        // When no flowers visible but flowers exist: show "To the center" button (debounce hide to prevent blinking)
         if (visibleCount === 0 && this.flowers.length > 0) {
-            console.warn(`🌸 WARNING: No flowers visible but ${this.flowers.length} flowers exist - re-centering on flowers`);
-            const target = this.flowers.find(f => f.canvasX != null && f.canvasY != null) || this.flowers[0];
-            if (target && target.canvasX != null && target.canvasY != null) {
-                this.centerOn(target.canvasX, target.canvasY);
-                return; // centerOn calls updateVisibleFlowers; avoid double update
+            if (this.toCenterButtonHideTimeout) {
+                clearTimeout(this.toCenterButtonHideTimeout);
+                this.toCenterButtonHideTimeout = null;
             }
+            this.showToCenterButton();
+        } else {
+            this.scheduleToCenterButtonHide();
         }
 
         // Update center flower for question bubble
@@ -1723,6 +1749,13 @@ class GardenPage {
                 flowerWrapper.style.transform = originalTransform;
                 flowerRef.instance = flowerInstance;
                 flowerRef.rendered = true; // Mark as successfully rendered
+
+                // Add answer to disc if this flower is in center (question bubble shows but disc may not have existed when updateQuestionBubbles ran)
+                const idStr = String(flowerId);
+                const isCenterFlower = this.centerFlowers.some(id => String(id) === idStr);
+                if (isCenterFlower && flowerDataCopy.answer && discElement) {
+                    this.addAnswerToDisc(discElement, flowerDataCopy.answer, flowerDataCopy.discSize || 120);
+                }
 
                 // Animate growing in
                 requestAnimationFrame(() => {
@@ -2218,13 +2251,18 @@ class GardenPage {
             return true;
         });
 
-        // Add bubbles for new center flowers
+        // Add bubbles for new center flowers; ensure answer on disc for all center flowers (disc may not have existed when bubble was first created)
         this.centerFlowers.forEach((flowerId, index) => {
             const idStr = String(flowerId);
-            const existingBubble = this.questionBubbles.find(b => String(b.flowerId) === idStr);
-            if (existingBubble) return;
-
             const flower = this.loadedFlowers.get(flowerId) || this.loadedFlowers.get(idStr);
+            const existingBubble = this.questionBubbles.find(b => String(b.flowerId) === idStr);
+            if (existingBubble) {
+                if (flower?.data?.answer) {
+                    const disc = flower.wrapper?.querySelector('.flower-disc');
+                    if (disc) this.addAnswerToDisc(disc, flower.data.answer, flower.data.discSize || 120);
+                }
+                return;
+            }
             if (!flower) return;
 
             // Show bubble when wrapper and question exist (no need to wait for FlowerComponent)
@@ -2432,7 +2470,7 @@ class GardenPage {
                 } else if (!commentId && pendingEl) {
                     pendingEl.remove();
                     if (listEl && !listEl.querySelector('.comment-item')) {
-                        listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                        listEl.innerHTML = '<div class="comment-empty-state"><img src="/Daisy_empty.png" alt="" class="comment-empty-image"><p>No comments yet. Be the first to comment!</p></div>';
                     }
                 }
             } catch (err) {
@@ -2440,7 +2478,7 @@ class GardenPage {
                 const pendingEl = listEl?.querySelector('[data-comment-id="' + tempId + '"]');
                 if (pendingEl) pendingEl.remove();
                 if (listEl && !listEl.querySelector('.comment-item')) {
-                    listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                    listEl.innerHTML = '<div class="comment-empty-state"><img src="/Daisy_empty.png" alt="" class="comment-empty-image"><p>No comments yet. Be the first to comment!</p></div>';
                 }
             }
         };
@@ -2537,7 +2575,7 @@ class GardenPage {
         const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
         const comments = db ? await db.getCommentsByFlowerId(flowerId) : [];
         if (comments.length === 0) {
-            listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+            listEl.innerHTML = '<div class="comment-empty-state"><img src="/Daisy_empty.png" alt="" class="comment-empty-image"><p>No comments yet. Be the first to comment!</p></div>';
             return;
         }
         listEl.innerHTML = comments.map(c => this.renderCommentItemHtml(c)).join('');
@@ -2680,6 +2718,32 @@ class GardenPage {
         }
     }
 
+    showToCenterButton() {
+        const btn = document.getElementById('gardenToCenterButton');
+        if (!btn) return;
+        btn.style.display = 'block';
+        btn.setAttribute('aria-hidden', 'false');
+    }
+
+    scheduleToCenterButtonHide() {
+        if (this.toCenterButtonHideTimeout) return; // Already scheduled
+        this.toCenterButtonHideTimeout = setTimeout(() => {
+            this.toCenterButtonHideTimeout = null;
+            this.hideToCenterButton();
+        }, this.toCenterButtonHideDelay);
+    }
+
+    hideToCenterButton() {
+        if (this.toCenterButtonHideTimeout) {
+            clearTimeout(this.toCenterButtonHideTimeout);
+            this.toCenterButtonHideTimeout = null;
+        }
+        const btn = document.getElementById('gardenToCenterButton');
+        if (!btn) return;
+        btn.style.display = 'none';
+        btn.setAttribute('aria-hidden', 'true');
+    }
+
     /**
      * Setup navigation buttons
      */
@@ -2728,6 +2792,17 @@ class GardenPage {
                 if (questionPage) questionPage.classList.add('active');
                 if (typeof window.goToHomepageWithReset === 'function') {
                     window.goToHomepageWithReset();
+                }
+            });
+        }
+
+        const toCenterButton = document.getElementById('gardenToCenterButton');
+        if (toCenterButton) {
+            toCenterButton.addEventListener('click', () => {
+                const target = this.flowers.find(f => f.canvasX != null && f.canvasY != null) || this.flowers[0];
+                if (target && target.canvasX != null && target.canvasY != null) {
+                    this.centerOn(target.canvasX, target.canvasY);
+                    this.hideToCenterButton();
                 }
             });
         }

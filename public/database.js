@@ -29,11 +29,12 @@ class FlowerDatabase {
         
         // Check if Supabase is available and configured
         if (typeof window.SUPABASE_URL === 'undefined' || !window.SUPABASE_URL) {
+            console.warn('⚠️ Supabase URL not set. Add window.SUPABASE_URL in index.html (or head).');
             return false;
         }
         
         if (typeof window.SUPABASE_ANON_KEY === 'undefined' || !window.SUPABASE_ANON_KEY) {
-            console.log('Supabase anon key not set, using IndexedDB');
+            console.warn('⚠️ Supabase anon key not set. Add window.SUPABASE_ANON_KEY in index.html (or head).');
             return false;
         }
         
@@ -152,26 +153,39 @@ class FlowerDatabase {
             created_at: flowerData.createdAt || new Date().toISOString()
         };
 
-        // Try Supabase first
+        // Try Supabase first (with retry for deployment/network reliability)
         if (this.useSupabase && this.supabaseClient) {
-            try {
-                const { data: { user } } = await this.supabaseClient.auth.getUser();
-                if (user) flower.user_id = user.id;
+            const { data: { user } } = await this.supabaseClient.auth.getUser();
+            if (user) flower.user_id = user.id;
 
-                const { data, error } = await this.supabaseClient
-                    .from('flowers')
-                    .insert([flower])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                console.log('✅ Flower saved to Supabase:', data.id, '- question:', question.length > 40 ? question.substring(0, 40) + '...' : question);
-                return data.id.toString();
-            } catch (error) {
-                console.error('❌ Supabase save error:', error.message);
-                if (error.details) console.error('❌ Supabase details:', error.details);
-                if (error.hint) console.error('❌ Supabase hint:', error.hint);
-                // Fall through to IndexedDB fallback
+            let omitUserIdOnRetry = false;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    let insertPayload = { ...flower };
+                    if (attempt === 2 && omitUserIdOnRetry) delete insertPayload.user_id;
+
+                    const { data, error } = await this.supabaseClient
+                        .from('flowers')
+                        .insert([insertPayload])
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    console.log('✅ Flower saved to Supabase:', data.id, '- question:', question.length > 40 ? question.substring(0, 40) + '...' : question);
+                    return data.id.toString();
+                } catch (error) {
+                    console.error(`❌ Supabase save error (attempt ${attempt}):`, error.message);
+                    if (error.details) console.error('❌ Supabase details:', error.details);
+                    if (error.hint) console.error('❌ Supabase hint:', error.hint);
+                    if (error.code) console.error('❌ Supabase code:', error.code);
+                    if (attempt === 1) {
+                        if (error.code === '42703' || (error.message && String(error.message).includes('user_id'))) {
+                            omitUserIdOnRetry = true;
+                        }
+                        continue;
+                    }
+                    break;
+                }
             }
         }
 
@@ -405,33 +419,36 @@ class FlowerDatabase {
         // Try Supabase first
         if (this.useSupabase && this.supabaseClient) {
             try {
+                const idNum = !isNaN(parseInt(id, 10)) ? parseInt(id, 10) : id;
                 const { data, error } = await this.supabaseClient
                     .from('flowers')
                     .select('*')
-                    .eq('id', id)
+                    .eq('id', idNum)
                     .maybeSingle();
                 
                 if (error) throw error;
-                if (!data) return null;
-                
-                // Convert Supabase format to app format
-                // Clamp numPetals to valid range: 12-30
-                const requestedPetals = data.num_petals || 20;
-                const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
-                if (requestedPetals !== numPetals) {
-                    console.warn(`🌸 Flower ${data.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                if (!data) {
+                    // Not in Supabase - fall through to IndexedDB (flower may have been saved there)
+                    if (!this.useIndexedDB || !this.db) return null;
+                } else {
+                    // Convert Supabase format to app format
+                    const requestedPetals = data.num_petals || 20;
+                    const numPetals = Math.max(12, Math.min(30, Math.floor(requestedPetals)));
+                    if (requestedPetals !== numPetals) {
+                        console.warn(`🌸 Flower ${data.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
+                    }
+                    return {
+                        id: data.id.toString(),
+                        question: data.question,
+                        answer: data.answer,
+                        numPetals: numPetals,
+                        petalRadius: data.petal_radius,
+                        discSize: data.disc_size,
+                        seed: data.seed,
+                        timestamp: data.timestamp,
+                        createdAt: data.created_at
+                    };
                 }
-                return {
-                    id: data.id.toString(),
-                    question: data.question,
-                    answer: data.answer,
-                    numPetals: numPetals,
-                    petalRadius: data.petal_radius,
-                    discSize: data.disc_size,
-                    seed: data.seed,
-                    timestamp: data.timestamp,
-                    createdAt: data.created_at
-                };
             } catch (error) {
                 console.error('Supabase get error, falling back to IndexedDB:', error);
                 // Fall through to IndexedDB fallback

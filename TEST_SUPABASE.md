@@ -53,6 +53,14 @@ Your Supabase integration is now configured. Here's how to test it:
 - Check your Supabase URL and anon key
 - Verify the table exists and has correct schema
 
+### Deployed site: flowers don't save to Supabase
+- **Config timing**: Supabase config is now in `<head>` so it loads before any scripts
+- **Preconnect**: Added to speed up connection to Supabase
+- **Retry**: Save now retries once on failure; if `user_id` column is missing, retries without it
+- **Check console**: Look for `❌ Supabase save error` and the error code/message
+- **CORS**: Supabase allows all origins for REST API; if you see CORS errors, check your deployment platform
+- **RLS**: Ensure flowers table has policy "Allow insert flowers (anonymous or authenticated)" WITH CHECK (true)
+
 ## Expected Console Output
 
 When everything works, you should see:
