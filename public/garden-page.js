@@ -1750,6 +1750,13 @@ class GardenPage {
                 flowerRef.instance = flowerInstance;
                 flowerRef.rendered = true; // Mark as successfully rendered
 
+                // Add answer to disc if this flower is in center (question bubble shows but disc may not have existed when updateQuestionBubbles ran)
+                const idStr = String(flowerId);
+                const isCenterFlower = this.centerFlowers.some(id => String(id) === idStr);
+                if (isCenterFlower && flowerDataCopy.answer && discElement) {
+                    this.addAnswerToDisc(discElement, flowerDataCopy.answer, flowerDataCopy.discSize || 120);
+                }
+
                 // Animate growing in
                 requestAnimationFrame(() => {
                     flowerWrapper.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
@@ -2244,13 +2251,18 @@ class GardenPage {
             return true;
         });
 
-        // Add bubbles for new center flowers
+        // Add bubbles for new center flowers; ensure answer on disc for all center flowers (disc may not have existed when bubble was first created)
         this.centerFlowers.forEach((flowerId, index) => {
             const idStr = String(flowerId);
-            const existingBubble = this.questionBubbles.find(b => String(b.flowerId) === idStr);
-            if (existingBubble) return;
-
             const flower = this.loadedFlowers.get(flowerId) || this.loadedFlowers.get(idStr);
+            const existingBubble = this.questionBubbles.find(b => String(b.flowerId) === idStr);
+            if (existingBubble) {
+                if (flower?.data?.answer) {
+                    const disc = flower.wrapper?.querySelector('.flower-disc');
+                    if (disc) this.addAnswerToDisc(disc, flower.data.answer, flower.data.discSize || 120);
+                }
+                return;
+            }
             if (!flower) return;
 
             // Show bubble when wrapper and question exist (no need to wait for FlowerComponent)
@@ -2458,7 +2470,7 @@ class GardenPage {
                 } else if (!commentId && pendingEl) {
                     pendingEl.remove();
                     if (listEl && !listEl.querySelector('.comment-item')) {
-                        listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                        listEl.innerHTML = '<div class="comment-empty-state"><img src="/Daisy_empty.png" alt="" class="comment-empty-image"><p>No comments yet. Be the first to comment!</p></div>';
                     }
                 }
             } catch (err) {
@@ -2466,7 +2478,7 @@ class GardenPage {
                 const pendingEl = listEl?.querySelector('[data-comment-id="' + tempId + '"]');
                 if (pendingEl) pendingEl.remove();
                 if (listEl && !listEl.querySelector('.comment-item')) {
-                    listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                    listEl.innerHTML = '<div class="comment-empty-state"><img src="/Daisy_empty.png" alt="" class="comment-empty-image"><p>No comments yet. Be the first to comment!</p></div>';
                 }
             }
         };
@@ -2563,7 +2575,7 @@ class GardenPage {
         const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
         const comments = db ? await db.getCommentsByFlowerId(flowerId) : [];
         if (comments.length === 0) {
-            listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+            listEl.innerHTML = '<div class="comment-empty-state"><img src="/Daisy_empty.png" alt="" class="comment-empty-image"><p>No comments yet. Be the first to comment!</p></div>';
             return;
         }
         listEl.innerHTML = comments.map(c => this.renderCommentItemHtml(c)).join('');
