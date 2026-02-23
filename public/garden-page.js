@@ -23,6 +23,7 @@ class GardenPage {
 
         // Canvas settings
         this.canvasSize = 10000; // Virtual canvas size (10000x10000)
+        this.viewportScale = 5 / 6; // 0.833 - zoom out 20% to see 20% more content
         this.flowerSpread = 300;
         this.isolatedSpread = 280; // Flowers with questions
         this.denseSpread = 160;
@@ -98,6 +99,7 @@ class GardenPage {
         this.canvas.style.top = '0';
         this.canvas.style.left = '0';
         this.container.appendChild(this.canvas);
+        this.applyCanvasTransform();
 
         // Wait for database to be ready
         if (typeof flowerDB !== 'undefined') {
@@ -371,6 +373,12 @@ class GardenPage {
         setTimeout(() => this.checkAndLazyLoad(), 100);
     }
 
+    applyCanvasTransform() {
+        if (!this.canvas) return;
+        this.canvas.style.transformOrigin = '0 0';
+        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px) scale(${this.viewportScale})`;
+    }
+
     /**
      * Pan the canvas by delta amounts
      */
@@ -378,14 +386,14 @@ class GardenPage {
         this.offsetX += deltaX;
         this.offsetY += deltaY;
 
-        // Clamp to canvas bounds
-        const maxOffset = this.canvasSize - window.innerWidth;
-        const maxOffsetY = this.canvasSize - window.innerHeight;
-        this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
-        this.offsetY = Math.max(-maxOffsetY, Math.min(0, this.offsetY));
+        // Clamp to canvas bounds (account for scale)
+        const maxOffset = this.canvasSize * this.viewportScale - window.innerWidth;
+        const maxOffsetY = this.canvasSize * this.viewportScale - window.innerHeight;
+        this.offsetX = Math.max(-Math.max(0, maxOffset), Math.min(0, this.offsetX));
+        this.offsetY = Math.max(-Math.max(0, maxOffsetY), Math.min(0, this.offsetY));
 
-        // Apply transform
-        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+        // Apply transform (scale from top-left so pan works correctly)
+        this.applyCanvasTransform();
 
         // Update center flower immediately during pan for faster bubble updates
         this.updateCenterFlower();
@@ -408,8 +416,8 @@ class GardenPage {
         const rect = this.container.getBoundingClientRect();
         const containerX = clientX - rect.left;
         const containerY = clientY - rect.top;
-        const canvasX = containerX - this.offsetX;
-        const canvasY = containerY - this.offsetY;
+        const canvasX = (containerX - this.offsetX) / this.viewportScale;
+        const canvasY = (containerY - this.offsetY) / this.viewportScale;
 
         // Hit area: wrapper uses translate(-50%,-50%) so center is at (canvasX, canvasY)
         const hitRadius = 120;
@@ -612,14 +620,14 @@ class GardenPage {
             offsetY = this.offsetY + (targetBubbleTop - currentTop);
         } else {
             const bubbleTopInCanvas = canvasY - 320;
-            offsetY = targetBubbleTop - rect.top - bubbleTopInCanvas;
+            offsetY = targetBubbleTop - rect.top - bubbleTopInCanvas * this.viewportScale;
         }
-        this.offsetX = rect.width / 2 - canvasX;
-        const maxOffset = this.canvasSize - window.innerWidth;
-        const maxOffsetY = this.canvasSize - window.innerHeight;
-        this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
-        this.offsetY = Math.max(-maxOffsetY, Math.min(0, offsetY));
-        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+        this.offsetX = rect.width / 2 - canvasX * this.viewportScale;
+        const maxOffset = this.canvasSize * this.viewportScale - window.innerWidth;
+        const maxOffsetY = this.canvasSize * this.viewportScale - window.innerHeight;
+        this.offsetX = Math.max(-Math.max(0, maxOffset), Math.min(0, this.offsetX));
+        this.offsetY = Math.max(-Math.max(0, maxOffsetY), Math.min(0, offsetY));
+        this.applyCanvasTransform();
         if (this.flowers.length > 0) {
             if (this.updateVisibleFlowersThrottle) {
                 clearTimeout(this.updateVisibleFlowersThrottle);
@@ -664,18 +672,18 @@ class GardenPage {
 
         console.log(`🌸 centerOn called with (${x}, ${y}), current offset: (${this.offsetX}, ${this.offsetY})`);
 
-        this.offsetX = -x + window.innerWidth / 2;
-        this.offsetY = -y + window.innerHeight / 2;
+        this.offsetX = window.innerWidth / 2 - x * this.viewportScale;
+        this.offsetY = window.innerHeight / 2 - y * this.viewportScale;
 
-        // Clamp
-        const maxOffset = this.canvasSize - window.innerWidth;
-        const maxOffsetY = this.canvasSize - window.innerHeight;
-        this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
-        this.offsetY = Math.max(-maxOffsetY, Math.min(0, this.offsetY));
+        // Clamp (account for scale)
+        const maxOffset = this.canvasSize * this.viewportScale - window.innerWidth;
+        const maxOffsetY = this.canvasSize * this.viewportScale - window.innerHeight;
+        this.offsetX = Math.max(-Math.max(0, maxOffset), Math.min(0, this.offsetX));
+        this.offsetY = Math.max(-Math.max(0, maxOffsetY), Math.min(0, this.offsetY));
 
         console.log(`🌸 After clamp: offsetX=${this.offsetX.toFixed(0)}, offsetY=${this.offsetY.toFixed(0)}`);
 
-        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+        this.applyCanvasTransform();
         
         // Only update visible flowers if we have flowers loaded
         // Use immediate update (not throttled) when centering to ensure flowers appear
@@ -1239,14 +1247,14 @@ class GardenPage {
 
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const viewportPaddingX = viewportWidth * this.viewportPaddingPercent;
-        const viewportPaddingY = viewportHeight * this.viewportPaddingPercent;
-        
-        // Calculate visible area bounds
-        const viewportLeft = -this.offsetX - viewportPaddingX;
-        const viewportTop = -this.offsetY - viewportPaddingY;
-        const viewportRight = viewportLeft + viewportWidth + viewportPaddingX * 2;
-        const viewportBottom = viewportTop + viewportHeight + viewportPaddingY * 2;
+        const viewportPaddingX = (viewportWidth * this.viewportPaddingPercent) / this.viewportScale;
+        const viewportPaddingY = (viewportHeight * this.viewportPaddingPercent) / this.viewportScale;
+
+        // Calculate visible area bounds in canvas coordinates (account for scale)
+        const viewportLeft = (-this.offsetX / this.viewportScale) - viewportPaddingX;
+        const viewportTop = (-this.offsetY / this.viewportScale) - viewportPaddingY;
+        const viewportRight = viewportLeft + viewportWidth / this.viewportScale + viewportPaddingX * 2;
+        const viewportBottom = viewportTop + viewportHeight / this.viewportScale + viewportPaddingY * 2;
 
         // Debug: Log viewport info on first call or if no flowers visible
         if (this.loadedFlowers.size === 0 || this.flowers.length > 0) {
@@ -1261,9 +1269,9 @@ class GardenPage {
         const visibleIds = new Set();
         let visibleCount = 0;
         
-        // Sort flowers by distance from viewport center for priority rendering
-        const viewportCenterX = -this.offsetX + viewportWidth / 2;
-        const viewportCenterY = -this.offsetY + viewportHeight / 2;
+        // Sort flowers by distance from viewport center for priority rendering (canvas coords)
+        const viewportCenterX = (-this.offsetX + viewportWidth / 2) / this.viewportScale;
+        const viewportCenterY = (-this.offsetY + viewportHeight / 2) / this.viewportScale;
         
         const flowersWithDistance = this.flowers
             .filter(flower => flower.canvasX !== undefined && flower.canvasY !== undefined)
@@ -2153,8 +2161,8 @@ class GardenPage {
      * Update which flowers are near the center and show their questions
      */
     updateCenterFlower() {
-        const centerX = -this.offsetX + window.innerWidth / 2;
-        const centerY = -this.offsetY + window.innerHeight / 2;
+        const centerX = (-this.offsetX + window.innerWidth / 2) / this.viewportScale;
+        const centerY = (-this.offsetY + window.innerHeight / 2) / this.viewportScale;
 
         // Find flowers near center (within 500px radius - increased for better sensitivity)
         const nearbyFlowers = [];
