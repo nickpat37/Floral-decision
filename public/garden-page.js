@@ -2499,12 +2499,13 @@ class GardenPage {
     }
 
     renderCommentItemHtml(c) {
-        const avatarBase = 'https://api.dicebear.com/7.x/avataaars/svg?seed=';
+        const authorName = c.authorName || 'Anonymous';
+        const initial = String(authorName).trim().charAt(0).toUpperCase() || '?';
         const timeStr = this.formatCommentTime(c.createdAt);
         const likeCount = c.likeCount || 0;
         const likeCountHtml = likeCount > 0 ? ` <span class="comment-like-count">${likeCount}</span>` : '';
         return `<div class="comment-item" data-comment-id="${this.escapeHtml(String(c.id))}">
-            <img src="${avatarBase}${encodeURIComponent(c.authorAvatarSeed || c.authorName || 'Anonymous')}" alt="" class="comment-avatar">
+            <div class="comment-avatar avatar-initial-wrap" role="img" aria-label="${this.escapeHtml(authorName)} avatar"><span class="avatar-initial">${this.escapeHtml(initial)}</span></div>
             <div class="comment-body">
                 <div class="comment-meta">
                     <span class="comment-author">${this.escapeHtml(c.authorName)}</span>
@@ -2545,14 +2546,20 @@ class GardenPage {
 
     async updateCommentInputAuthState() {
         const inputEl = document.getElementById('gardenCommentInput');
-        const avatarEl = document.querySelector('.garden-comment-panel .comment-input-avatar');
+        const avatarEl = document.getElementById('gardenCommentInputAvatar') || document.querySelector('.garden-comment-panel .comment-input-avatar');
         if (!inputEl) return;
         const auth = typeof window.auth !== 'undefined' ? window.auth : null;
         const profile = auth ? await auth.getProfile() : null;
         inputEl.placeholder = profile ? 'Add a comment...' : 'Sign in to add a comment...';
         if (avatarEl) {
-            const seed = profile ? (profile.avatarSeed || 'You') : 'You';
-            avatarEl.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(seed);
+            if (profile && profile.displayName) {
+                const initial = String(profile.displayName).trim().charAt(0).toUpperCase() || '?';
+                avatarEl.innerHTML = `<span class="avatar-initial" aria-hidden="true">${this.escapeHtml(initial)}</span>`;
+                avatarEl.setAttribute('aria-label', `${profile.displayName} avatar`);
+            } else {
+                avatarEl.innerHTML = '<span class="avatar-flower" aria-hidden="true"><img src="/Daisy_icon.png" alt="" width="24" height="24"></span>';
+                avatarEl.setAttribute('aria-label', 'Anonymous user');
+            }
         }
     }
 

@@ -145,8 +145,10 @@
                     </div>
                     <div class="auth-header-area">
                         <button type="button" id="authButton" class="auth-button" aria-label="Account">
-                            <img id="authAvatar" class="auth-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Guest" alt="">
-                            <span id="authLabel">Sign in</span>
+                            <svg class="auth-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -164,7 +166,11 @@
                         </div>
                     </div>
                     <div class="comment-input-bar">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" alt="" class="comment-input-avatar">
+                        <div class="comment-input-avatar" id="gardenCommentInputAvatar" role="img" aria-label="Your avatar">
+                            <span class="avatar-flower" aria-hidden="true">
+                                <img src="/Daisy_icon.png" alt="" width="24" height="24">
+                            </span>
+                        </div>
                         <div class="comment-input-wrapper">
                             <textarea id="gardenCommentInput" class="comment-input-field" placeholder="Add a comment..." autocomplete="off" aria-label="Add a comment" rows="1"></textarea>
                             <button type="button" id="gardenCommentSubmit" class="comment-submit-button" style="display: none;" aria-label="Submit comment">
@@ -241,10 +247,10 @@
             <div id="authModalSignedIn" class="auth-form-panel" style="display:none;">
                 <h2>Account</h2>
                 <div class="auth-signed-in-info">
-                    <img id="authSignedInAvatar" class="auth-avatar-large" src="" alt="">
+                    <div id="authSignedInAvatar" class="auth-avatar-large auth-avatar-initial-wrap" role="img" aria-label="Your avatar"></div>
                     <span id="authSignedInName"></span>
+                    <button type="button" id="authSignOutBtn" class="auth-submit auth-sign-out">Sign out</button>
                 </div>
-                <button type="button" id="authSignOutBtn" class="auth-submit auth-sign-out">Sign out</button>
             </div>
         </div>
     </div>

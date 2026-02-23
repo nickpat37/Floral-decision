@@ -52,7 +52,9 @@
             signedInPanel.style.display = 'block';
             const p = await window.auth.getProfile();
             if (p) {
-                signedInAvatar.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(p.avatarSeed || 'user');
+                const initial = String(p.displayName || '').trim().charAt(0).toUpperCase() || '?';
+                signedInAvatar.innerHTML = `<span class="auth-avatar-initial">${escapeHtml(initial)}</span>`;
+                signedInAvatar.setAttribute('aria-label', `${escapeHtml(p.displayName)} avatar`);
                 signedInName.textContent = p.displayName;
             }
         } else signInPanel.style.display = 'block';
@@ -69,6 +71,13 @@
         window.authOpenedFromFlowerPage = false;
         window.authConfirmFlowerSaved = false;
         window.authConfirmFlowerId = null;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     function updateAuthButton(profile) {
@@ -92,9 +101,21 @@
                 label.textContent = signedOutLabel || 'Sign in';
             }
         });
+
+        if (authButton) {
+            authButton.title = profile ? 'Account' : 'Sign in to comment';
+            const displayName = profile?.displayName || '';
+            const initial = displayName.trim().charAt(0).toUpperCase() || '?';
+
+            if (profile) {
+                authButton.innerHTML = `<span class="auth-button-initial">${escapeHtml(initial)}</span>`;
+            } else {
+                authButton.innerHTML = `<svg class="auth-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+            }
+        }
+
         const flowerPageAuthBtn = document.getElementById('flowerPageAuthButton');
         const signInBelowDisc = document.getElementById('signInBelowDisc');
-        if (authButton) authButton.title = profile ? 'Account' : 'Sign in to comment';
         if (flowerPageAuthBtn) flowerPageAuthBtn.title = profile ? 'Account' : 'Save your flower to the garden';
         if (signInBelowDisc) signInBelowDisc.style.display = profile ? 'none' : '';
     }
@@ -103,6 +124,7 @@
         if (typeof window.auth === 'undefined') return;
         const profile = await window.auth.getProfile();
         updateAuthButton(profile);
+        (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(profile); } catch (_) {} });
     }
 
     function onAuthButtonClick() {
@@ -234,7 +256,9 @@
             if (user) {
                 window.auth.getProfile().then(p => {
                     if (p) {
-                        signedInAvatar.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(p.avatarSeed || 'user');
+                        const initial = String(p.displayName || '').trim().charAt(0).toUpperCase() || '?';
+                        signedInAvatar.innerHTML = `<span class="auth-avatar-initial">${escapeHtml(initial)}</span>`;
+                        signedInAvatar.setAttribute('aria-label', `${escapeHtml(p.displayName)} avatar`);
                         signedInName.textContent = p.displayName;
                     }
                 });

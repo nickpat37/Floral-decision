@@ -775,8 +775,26 @@ body {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    object-fit: cover;
-    background: rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.comment-avatar.avatar-initial-wrap {
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.comment-avatar.avatar-initial-wrap .avatar-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
 }
 
 .comment-body {
@@ -866,8 +884,38 @@ body {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.comment-input-avatar .avatar-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.comment-input-avatar .avatar-flower {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comment-input-avatar .avatar-flower img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
 }
 
 .comment-input-wrapper {
@@ -1005,19 +1053,24 @@ body {
 .garden-header-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+    text-align: center;
     pointer-events: none;
 }
 
 .garden-header-content > div:first-child {
-    flex: 1;
+    width: 100%;
     text-align: center;
     min-width: 0;
 }
 
 .auth-header-area {
-    flex-shrink: 0;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     pointer-events: auto;
 }
 
@@ -1041,6 +1094,33 @@ body {
     height: 28px;
     border-radius: 50%;
     object-fit: cover;
+}
+
+#authButton {
+    height: 40px;
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 90px;
+    overflow: hidden;
+}
+
+#authButton .auth-icon {
+    flex-shrink: 0;
+    color: rgba(97, 97, 97, 0.95);
+}
+
+#authButton .auth-button-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+    background: rgba(5, 82, 77, 0.8);
 }
 
 /* Auth Modal */
@@ -1198,8 +1278,8 @@ body {
 }
 
 .auth-sign-out {
-    background: rgba(0, 0, 0, 0.08);
-    margin-top: 12px;
+    background-color: rgba(181, 181, 181, 1);
+    color: rgba(41, 41, 41, 1);
 }
 
 .auth-switch {
@@ -1232,14 +1312,37 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 16px;
+}
+
+.auth-signed-in-info .auth-sign-out {
+    margin-left: auto;
+    margin-top: 0;
 }
 
 .auth-avatar-large {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.auth-avatar-large.auth-avatar-initial-wrap {
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.auth-avatar-large .auth-avatar-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
 }
 
 /* Toast: "Your flower has been saved!" */
