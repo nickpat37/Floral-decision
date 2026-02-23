@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Supabase config FIRST - ensures availability before any scripts run (critical for deployed sites) -->
+    <script>
+        window.SUPABASE_URL = window.SUPABASE_URL || 'https://tjwasramaaxyelufbypw.supabase.co';
+        window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqd2FzcmFtYWF4eWVsdWZieXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY5MzEsImV4cCI6MjA4NTY3MjkzMX0.rAfEb7G8jAiOB5mvYXrVqDs1ph7XiwuT_RVodIfuqrQ';
+    </script>
+    <link rel="preconnect" href="https://tjwasramaaxyelufbypw.supabase.co" crossorigin>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#B0E0E6" media="(prefers-color-scheme: light)">
@@ -184,6 +190,11 @@
                 </div>
             </div>
 
+            <!-- To the center button (shown when panned away from all flowers) -->
+            <button type="button" id="gardenToCenterButton" class="garden-to-center-button" style="display: none;" aria-label="Back to flowers">
+                To the center
+            </button>
+
             <!-- Full question popup (garden: tap truncated question to view full) -->
             <div id="gardenQuestionPopup" class="garden-question-popup" aria-hidden="true">
                 <div class="garden-question-popup-backdrop"></div>
@@ -255,11 +266,7 @@
         </div>
     </div>
 
-    <!-- Supabase Configuration - Load Supabase via script tag for reliability -->
-    <script>
-        window.SUPABASE_URL = 'https://tjwasramaaxyelufbypw.supabase.co';
-        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqd2FzcmFtYWF4eWVsdWZieXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY5MzEsImV4cCI6MjA4NTY3MjkzMX0.rAfEb7G8jAiOB5mvYXrVqDs1ph7XiwuT_RVodIfuqrQ';
-    </script>
+    <!-- Supabase JS client (config already in head) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script src="/auth.js"></script>
