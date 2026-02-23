@@ -109,7 +109,20 @@ class GardenPage {
 
         // Setup navigation
         this.setupNavigation();
-        
+
+        // Setup question popup (tap truncated question to view full)
+        this.setupQuestionPopup();
+
+        // Setup comment input (arrow button, auto-expand textarea)
+        this.setupCommentInput();
+
+        // Update comment placeholder when auth state changes
+        window.onAuthStateChangedCallbacks = window.onAuthStateChangedCallbacks || [];
+        window.onAuthStateChangedCallbacks.push(() => this.updateCommentInputAuthState());
+
+        // Event delegation for comment Like buttons
+        this.setupCommentListDelegation();
+
         // Setup window resize handler to update viewport calculations
         window.addEventListener('resize', () => {
             // Clear throttle to allow immediate update on resize
@@ -398,19 +411,216 @@ class GardenPage {
         const canvasX = containerX - this.offsetX;
         const canvasY = containerY - this.offsetY;
 
-        const discRadius = 70; // Generous hit area for 120px disc
+        // Hit area: wrapper uses translate(-50%,-50%) so center is at (canvasX, canvasY)
+        const hitRadius = 120;
         for (const [flowerId, flowerRef] of this.loadedFlowers) {
             if (!flowerRef?.wrapper || !flowerRef?.instance) continue;
             const data = flowerRef.data;
-            const dx = canvasX - (data.canvasX || 0);
-            const dy = canvasY - (data.canvasY || 0);
-            if (dx * dx + dy * dy <= discRadius * discRadius) {
+            const centerX = data.canvasX || 0;
+            const centerY = data.canvasY || 0;
+            const dx = canvasX - centerX;
+            const dy = canvasY - centerY;
+            if (dx * dx + dy * dy <= hitRadius * hitRadius) {
                 const instance = flowerRef.instance;
                 if (instance.triggerTapAnimation) instance.triggerTapAnimation();
                 const disc = flowerRef.wrapper.querySelector('.flower-disc');
                 if (disc && data.answer) this.addAnswerToDisc(disc, data.answer, data.discSize || 120);
+                this.showGardenCommentSection(flowerId, flowerRef);
                 return;
             }
+        }
+        this.hideGardenCommentSection();
+    }
+
+    showGardenCommentSection(flowerId, flowerRef) {
+        const section = document.getElementById('gardenCommentSection');
+        const container = document.querySelector('.garden-page-container');
+        if (!section) return;
+        this.commentModeFlowerRef = flowerRef;
+        const listEl = document.getElementById('gardenCommentList');
+        if (listEl) listEl.scrollTop = 0;
+        section.classList.add('visible');
+        section.setAttribute('aria-hidden', 'false');
+        section.dataset.flowerId = String(flowerId);
+        if (container) container.classList.add('comment-section-active');
+        this.commentPanelDragHeight = 400;
+        this.loadAndRenderComments(flowerId);
+        this.updateCommentInputAuthState();
+        requestAnimationFrame(() => {
+            this.centerFlowerAtTop(flowerId, flowerRef);
+            this.updateCommentPanelHeight();
+            this.setupCommentPanelHeightListeners();
+            requestAnimationFrame(() => {
+                this.setupCommentPanelDragHandle();
+            });
+        });
+    }
+
+    hideGardenCommentSection() {
+        const section = document.getElementById('gardenCommentSection');
+        const container = document.querySelector('.garden-page-container');
+        if (!section) return;
+        this.commentModeFlowerRef = null;
+        this.removeCommentPanelHeightListeners();
+        this.removeCommentPanelDragHandle();
+        section.classList.remove('visible');
+        section.setAttribute('aria-hidden', 'true');
+        delete section.dataset.flowerId;
+        if (container) container.classList.remove('comment-section-active');
+    }
+
+    /**
+     * Update comment panel height - expands on scroll until 32px spacing to the question div
+     */
+    updateCommentPanelHeight() {
+        if (this._isDraggingCommentPanel) return;
+        const panelInner = document.querySelector('.garden-comment-panel .comment-panel-inner');
+        const questionEl = this.commentModeFlowerRef?.wrapper?.querySelector('.question-bubble-text');
+        const listEl = document.getElementById('gardenCommentList');
+        if (!panelInner || !listEl) return;
+        let maxHeight = window.innerHeight - 24;
+        if (questionEl) {
+            const questionRect = questionEl.getBoundingClientRect();
+            maxHeight = Math.min(maxHeight, window.innerHeight - questionRect.bottom - 32);
+        }
+        maxHeight = Math.max(200, maxHeight);
+        const baseHeight = Math.max(400, this.commentPanelDragHeight || 400);
+        const scrollTop = listEl.scrollTop;
+        const targetHeight = Math.min(baseHeight + scrollTop, maxHeight);
+        panelInner.style.height = `${targetHeight}px`;
+    }
+
+    setupCommentPanelDragHandle() {
+        this.removeCommentPanelDragHandle();
+        const handle = document.getElementById('gardenCommentDragHandle');
+        const panelInner = document.querySelector('.garden-comment-panel .comment-panel-inner');
+        if (!handle || !panelInner) return;
+
+        let startY = 0, startHeight = 0;
+        const minHeight = 200;
+        const getMaxHeight = () => Math.max(minHeight, window.innerHeight - 24);
+        const closeThreshold = 120;
+
+        const onPointerMove = (e) => {
+            if (e.cancelable) e.preventDefault();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const deltaY = startY - clientY;
+            let newHeight = Math.round(startHeight + deltaY);
+            newHeight = Math.max(minHeight, Math.min(getMaxHeight(), newHeight));
+            this.commentPanelDragHeight = newHeight;
+            panelInner.style.height = `${newHeight}px`;
+        };
+
+        const onPointerUp = () => {
+            this._isDraggingCommentPanel = false;
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchmove', onPointerMove, { capture: true });
+            document.removeEventListener('touchend', onPointerUp, { capture: true });
+            const h = parseFloat(panelInner.style.height) || 400;
+            if (h < closeThreshold) {
+                this.hideGardenCommentSection();
+            } else {
+                this.updateCommentPanelHeight();
+            }
+        };
+
+        const onPointerDown = (e) => {
+            e.stopPropagation();
+            this._isDraggingCommentPanel = true;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            startHeight = parseFloat(panelInner.style.height) || 400;
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchmove', onPointerMove, { passive: false, capture: true });
+            document.addEventListener('touchend', onPointerUp, { once: true, capture: true });
+        };
+
+        const onMouseDown = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPointerDown(e);
+        };
+        const onTouchStart = (e) => {
+            e.stopPropagation();
+            onPointerDown(e);
+        };
+        handle.addEventListener('mousedown', onMouseDown, { capture: true });
+        handle.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+        this._commentDragHandleCleanup = () => {
+            handle.removeEventListener('mousedown', onMouseDown, { capture: true });
+            handle.removeEventListener('touchstart', onTouchStart, { capture: true });
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchmove', onPointerMove, { capture: true });
+            document.removeEventListener('touchend', onPointerUp, { capture: true });
+        };
+    }
+
+    removeCommentPanelDragHandle() {
+        if (typeof this._commentDragHandleCleanup === 'function') {
+            this._commentDragHandleCleanup();
+        }
+        this._commentDragHandleCleanup = null;
+    }
+
+    setupCommentPanelHeightListeners() {
+        this.removeCommentPanelHeightListeners();
+        const listEl = document.getElementById('gardenCommentList');
+        const boundUpdate = () => this.updateCommentPanelHeight();
+        this._commentPanelScrollHandler = boundUpdate;
+        this._commentPanelResizeHandler = () => this.updateCommentPanelHeight();
+        if (listEl) listEl.addEventListener('scroll', boundUpdate);
+        window.addEventListener('resize', this._commentPanelResizeHandler);
+    }
+
+    removeCommentPanelHeightListeners() {
+        const listEl = document.getElementById('gardenCommentList');
+        if (listEl && this._commentPanelScrollHandler) {
+            listEl.removeEventListener('scroll', this._commentPanelScrollHandler);
+        }
+        if (this._commentPanelResizeHandler) {
+            window.removeEventListener('resize', this._commentPanelResizeHandler);
+        }
+        this._commentPanelScrollHandler = null;
+        this._commentPanelResizeHandler = null;
+    }
+
+    /**
+     * Position the selected flower centered with question bubble top 24px from viewport top
+     */
+    centerFlowerAtTop(flowerId, flowerRef) {
+        if (!this.canvas || !this.container) return;
+        const flowerData = flowerRef?.data;
+        if (!flowerData) return;
+        const canvasX = flowerData.canvasX ?? 0;
+        const canvasY = flowerData.canvasY ?? 0;
+        const targetBubbleTop = 24; // 24px from top edge of viewport
+        const rect = this.container.getBoundingClientRect();
+        // Measure actual question bubble (inner div) position from DOM
+        const bubbleEl = flowerRef?.wrapper?.querySelector('.garden-question-bubble');
+        let offsetY;
+        if (bubbleEl) {
+            const bubbleRect = bubbleEl.getBoundingClientRect();
+            const currentTop = bubbleRect.top;
+            offsetY = this.offsetY + (targetBubbleTop - currentTop);
+        } else {
+            const bubbleTopInCanvas = canvasY - 320;
+            offsetY = targetBubbleTop - rect.top - bubbleTopInCanvas;
+        }
+        this.offsetX = rect.width / 2 - canvasX;
+        const maxOffset = this.canvasSize - window.innerWidth;
+        const maxOffsetY = this.canvasSize - window.innerHeight;
+        this.offsetX = Math.max(-maxOffset, Math.min(0, this.offsetX));
+        this.offsetY = Math.max(-maxOffsetY, Math.min(0, offsetY));
+        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+        if (this.flowers.length > 0) {
+            if (this.updateVisibleFlowersThrottle) {
+                clearTimeout(this.updateVisibleFlowersThrottle);
+                this.updateVisibleFlowersThrottle = null;
+            }
+            this.updateVisibleFlowers();
+            this.updateCenterFlower();
         }
     }
 
@@ -2072,14 +2282,25 @@ class GardenPage {
         const bubble = document.createElement('div');
         bubble.className = 'garden-question-bubble';
 
-        // Format: Two-line format - "I want to know if..." (prefix) + question + flower space
+        const fullQuestion = flowerData.question || '';
+        const truncatedDisplay = this.truncateText(fullQuestion, 80);
+        const isTruncated = fullQuestion.length > 80;
+
         bubble.innerHTML = `
             <div class="question-bubble-prefix">I want to know if...</div>
-            <div class="question-bubble-text">${this.truncateText(flowerData.question || '', 80)}</div>
+            <div class="question-bubble-text">${truncatedDisplay}</div>
             <div class="question-bubble-flower-space"></div>
         `;
 
-        // Add bubble to container
+        const textEl = bubble.querySelector('.question-bubble-text');
+        if (isTruncated && textEl) {
+            textEl.classList.add('is-truncated');
+            textEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showQuestionPopup(fullQuestion, flowerData);
+            });
+        }
+
         bubbleContainer.appendChild(bubble);
 
         // Insert container before the flower container so it appears behind
@@ -2103,6 +2324,281 @@ class GardenPage {
         if (!text) return '';
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
+    }
+
+    setupQuestionPopup() {
+        this.questionPopupEl = document.getElementById('gardenQuestionPopup');
+        if (!this.questionPopupEl) return;
+        const closeBtn = this.questionPopupEl.querySelector('.garden-question-popup-close');
+        const backdrop = this.questionPopupEl.querySelector('.garden-question-popup-backdrop');
+        if (closeBtn) closeBtn.addEventListener('click', () => this.hideQuestionPopup());
+        if (backdrop) backdrop.addEventListener('click', () => this.hideQuestionPopup());
+    }
+
+    setupCommentInput() {
+        const inputEl = document.getElementById('gardenCommentInput');
+        const submitBtn = document.getElementById('gardenCommentSubmit');
+        if (!inputEl || !submitBtn) return;
+
+        const self = this;
+
+        const MAX_LINES = 5;
+        const LINE_HEIGHT = 21; // ~15px font * 1.4 line-height
+        const MIN_HEIGHT = 44;
+        const MAX_HEIGHT = LINE_HEIGHT * MAX_LINES;
+
+        const updateSubmitVisibility = () => {
+            requestAnimationFrame(() => {
+                const hasText = inputEl.value.trim().length > 0;
+                submitBtn.style.display = hasText ? 'flex' : 'none';
+            });
+        };
+
+        const autoExpandTextarea = () => {
+            requestAnimationFrame(() => {
+                inputEl.style.height = 'auto';
+                const newHeight = Math.min(Math.max(inputEl.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
+                inputEl.style.height = newHeight + 'px';
+            });
+        };
+
+        inputEl.addEventListener('input', () => {
+            updateSubmitVisibility();
+            autoExpandTextarea();
+        });
+        inputEl.addEventListener('keyup', updateSubmitVisibility);
+        inputEl.addEventListener('paste', () => {
+            setTimeout(() => {
+                updateSubmitVisibility();
+                autoExpandTextarea();
+            }, 0);
+        });
+
+        const submitComment = async () => {
+            const text = inputEl.value.trim();
+            if (!text) return;
+            const section = document.getElementById('gardenCommentSection');
+            const flowerId = section?.dataset?.flowerId;
+            if (!flowerId) {
+                console.warn('Cannot submit comment: no flower selected');
+                return;
+            }
+
+            const auth = typeof window.auth !== 'undefined' ? window.auth : null;
+            const profile = auth ? await auth.getProfile() : null;
+            if (!profile) {
+                if (typeof window.authUI !== 'undefined' && window.authUI.openAuthModal) {
+                    window.authUI.openAuthModal('signIn');
+                } else {
+                    alert('Please sign in to comment');
+                }
+                return;
+            }
+            const authorName = profile.displayName || 'Anonymous';
+            const authorAvatarSeed = profile.avatarSeed || authorName;
+
+            // Optimistic: add comment to list immediately so user sees it
+            const listEl = document.getElementById('gardenCommentList');
+            const tempId = 'pending-' + Date.now();
+            const emptyState = listEl?.querySelector('.comment-empty-state');
+            if (emptyState) emptyState.remove();
+            const optimisticComment = {
+                id: tempId,
+                text,
+                authorName,
+                authorAvatarSeed,
+                likeCount: 0,
+                createdAt: new Date().toISOString()
+            };
+            const optimisticHtml = self.renderCommentItemHtml(optimisticComment);
+            if (listEl) listEl.insertAdjacentHTML('beforeend', optimisticHtml);
+
+            inputEl.value = '';
+            inputEl.style.height = MIN_HEIGHT + 'px';
+            updateSubmitVisibility();
+
+            // Persist to Supabase
+            const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
+            if (!db) {
+                console.warn('flowerDB not available - comment not persisted');
+                return;
+            }
+            try {
+                const commentId = await db.saveComment({ flowerId, authorName, authorAvatarSeed, text });
+                const pendingEl = listEl?.querySelector('[data-comment-id="' + tempId + '"]');
+                if (commentId && pendingEl) {
+                    pendingEl.dataset.commentId = commentId;
+                } else if (!commentId && pendingEl) {
+                    pendingEl.remove();
+                    if (listEl && !listEl.querySelector('.comment-item')) {
+                        listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to save comment:', err);
+                const pendingEl = listEl?.querySelector('[data-comment-id="' + tempId + '"]');
+                if (pendingEl) pendingEl.remove();
+                if (listEl && !listEl.querySelector('.comment-item')) {
+                    listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+                }
+            }
+        };
+
+        submitBtn.addEventListener('click', submitComment);
+
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitComment();
+            }
+        });
+    }
+
+    setupCommentListDelegation() {
+        const listEl = document.getElementById('gardenCommentList');
+        if (!listEl) return;
+        listEl.addEventListener('click', async (e) => {
+            const likeBtn = e.target.closest('.comment-action[aria-label="Like"]');
+            if (!likeBtn) return;
+            const item = likeBtn.closest('.comment-item');
+            const commentId = item?.dataset?.commentId;
+            if (!commentId || String(commentId).startsWith('pending-')) return;
+            const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
+            if (db) {
+                const newCount = await db.incrementCommentLike(commentId);
+                if (newCount !== null) {
+                    let countEl = likeBtn.querySelector('.comment-like-count');
+                    if (!countEl) {
+                        countEl = document.createElement('span');
+                        countEl.className = 'comment-like-count';
+                        likeBtn.appendChild(countEl);
+                    }
+                    countEl.textContent = String(newCount);
+                }
+            }
+        });
+    }
+
+    formatCommentTime(createdAt) {
+        if (!createdAt) return '';
+        const date = new Date(createdAt);
+        if (isNaN(date.getTime())) return '';
+        const now = Date.now();
+        const diffMs = now - date.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHr = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHr / 24);
+        const diffWk = Math.floor(diffDay / 7);
+        if (diffSec < 60) return 'just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffHr < 24) return `${diffHr}h ago`;
+        if (diffDay < 7) return `${diffDay}d ago`;
+        if (diffWk < 4) return `${diffWk}w ago`;
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+    }
+
+    renderCommentItemHtml(c) {
+        const authorName = c.authorName || 'Anonymous';
+        const initial = String(authorName).trim().charAt(0).toUpperCase() || '?';
+        const timeStr = this.formatCommentTime(c.createdAt);
+        const likeCount = c.likeCount || 0;
+        const likeCountHtml = likeCount > 0 ? ` <span class="comment-like-count">${likeCount}</span>` : '';
+        return `<div class="comment-item" data-comment-id="${this.escapeHtml(String(c.id))}">
+            <div class="comment-avatar avatar-initial-wrap" role="img" aria-label="${this.escapeHtml(authorName)} avatar"><span class="avatar-initial">${this.escapeHtml(initial)}</span></div>
+            <div class="comment-body">
+                <div class="comment-meta">
+                    <span class="comment-author">${this.escapeHtml(c.authorName)}</span>
+                    <span class="comment-time">${this.escapeHtml(timeStr)}</span>
+                </div>
+                <p class="comment-text">${this.escapeHtml(c.text)}</p>
+                <div class="comment-actions">
+                    <button type="button" class="comment-action" aria-label="Reply">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        Reply
+                    </button>
+                    <button type="button" class="comment-action" aria-label="Like">
+                        <img src="/Daisy_icon.png" alt="" class="comment-like-icon"> Like${likeCountHtml}
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    async loadAndRenderComments(flowerId) {
+        const listEl = document.getElementById('gardenCommentList');
+        if (!listEl) return;
+        const db = typeof flowerDB !== 'undefined' ? flowerDB : (typeof window !== 'undefined' ? window.flowerDB : null);
+        const comments = db ? await db.getCommentsByFlowerId(flowerId) : [];
+        if (comments.length === 0) {
+            listEl.innerHTML = '<div class="comment-empty-state">No comments yet. Be the first to comment!</div>';
+            return;
+        }
+        listEl.innerHTML = comments.map(c => this.renderCommentItemHtml(c)).join('');
+    }
+
+    escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    async updateCommentInputAuthState() {
+        const inputEl = document.getElementById('gardenCommentInput');
+        const avatarEl = document.getElementById('gardenCommentInputAvatar') || document.querySelector('.garden-comment-panel .comment-input-avatar');
+        if (!inputEl) return;
+        const auth = typeof window.auth !== 'undefined' ? window.auth : null;
+        const profile = auth ? await auth.getProfile() : null;
+        inputEl.placeholder = profile ? 'Add a comment...' : 'Sign in to add a comment...';
+        if (avatarEl) {
+            if (profile && profile.displayName) {
+                const initial = String(profile.displayName).trim().charAt(0).toUpperCase() || '?';
+                avatarEl.innerHTML = `<span class="avatar-initial" aria-hidden="true">${this.escapeHtml(initial)}</span>`;
+                avatarEl.setAttribute('aria-label', `${profile.displayName} avatar`);
+            } else {
+                avatarEl.innerHTML = '<span class="avatar-flower" aria-hidden="true"><img src="/Daisy_icon.png" alt="" width="24" height="24"></span>';
+                avatarEl.setAttribute('aria-label', 'Anonymous user');
+            }
+        }
+    }
+
+    showQuestionPopup(fullQuestion, flowerData = {}) {
+        if (!this.questionPopupEl) return;
+        const textEl = this.questionPopupEl.querySelector('.garden-question-popup-text');
+        if (textEl) textEl.textContent = fullQuestion ? `"${fullQuestion}"` : '';
+
+        const creatorNameEl = this.questionPopupEl.querySelector('.garden-question-popup-creator-name');
+        const creatorDateEl = this.questionPopupEl.querySelector('.garden-question-popup-creator-date');
+        const avatarEl = this.questionPopupEl.querySelector('.garden-question-popup-avatar');
+        if (creatorNameEl) creatorNameEl.textContent = flowerData.creatorName || 'Anonymous';
+        if (creatorDateEl) {
+            const dateStr = this.formatCreatedDate(flowerData.timestamp || flowerData.createdAt);
+            creatorDateEl.textContent = dateStr || '—';
+        }
+        if (avatarEl) {
+            const seed = flowerData.creatorName || flowerData.id || flowerData.seed || 'Creator';
+            avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(String(seed))}`;
+            avatarEl.alt = flowerData.creatorName || 'Creator avatar';
+        }
+
+        this.questionPopupEl.classList.add('is-open');
+        this.questionPopupEl.setAttribute('aria-hidden', 'false');
+    }
+
+    formatCreatedDate(timestamp) {
+        if (!timestamp) return '';
+        const date = typeof timestamp === 'number'
+            ? new Date(timestamp)
+            : new Date(timestamp);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    hideQuestionPopup() {
+        if (!this.questionPopupEl) return;
+        this.questionPopupEl.classList.remove('is-open');
+        this.questionPopupEl.setAttribute('aria-hidden', 'true');
     }
 
     /**
@@ -2174,34 +2670,43 @@ class GardenPage {
      */
     setupNavigation() {
         const gardenButton = document.getElementById('gardenButton');
+        const homeGardenButton = document.getElementById('homeGardenButton');
         const backButton = document.getElementById('backButton');
         const gardenPage = document.getElementById('gardenPage');
         const flowerPage = document.getElementById('flowerPage');
+        const questionPage = document.getElementById('questionPage');
+
+        const goToGarden = async () => {
+            if (flowerPage) flowerPage.classList.remove('active');
+            if (questionPage) questionPage.classList.remove('active');
+            if (gardenPage) gardenPage.classList.add('active');
+
+            requestAnimationFrame(async () => {
+                if (!this.canvas && this.container) {
+                    this.canvas = document.createElement('div');
+                    this.canvas.className = 'garden-canvas';
+                    this.canvas.style.width = `${this.canvasSize}px`;
+                    this.canvas.style.height = `${this.canvasSize}px`;
+                    this.canvas.style.position = 'absolute';
+                    this.canvas.style.top = '0';
+                    this.canvas.style.left = '0';
+                    this.container.appendChild(this.canvas);
+                }
+
+                await this.refreshGarden();
+            });
+        };
 
         if (gardenButton) {
-            gardenButton.addEventListener('click', async () => {
-                flowerPage.classList.remove('active');
-                gardenPage.classList.add('active');
-
-                requestAnimationFrame(async () => {
-                    if (!this.canvas && this.container) {
-                        this.canvas = document.createElement('div');
-                        this.canvas.className = 'garden-canvas';
-                        this.canvas.style.width = `${this.canvasSize}px`;
-                        this.canvas.style.height = `${this.canvasSize}px`;
-                        this.canvas.style.position = 'absolute';
-                        this.canvas.style.top = '0';
-                        this.canvas.style.left = '0';
-                        this.container.appendChild(this.canvas);
-                    }
-                    
-                    await this.refreshGarden();
-                });
-            });
+            gardenButton.addEventListener('click', goToGarden);
+        }
+        if (homeGardenButton) {
+            homeGardenButton.addEventListener('click', goToGarden);
         }
 
         if (backButton) {
             backButton.addEventListener('click', () => {
+                this.hideGardenCommentSection();
                 gardenPage.classList.remove('active');
                 flowerPage.classList.remove('active');
                 const questionPage = document.getElementById('questionPage');

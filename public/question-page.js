@@ -3,6 +3,38 @@
  * Manages the question modal page and navigation to flower page
  */
 
+const QUESTION_TEXT_FONT_SIZE = 20;
+const QUESTION_TEXT_LINE_HEIGHT = 1.35;
+const PETAL_RADIUS = 88;
+const PETAL_HEIGHT = 80;
+
+/**
+ * Truncate text using line-based calculation.
+ * maxAllowedHeight = (lineHeight + lineSpacing) × maxLines.
+ * If content height would equal or exceed container: remove the overflowing line,
+ * truncate the line above with "..." at the last word.
+ */
+function truncateToLastWord(text, containerHeightPx, measureElement) {
+    const t = (text || '').replace(/^"|"$/g, '').trim();
+    if (!t) return { display: '""', truncated: false };
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length === 0 || !measureElement) return { display: `"${t}"`, truncated: false };
+    const lineHeightPx = QUESTION_TEXT_FONT_SIZE * QUESTION_TEXT_LINE_HEIGHT;
+    const lineSpacing = 0;
+    const heightPerLine = lineHeightPx + lineSpacing;
+    const maxLines = Math.max(1, Math.floor(containerHeightPx / heightPerLine));
+    const maxAllowedHeight = maxLines * heightPerLine;
+    let visible = '';
+    for (let i = 0; i < words.length; i++) {
+        const candidate = visible ? visible + ' ' + words[i] : words[i];
+        measureElement.textContent = `"${candidate}"`;
+        if (measureElement.offsetHeight >= maxAllowedHeight) break;
+        visible = candidate;
+    }
+    const truncated = visible.length < t.length;
+    return { display: `"${visible}${truncated ? '...' : ''}"`, truncated };
+}
+
 let questionFlowerInstance;
 let flowerPageInstance;
 let currentQuestion = null; // Store current question for saving
@@ -43,6 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (answerButtons) {
             answerButtons.style.display = 'none';
         }
+        const signInBelowDisc = document.getElementById('signInBelowDisc');
+        if (signInBelowDisc) {
+            signInBelowDisc.style.display = 'none';
+        }
         const instructions = document.querySelector('.instructions');
         if (instructions) instructions.style.display = 'block';
 
@@ -81,13 +117,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Generate a new flower for the question page
-        setTimeout(() => {
-            questionFlowerInstance = new FlowerComponent({
-                containerId: 'questionFlowerContainer',
-                stemSVGId: 'questionStemSVG',
-                stemPathId: 'questionStemPath'
-            });
-        }, 100);
+        // Wait for layout (page is now active) before creating flower
+        let retries = 0;
+        const maxRetries = 30;
+        const initFlower = () => {
+            const container = document.getElementById('questionFlowerContainer');
+            const rect = container?.getBoundingClientRect();
+            if (container && rect && rect.width > 0 && rect.height > 0) {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            } else if (retries < maxRetries) {
+                retries++;
+                requestAnimationFrame(initFlower);
+            } else {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            }
+        };
+        requestAnimationFrame(() => requestAnimationFrame(initFlower));
     };
 
     // Back to homepage: flower page -> question page
@@ -98,14 +151,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Initialize flower component on question page
+    // Use double requestAnimationFrame to ensure layout is ready (avoids zero-dimension container on slow devices)
     if (questionPage && questionPage.classList.contains('active')) {
-        setTimeout(() => {
-            questionFlowerInstance = new FlowerComponent({
-                containerId: 'questionFlowerContainer',
-                stemSVGId: 'questionStemSVG',
-                stemPathId: 'questionStemPath'
-            });
-        }, 100);
+        let retries = 0;
+        const maxRetries = 30; // ~500ms at 60fps
+        const initHomepageFlower = () => {
+            const container = document.getElementById('questionFlowerContainer');
+            const rect = container?.getBoundingClientRect();
+            if (container && rect && rect.width > 0 && rect.height > 0) {
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            } else if (retries < maxRetries) {
+                retries++;
+                requestAnimationFrame(initHomepageFlower);
+            } else {
+                // Fallback: create anyway (FlowerComponent uses viewport fallback for dimensions)
+                questionFlowerInstance = new FlowerComponent({
+                    containerId: 'questionFlowerContainer',
+                    stemSVGId: 'questionStemSVG',
+                    stemPathId: 'questionStemPath'
+                });
+            }
+        };
+        requestAnimationFrame(() => requestAnimationFrame(initHomepageFlower));
     }
     
     // Show Done button when user starts typing (multi-event for Safari compatibility)
@@ -230,73 +301,17 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             questionDisplay.style.opacity = '0';
             
-            // Step 3: Move flower elements from question page container to interactive page container
-            // This keeps the flower in the exact same position
+            // Step 3: Move flower elements to interactive page container
             if (questionFlowerInstance && questionFlowerContainer && flowerContainer) {
-                // Move flower elements (disc, petals) to the new container
-                // Don't move SVG elements - each container has its own stem SVG
                 const flowerElements = Array.from(questionFlowerContainer.children);
                 flowerElements.forEach(element => {
-                    // Skip SVG elements - flowerContainer already has its own stem SVG
-                    if (element.tagName !== 'svg') {
-                        flowerContainer.appendChild(element);
-                    }
+                    if (element.tagName !== 'svg') flowerContainer.appendChild(element);
                 });
-                
-                // Update the flower instance to use the new container
                 questionFlowerInstance.container = flowerContainer;
                 questionFlowerInstance.stemSVG = document.getElementById('stemSVG');
                 questionFlowerInstance.stemPath = document.getElementById('stemPath');
-                
-                // Update container dimensions
-                const containerRect = flowerContainer.getBoundingClientRect();
-                questionFlowerInstance.containerWidth = containerRect.width || window.innerWidth;
-                questionFlowerInstance.containerHeight = containerRect.height || window.innerHeight;
-                
-                // Recalculate disc and stem positions based on new container dimensions
-                questionFlowerInstance.originalDiscX = questionFlowerInstance.containerWidth / 2;
-                questionFlowerInstance.originalDiscY = questionFlowerInstance.containerHeight * 0.4;
-                questionFlowerInstance.discX = questionFlowerInstance.originalDiscX;
-                questionFlowerInstance.discY = questionFlowerInstance.originalDiscY;
-                questionFlowerInstance.stemBottomX = questionFlowerInstance.containerWidth / 2;
-                questionFlowerInstance.stemBottomY = questionFlowerInstance.containerHeight;
-                
-                // Recalculate fixed stem length
-                const dx = questionFlowerInstance.originalDiscX - questionFlowerInstance.stemBottomX;
-                const dy = questionFlowerInstance.originalDiscY - questionFlowerInstance.stemBottomY;
-                questionFlowerInstance.fixedStemLength = Math.sqrt(dx * dx + dy * dy);
-                questionFlowerInstance.maxDiscMovement = questionFlowerInstance.fixedStemLength * 0.15;
-                
-                // Update stem SVG
-                if (questionFlowerInstance.stemSVG) {
-                    questionFlowerInstance.stemSVG.setAttribute('viewBox', `0 0 ${questionFlowerInstance.containerWidth} ${questionFlowerInstance.containerHeight}`);
-                    questionFlowerInstance.stemSVG.setAttribute('width', questionFlowerInstance.containerWidth);
-                    questionFlowerInstance.stemSVG.setAttribute('height', questionFlowerInstance.containerHeight);
-                }
-                
-                // Update disc position visually (uses discWrapper when present)
-                if (questionFlowerInstance.discElement) {
-                    questionFlowerInstance.updateDiscPosition();
-                }
-                
-                // Update stem path to ensure it's drawn (critical after transition)
-                if (questionFlowerInstance.stemPath) {
-                    questionFlowerInstance.updateStem();
-                }
-                
-                // Update petals to reflect new disc position
-                questionFlowerInstance.updatePetals();
-                
-                // Regrow any missing petals (if user detached some before sending question)
-                setTimeout(() => {
-                    questionFlowerInstance.regrowMissingPetals();
-                }, 100); // Small delay to ensure transition is complete
-                
-                // Reuse the same instance
                 flowerPageInstance = questionFlowerInstance;
             } else if (!flowerPageInstance) {
-                // Fallback: create new instance if moving failed
-                // window.currentQuestion already set at start of navigateToFlowerPage
                 flowerPageInstance = new FlowerComponent({
                     containerId: 'flowerContainer',
                     stemSVGId: 'stemSVG',
@@ -304,8 +319,78 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
-            // Show flower page (overlay it on top, both pages visible during transition)
+            // Show flower page FIRST so getBoundingClientRect returns correct dimensions
             flowerPage.classList.add('active');
+            
+            // Step 4: Layout adjustment (double rAF ensures layout is complete)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const instance = flowerPageInstance;
+                    if (!instance || !flowerContainer) return;
+                    const containerRect = flowerContainer.getBoundingClientRect();
+                    instance.containerWidth = containerRect.width || window.innerWidth;
+                    instance.containerHeight = containerRect.height || window.innerHeight;
+                    const containerH = instance.containerHeight;
+                    const questionTop = 59;
+                    const gap = 16;
+                    const petalRadius = instance.petalRadius ?? PETAL_RADIUS;
+                    const petalHeight = PETAL_HEIGHT;
+                    const flowerTopExtension = petalRadius + petalHeight / 2;
+                    const discYAt40 = containerH * 0.4;
+                    const discYAt50 = containerH * 0.5;
+                    const flowerTopAt40 = discYAt40 - flowerTopExtension;
+                    const flowerTopAt50 = discYAt50 - flowerTopExtension;
+                    const maxQuestionHeightAt40 = Math.max(0, flowerTopAt40 - questionTop - gap);
+                    const maxQuestionHeightAt50 = Math.max(0, flowerTopAt50 - questionTop - gap);
+                    questionDisplay.style.maxHeight = '';
+                    const questionNaturalHeight = questionDisplay.scrollHeight;
+                    const useLowerPosition = questionNaturalHeight > maxQuestionHeightAt40;
+                    const flowerYFactor = useLowerPosition ? 0.5 : 0.4;
+                    const maxQuestionHeight = useLowerPosition ? maxQuestionHeightAt50 : maxQuestionHeightAt40;
+                    instance.originalDiscX = instance.containerWidth / 2;
+                    instance.originalDiscY = containerH * flowerYFactor;
+                    instance.discX = instance.originalDiscX;
+                    instance.discY = instance.originalDiscY;
+                    instance.discYFactor = flowerYFactor;
+                    instance.stemBottomX = instance.containerWidth / 2;
+                    instance.stemBottomY = instance.containerHeight;
+                    questionDisplay.style.maxHeight = maxQuestionHeight + 'px';
+                    questionDisplay.style.overflow = 'hidden';
+                    const questionText = questionDisplay.querySelector('.question-text');
+                    const questionPrefix = questionDisplay.querySelector('.question-prefix');
+                    if (questionText) {
+                        questionText.style.webkitLineClamp = 'unset';
+                        questionText.style.lineClamp = 'unset';
+                        questionText.style.display = 'block';
+                        questionText.style.overflow = 'visible';
+                        const fullQuestion = questionText.textContent.replace(/^"|"$/g, '').trim();
+                        const prefixHeight = questionPrefix ? questionPrefix.offsetHeight : 22;
+                        const textContainerHeight = Math.max(27, questionDisplay.clientHeight - prefixHeight);
+                        const { display } = truncateToLastWord(fullQuestion, textContainerHeight, questionText);
+                        questionText.textContent = display;
+                        questionText.style.overflow = 'hidden';
+                    }
+                    const dx = instance.originalDiscX - instance.stemBottomX;
+                    const dy = instance.originalDiscY - instance.stemBottomY;
+                    instance.fixedStemLength = Math.sqrt(dx * dx + dy * dy);
+                    instance.maxDiscMovement = instance.fixedStemLength * 0.15;
+                    if (instance.stemSVG) {
+                        instance.stemSVG.setAttribute('viewBox', `0 0 ${instance.containerWidth} ${instance.containerHeight}`);
+                        instance.stemSVG.setAttribute('width', instance.containerWidth);
+                        instance.stemSVG.setAttribute('height', instance.containerHeight);
+                    }
+                    if (useLowerPosition && flowerContainer) {
+                        flowerContainer.classList.add('flower-shift-transition');
+                        setTimeout(() => {
+                            flowerContainer.classList.remove('flower-shift-transition');
+                        }, 450);
+                    }
+                    if (instance.discElement) instance.updateDiscPosition();
+                    if (instance.stemPath) instance.updateStem();
+                    instance.updatePetals();
+                    if (questionFlowerInstance) setTimeout(() => instance.regrowMissingPetals && instance.regrowMissingPetals(), 100);
+                });
+            });
             
             // Grow grass from bottom (Grass_1, Grass_2 ~30% larger than Grass_3)
             growGrassFromBottom();

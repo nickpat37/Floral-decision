@@ -129,6 +129,45 @@ body {
     opacity: 0.9;
 }
 
+/* Garden button below question header (homepage) */
+.question-garden-nav {
+    position: absolute;
+    top: 120px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+#homeGardenButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 86px;
+    height: 44px;
+    background-color: rgba(16, 116, 110, 0.3);
+    background-image: none;
+    backdrop-filter: blur(3.8px);
+    -webkit-backdrop-filter: blur(3.8px);
+}
+
+#homeGardenButton .garden-btn-flower {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    background: transparent;
+}
+
+#homeGardenButton .garden-btn-arrow {
+    color: rgba(255, 255, 255, 1);
+    font-size: 14px;
+    font-weight: 600;
+}
+
 
 /* Question Modal - Overlay */
 /* Viewport now uses --vh (above Safari bar); bottom is from visible edge. */
@@ -140,7 +179,7 @@ body {
     -webkit-backdrop-filter: blur(6px);
     border-radius: 12px;
     padding: 20px 12px 8px 12px;
-    height: 180px;
+    height: 156px;
     position: absolute;
     bottom: max(30px, env(safe-area-inset-bottom));
     left: 50%;
@@ -167,7 +206,7 @@ body {
 
 .question-input {
     width: 100%;
-    height: 115px;
+    height: 90px;
     padding: 12px;
     border: none;
     border-radius: 12px;
@@ -196,8 +235,7 @@ body {
 
 .done-button {
     position: absolute;
-    top: 90px;
-    transform: translateY(-50%);
+    top: 50px;
     right: 12px;
     padding: 8px;
     width: 32px;
@@ -225,11 +263,11 @@ body {
 
 .done-button:hover {
     background: rgba(180, 130, 180, 0.95);
-    transform: translateY(-50%) scale(1.05);
+    transform: scale(1.05);
 }
 
 .done-button:active {
-    transform: translateY(-50%) scale(0.98);
+    transform: scale(0.98);
 }
 
 /* Interactive Page Styles (Flower Page) */
@@ -257,6 +295,25 @@ body {
     background: unset;
 }
 
+.auth-button-compact {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.auth-button-compact .auth-avatar {
+    width: 24px;
+    height: 24px;
+}
+
+#flowerPageAuthButton {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+#flowerPageAuthLabel {
+    color: rgba(31, 31, 31, 0.95);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 .flower-page-nav .nav-button {
     margin: 0;
     height: 44px;
@@ -280,7 +337,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     z-index: 200;
     position: absolute;
     top: 59px;
@@ -289,6 +346,7 @@ body {
     opacity: 0;
     transition: opacity 0.4s ease-in;
     pointer-events: none;
+    overflow: hidden;
 }
 
 .question-prefix {
@@ -297,13 +355,22 @@ body {
     color: rgba(255, 255, 255, 1);
     margin-bottom: 4px;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    flex-shrink: 0;
 }
 
 .question-text {
     font-size: 20px;
     font-weight: 600;
+    line-height: 1.35;
     color: rgba(255, 255, 255, 1);
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
 }
 
 
@@ -328,6 +395,14 @@ body {
 
 .flower-disc-wrapper {
     pointer-events: none;
+}
+
+/* Smooth transition when flower shifts down - disc and petals animate at same speed */
+#flowerContainer.flower-shift-transition .flower-disc-wrapper {
+    transition: top 0.4s cubic-bezier(0.32, 0.72, 0, 1), left 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+#flowerContainer.flower-shift-transition .flower-petal {
+    transition: top 0.4s cubic-bezier(0.32, 0.72, 0, 1), left 0.4s cubic-bezier(0.32, 0.72, 0, 1), transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .flower-disc-wrapper > * {
@@ -517,9 +592,20 @@ body {
     z-index: 301;
 }
 
+.sign-in-below-disc,
+#signInBelowDisc {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 501;
+    pointer-events: auto;
+    background-color: unset;
+    background: unset;
+}
+
 .answer-button {
     padding: 12px 24px;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.65);
     color: rgba(13, 13, 13, 1);
     border: none;
     border-radius: 40px;
@@ -533,7 +619,7 @@ body {
     cursor: pointer;
     transition: background 0.3s ease, transform 0.1s ease;
     box-shadow: none;
-    backdrop-filter: blur(18px);
+    backdrop-filter: blur(7px);
 }
 
 .answer-button:hover {
@@ -543,6 +629,356 @@ body {
 
 .answer-button:active {
     transform: translateY(0);
+}
+
+/* Comment section */
+.comment-section {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    padding-bottom: max(90px, env(safe-area-inset-bottom) + 60px); /* space for Done/Try another buttons */
+    transform: translateY(100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease, visibility 0.35s;
+}
+
+.comment-section.visible {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Garden comment panel: unified white panel, bottom ~2/3 of viewport */
+.garden-comment-panel {
+    padding-bottom: 0;
+}
+
+.garden-comment-panel .comment-panel-inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    height: 400px;
+    margin: 0;
+    margin-bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    border-radius: 20px 20px 0 0;
+    box-shadow: none;
+    overflow: hidden;
+    transition: height 0.2s ease-out;
+}
+
+/* Drag handle - anchor to expand or close */
+.comment-panel-drag-handle {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 14px 0 10px;
+    min-height: 44px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;
+}
+
+.comment-panel-drag-handle:active {
+    cursor: grabbing;
+}
+
+.comment-panel-drag-handle-bar {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+}
+
+.garden-comment-panel .comment-card {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0);
+}
+
+.garden-comment-panel .comment-list {
+    padding: 16px 16px 8px;
+}
+
+.garden-comment-panel .comment-input-bar {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 1);
+}
+
+.comment-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 16px;
+    margin-bottom: 12px;
+    max-height: min(35vh, 220px);
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.comment-list {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+}
+
+.comment-empty-state {
+    padding: 24px;
+    text-align: center;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.comment-like-count {
+    margin-left: 4px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.comment-item:last-child {
+    border-bottom: none;
+}
+
+.comment-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.comment-avatar.avatar-initial-wrap {
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.comment-avatar.avatar-initial-wrap .avatar-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+}
+
+.comment-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.comment-author {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(13, 13, 13, 1);
+}
+
+.comment-time {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.comment-text {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: rgba(13, 13, 13, 1);
+    line-height: 1.45;
+    margin: 0 0 8px 0;
+    word-wrap: break-word;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.comment-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.comment-action:hover {
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.comment-action svg {
+    flex-shrink: 0;
+}
+
+.comment-action .comment-like-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+.comment-input-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.comment-input-avatar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.comment-input-avatar .avatar-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.comment-input-avatar .avatar-flower {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comment-input-avatar .avatar-flower img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.comment-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+}
+
+.comment-input-field {
+    flex: 1;
+    min-height: 44px;
+    max-height: 120px;
+    padding: 10px 44px 10px 16px;
+    background: rgba(0, 0, 0, 0.06);
+    border: none;
+    border-radius: 22px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    color: rgba(13, 13, 13, 1);
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+}
+
+.comment-input-field::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.comment-submit-button {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    padding: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(219, 189, 229, 0.9);
+    color: rgba(13, 13, 13, 1);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.1s ease;
+}
+
+.comment-submit-button svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.comment-submit-button:hover {
+    background: rgba(180, 130, 180, 0.95);
+    transform: scale(1.05);
+}
+
+.comment-submit-button:active {
+    transform: scale(0.98);
 }
 
 /* Responsive adjustments */
@@ -607,12 +1043,330 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    text-align: center;
     color: rgba(255, 255, 255, 0.95);
     padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left));
     z-index: 100;
     pointer-events: none;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.garden-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+    text-align: center;
+    pointer-events: none;
+}
+
+.garden-header-content > div:first-child {
+    width: 100%;
+    text-align: center;
+    min-width: 0;
+}
+
+.auth-header-area {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: auto;
+}
+
+.auth-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.auth-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+#authButton {
+    height: 40px;
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 90px;
+    overflow: hidden;
+}
+
+#authButton .auth-icon {
+    flex-shrink: 0;
+    color: rgba(97, 97, 97, 0.95);
+}
+
+#authButton .auth-button-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+    background: rgba(5, 82, 77, 0.8);
+}
+
+/* Auth Modal */
+.auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.auth-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.auth-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.auth-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10.5px);
+    -webkit-backdrop-filter: blur(10.5px);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: none;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.auth-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: none;
+    font-size: 24px;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.auth-form-panel h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #111;
+    font-family: "Faculty Glyphic", serif;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#authSignInForm,
+#authSignUpForm,
+#authConfirmContent {
+    text-align: center;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+#authConfirmContent {
+    height: 100%;
+}
+
+.auth-confirm-image {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+
+.auth-form input {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+#authSignInEmail,
+#authSignInPassword,
+#authSignUpDisplayName,
+#authSignUpEmail,
+#authSignUpPassword {
+    background-color: rgba(245, 245, 245, 1);
+    border: none;
+    border-color: rgba(0, 0, 0, 0);
+    border-image: none;
+    width: 100%;
+    font-size: 14px;
+    color: rgba(79, 79, 79, 1);
+    height: 44px;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #87CEEB;
+    box-shadow: 0 0 0 2px rgba(135, 206, 235, 0.3);
+}
+
+.auth-error {
+    color: #c0392b;
+    font-size: 14px;
+}
+
+#authModalConfirm {
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    justify-content: flex-start;
+}
+
+.auth-confirm-message {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 1);
+    margin: 0;
+    line-height: 1.5;
+    width: 100%;
+}
+
+.auth-submit {
+    padding: 12px 24px;
+    width: 140px;
+    background-color: rgba(5, 82, 77, 1);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 1);
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#authConfirmClose {
+    background-color: rgba(5, 82, 77, 1);
+}
+
+.auth-sign-out {
+    background-color: rgba(181, 181, 181, 1);
+    color: rgba(41, 41, 41, 1);
+}
+
+.auth-switch {
+    margin-top: 16px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+    text-align: center;
+}
+
+.auth-link {
+    background: none;
+    border: none;
+    color: #87CEEB;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0;
+    text-decoration: underline;
+}
+
+#authShowSignUp {
+    color: rgba(0, 0, 0, 1);
+}
+
+#authShowSignIn {
+    color: rgba(51, 51, 51, 1);
+}
+
+.auth-signed-in-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.auth-signed-in-info .auth-sign-out {
+    margin-left: auto;
+    margin-top: 0;
+}
+
+.auth-avatar-large {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.auth-avatar-large.auth-avatar-initial-wrap {
+    background: rgba(5, 82, 77, 0.8);
+}
+
+.auth-avatar-large .auth-avatar-initial {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: rgba(255, 255, 255, 1);
+}
+
+/* Toast: "Your flower has been saved!" */
+.flower-saved-toast {
+    position: fixed;
+    bottom: max(80px, env(safe-area-inset-bottom) + 50px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    padding: 12px 24px;
+    background: rgba(45, 80, 22, 0.9);
+    color: rgba(255, 255, 255, 1);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    z-index: 10001;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.flower-saved-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 .garden-header h1 {
@@ -621,7 +1375,6 @@ body {
     font-weight: 600;
     margin-bottom: 4px;
     color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .garden-header p {
@@ -629,6 +1382,32 @@ body {
     font-weight: 400;
     opacity: 0.9;
     color: rgba(255, 255, 255, 0.95);
+}
+
+/* Hide garden header and gradual blur when comment section is open */
+.garden-page-container.comment-section-active .garden-header {
+    visibility: hidden;
+}
+
+/* Hide back button in comment mode */
+.garden-page-container.comment-section-active #backButton {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.garden-page-container.comment-section-active .garden-gradual-blur {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-out;
+}
+
+/* Smooth transition when centering flower in comment mode */
+.garden-page-container.comment-section-active .garden-canvas {
+    transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.garden-gradual-blur {
+    transition: opacity 0.3s ease-out;
 }
 
 .garden-flower-wrapper {
@@ -775,6 +1554,11 @@ body {
     text-align: center;
 }
 
+.question-bubble-text.is-truncated {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
 .question-bubble-flower-space {
     width: 100%;
     height: 200px;
@@ -784,6 +1568,140 @@ body {
 
 .question-bubble-answer {
     display: none; /* Hide answer in garden view, only show question */
+}
+
+/* Garden: full question popup (tap truncated question to view full) */
+.garden-question-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 1070;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.garden-question-popup.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.garden-question-popup-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.garden-question-popup-content {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.garden-question-popup-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 16px;
+}
+
+.garden-question-popup-creator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.garden-question-popup-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.garden-question-popup-creator-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.garden-question-popup-creator-name {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(13, 13, 13, 1);
+}
+
+.garden-question-popup-creator-date {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.garden-question-popup-prefix {
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(100, 100, 100, 0.9);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding-bottom: 8px;
+}
+
+.garden-question-popup-close {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: unset;
+    color: rgba(60, 60, 60, 1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.garden-question-popup-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.garden-question-popup-text {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: rgba(30, 30, 30, 0.95);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    min-height: 0;
 }
 
 /* Navigation Button (back buttons on garden + flower page) */
@@ -808,15 +1726,24 @@ body {
     background: unset;
 }
 
+/* Garden page back button overrides */
+#backButton {
+    background-color: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8.6px);
+    -webkit-backdrop-filter: blur(8.6px);
+    color: rgba(97, 97, 97, 1);
+}
+
 #gardenButton {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 4px;
-    background-color: rgba(69, 146, 137, 1);
+    width: 86px;
+    background-color: rgba(5, 82, 77, 0.3);
     background-image: none;
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 #gardenButton .garden-btn-flower {

@@ -41,10 +41,12 @@ class FlowerComponent {
         }
         
         // Get container dimensions for positioning
+        // Use viewport as fallback when container has no dimensions (e.g. parent not yet laid out)
         const containerRect = this.container.getBoundingClientRect();
-        // Use explicit style dimensions if getBoundingClientRect returns zero (e.g., parent is scaled to 0)
-        const styleWidth = parseInt(this.container.style.width) || parseInt(window.getComputedStyle(this.container).width) || 400;
-        const styleHeight = parseInt(this.container.style.height) || parseInt(window.getComputedStyle(this.container).height) || 400;
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 400;
+        const viewportH = window.innerHeight || document.documentElement.clientHeight || 400;
+        const styleWidth = parseInt(this.container.style.width) || parseInt(window.getComputedStyle(this.container).width) || viewportW;
+        const styleHeight = parseInt(this.container.style.height) || parseInt(window.getComputedStyle(this.container).height) || viewportH;
         this.containerWidth = containerRect.width > 0 ? containerRect.width : styleWidth;
         this.containerHeight = containerRect.height > 0 ? containerRect.height : styleHeight;
         
@@ -157,6 +159,27 @@ class FlowerComponent {
         // CRITICAL: Clean up any existing flower elements before creating new ones
         // This prevents multiple discs/petals when FlowerComponent is initialized multiple times
         this.cleanupExistingElements();
+        
+        // Homepage flower: 20px gap below garden button
+        this.isHomepageFlower = this.container.id === 'questionFlowerContainer';
+        
+        // Refresh dimensions (container may not have been laid out when constructor ran)
+        const containerRect = this.container.getBoundingClientRect();
+        if (containerRect.width > 0 && containerRect.height > 0) {
+            this.containerWidth = containerRect.width;
+            this.containerHeight = containerRect.height;
+            this.originalDiscX = this.containerWidth / 2;
+            // Homepage: position flower so 20px gap below garden button (button top: 120px, height: 44px)
+            const gardenButtonBottom = 164; // 120 + 44
+            const gapToButton = 20;
+            const petalExtension = (this.petalRadius || 88) + 40; // petalRadius + petalHeight/2
+            const homepageDiscY = gardenButtonBottom + gapToButton + petalExtension;
+            this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * 0.4;
+            this.discX = this.originalDiscX;
+            this.discY = this.originalDiscY;
+            this.stemBottomX = this.containerWidth / 2;
+            this.stemBottomY = this.containerHeight;
+        }
         
         // Calculate fixed stem length based on original positions
         const dx = this.originalDiscX - this.stemBottomX;
@@ -684,10 +707,31 @@ class FlowerComponent {
         // Stem SVG is already in HTML, just update the path
         // Set SVG viewBox to match container
         if (this.stemSVG) {
-            // Update container dimensions in case they changed
+            // Refresh dimensions in case container was not laid out when constructor/init ran
             const containerRect = this.container.getBoundingClientRect();
-            this.containerWidth = containerRect.width || window.innerWidth;
-            this.containerHeight = containerRect.height || window.innerHeight;
+            const w = containerRect.width || window.innerWidth || 400;
+            const h = containerRect.height || window.innerHeight || 400;
+            if (w > 0 && h > 0 && (this.containerWidth !== w || this.containerHeight !== h)) {
+                this.containerWidth = w;
+                this.containerHeight = h;
+                this.originalDiscX = this.containerWidth / 2;
+                const petalExt = (this.petalRadius || 88) + 40;
+                const homepageDiscY = 164 + 20 + petalExt;
+                const yFactor = (typeof this.discYFactor === 'number') ? this.discYFactor : 0.4;
+                this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * yFactor;
+                this.discX = this.originalDiscX;
+                this.discY = this.originalDiscY;
+                this.stemBottomX = this.containerWidth / 2;
+                this.stemBottomY = this.containerHeight;
+                this.fixedStemLength = Math.sqrt(
+                    Math.pow(this.originalDiscX - this.stemBottomX, 2) +
+                    Math.pow(this.originalDiscY - this.stemBottomY, 2)
+                );
+                this.maxDiscMovement = this.fixedStemLength * 0.15;
+            } else {
+                this.containerWidth = w;
+                this.containerHeight = h;
+            }
             
             this.stemSVG.setAttribute('viewBox', `0 0 ${this.containerWidth} ${this.containerHeight}`);
             this.stemSVG.setAttribute('width', this.containerWidth);
@@ -1065,8 +1109,8 @@ class FlowerComponent {
         if (this.isTap) {
             // Trigger tap animation: increase petal size, swing petals, move disc
             this.triggerTapAnimation();
-            
-            // Calculate tap force/pressure
+                
+                // Calculate tap force/pressure
             let force = 0.5; // Default force for mouse clicks
             
             if (e && e.changedTouches && e.changedTouches.length > 0) {
@@ -1101,7 +1145,7 @@ class FlowerComponent {
                 this.detachRandomPetals(numToDetach);
             }, 100);
         } else {
-            // Start spring animation to bounce back to original position
+            // Start spring animation to bounce back to original position (was a drag, not tap)
             this.startDiscSpring();
         }
         
@@ -1852,8 +1896,84 @@ class FlowerComponent {
             buttonContainer.appendChild(doneButton);
             buttonContainer.appendChild(tryAnotherButton);
             flowerPageContainer.appendChild(buttonContainer);
+
+            const signInWrapper = document.createElement('div');
+            signInWrapper.id = 'signInBelowDisc';
+            signInWrapper.className = 'sign-in-below-disc';
+            signInWrapper.style.pointerEvents = 'auto';
+            const discBottom = this.discY + (this.discSize || 120) / 2;
+            signInWrapper.style.top = `${discBottom + 24}px`;
+            signInWrapper.style.opacity = '0';
+
+            const signInButton = document.createElement('button');
+            signInButton.id = 'flowerPageAuthButton';
+            signInButton.className = 'auth-button auth-button-compact';
+            signInButton.setAttribute('aria-label', 'Save your flower');
+            signInButton.title = 'Save your flower to the garden';
+            const signInLabel = document.createElement('span');
+            signInLabel.id = 'flowerPageAuthLabel';
+            signInLabel.textContent = 'Save your flower?';
+            signInButton.appendChild(signInLabel);
+            signInButton.addEventListener('click', () => {
+                window.authOpenedFromFlowerPage = true;
+                if (typeof window.authUI !== 'undefined' && window.authUI.openAuthModal) {
+                    window.authUI.openAuthModal('signIn');
+                }
+            });
+
+            if (typeof window.authUI !== 'undefined' && window.authUI.refreshAuthUI) {
+                window.authUI.refreshAuthUI();
+            }
+            window.onAuthStateChangedCallbacks = window.onAuthStateChangedCallbacks || [];
+            window.onAuthStateChangedCallbacks.push(() => {
+                if (typeof window.authUI !== 'undefined' && window.authUI.refreshAuthUI) {
+                    window.authUI.refreshAuthUI();
+                }
+            });
+
+            signInWrapper.appendChild(signInButton);
+            flowerPageContainer.appendChild(signInWrapper);
+            setTimeout(() => {
+                signInWrapper.style.transition = 'opacity 0.5s ease-in';
+                signInWrapper.style.opacity = '1';
+            }, 600);
+        } else {
+            const existingWrapper = document.getElementById('signInBelowDisc');
+            if (existingWrapper) {
+                existingWrapper.style.display = '';
+                existingWrapper.style.visibility = 'visible';
+                existingWrapper.style.top = `${this.discY + (this.discSize || 120) / 2 + 24}px`;
+                existingWrapper.style.opacity = '1';
+            } else {
+                // Create sign-in if missing (e.g. from DOM cleanup)
+                const signInWrapper = document.createElement('div');
+                signInWrapper.id = 'signInBelowDisc';
+                signInWrapper.className = 'sign-in-below-disc';
+                signInWrapper.style.pointerEvents = 'auto';
+                signInWrapper.style.top = `${this.discY + (this.discSize || 120) / 2 + 24}px`;
+                const signInButton = document.createElement('button');
+                signInButton.id = 'flowerPageAuthButton';
+                signInButton.className = 'auth-button auth-button-compact';
+                signInButton.setAttribute('aria-label', 'Save your flower');
+                signInButton.title = 'Save your flower to the garden';
+                const signInLabel = document.createElement('span');
+                signInLabel.id = 'flowerPageAuthLabel';
+                signInLabel.textContent = 'Save your flower?';
+                signInButton.appendChild(signInLabel);
+                signInButton.addEventListener('click', () => {
+                    window.authOpenedFromFlowerPage = true;
+                    if (typeof window.authUI !== 'undefined' && window.authUI.openAuthModal) {
+                        window.authUI.openAuthModal('signIn');
+                    }
+                });
+                signInWrapper.appendChild(signInButton);
+                flowerPageContainer.appendChild(signInWrapper);
+                if (typeof window.authUI !== 'undefined' && window.authUI.refreshAuthUI) {
+                    window.authUI.refreshAuthUI();
+                }
+            }
         }
-        
+
         buttonContainer.style.display = 'flex';
         buttonContainer.style.opacity = '0';
         setTimeout(() => {
@@ -1899,6 +2019,8 @@ class FlowerComponent {
         const finishReset = () => {
             if (answerDisplay) answerDisplay.style.display = 'none';
             if (buttonContainer) buttonContainer.style.display = 'none';
+            const signInBelow = document.getElementById('signInBelowDisc');
+            if (signInBelow) signInBelow.style.display = 'none';
             const instructions = document.querySelector('.instructions');
             if (instructions) instructions.style.display = 'block';
             this.createPetals(true);
@@ -1943,7 +2065,10 @@ class FlowerComponent {
             if (!flowerDB.useSupabase && !flowerDB.db) {
                 console.warn('⚠️ Database init completed but neither Supabase nor IndexedDB available');
             }
-            
+
+            // Flowers can be created anonymously (user_id = null) or with account (user_id set)
+            // Comments require sign-in; flowers do not
+
             // Generate a unique ID for this flower
             const flowerId = Date.now().toString();
             
@@ -2377,7 +2502,10 @@ class FlowerComponent {
             
             // Center everything horizontally based on container
             this.originalDiscX = this.containerWidth / 2;
-            this.originalDiscY = this.containerHeight * 0.4;
+            const petalExt = (this.petalRadius || 88) + 40;
+            const homepageDiscY = 164 + 20 + petalExt;
+            const yFactor = (typeof this.discYFactor === 'number') ? this.discYFactor : 0.4;
+            this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * yFactor;
             
             // Center stem bottom horizontally based on container
             this.stemBottomX = this.containerWidth / 2;
@@ -2450,6 +2578,45 @@ document.addEventListener('DOMContentLoaded', () => {
         flowerInstance = new FlowerComponent();
     }
 });
+
+/**
+ * Navigate to garden page and scroll to a specific flower.
+ * Used by Done button and post-auth "Save your flower" flow.
+ */
+window.goToGardenWithFlower = async function(flowerId) {
+    const flowerPage = document.getElementById('flowerPage');
+    const gardenPage = document.getElementById('gardenPage');
+    if (!flowerPage || !gardenPage) return;
+
+    flowerPage.classList.remove('active');
+    gardenPage.classList.add('active');
+
+    const runNavigation = async () => {
+        if (!window.gardenPageInstance && typeof window.initializeGardenPage === 'function') {
+            window.initializeGardenPage();
+        }
+        let attempts = 0;
+        while (attempts < 50) {
+            if (window.gardenPageInstance?.initialized) {
+                try {
+                    await window.gardenPageInstance.refreshGarden();
+                    if (flowerId) {
+                        setTimeout(() => {
+                            window.gardenPageInstance?.scrollToFlower(flowerId);
+                        }, 800);
+                    }
+                } catch (err) {
+                    console.error('🌸 goToGardenWithFlower error:', err);
+                }
+                return;
+            }
+            await new Promise(r => setTimeout(r, 100));
+            attempts++;
+        }
+    };
+
+    setTimeout(runNavigation, 100);
+};
 
 // Prevent default touch behaviors (only for attached elements)
 document.addEventListener('touchmove', (e) => {
