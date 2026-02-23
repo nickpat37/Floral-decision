@@ -1025,6 +1025,8 @@ body {
     position: relative;
     overflow: hidden;
     cursor: grab;
+    /* Zoom out 20% so user sees 20% more content */
+    zoom: 0.833;
 }
 
 .garden-container:active {
