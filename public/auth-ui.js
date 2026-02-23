@@ -12,6 +12,7 @@
 
     const signInPanel = document.getElementById('authModalSignIn');
     const signUpPanel = document.getElementById('authModalSignUp');
+    const confirmPanel = document.getElementById('authModalConfirm');
     const signedInPanel = document.getElementById('authModalSignedIn');
 
     const signInForm = document.getElementById('authSignInForm');
@@ -25,13 +26,29 @@
     const signedInAvatar = document.getElementById('authSignedInAvatar');
     const signedInName = document.getElementById('authSignedInName');
 
-    async function openAuthModal(panel) {
+    async function openAuthModal(panel, options) {
         if (!modal) return;
         signInPanel.style.display = 'none';
         signUpPanel.style.display = 'none';
+        if (confirmPanel) confirmPanel.style.display = 'none';
         signedInPanel.style.display = 'none';
         if (panel === 'signUp') signUpPanel.style.display = 'block';
-        else if (panel === 'signedIn') {
+        else if (panel === 'confirm') {
+            if (confirmPanel) {
+                const titleEl = document.getElementById('authConfirmTitle');
+                const msgEl = document.getElementById('authConfirmMessage');
+                const btnEl = document.getElementById('authConfirmClose');
+                const imgEl = document.getElementById('authConfirmImage');
+                if (options?.title && titleEl) titleEl.textContent = options.title;
+                else if (titleEl) titleEl.textContent = 'Check your email';
+                if (options?.message && msgEl) msgEl.textContent = options.message;
+                else if (msgEl) msgEl.textContent = "We've sent you a confirmation link. Click it to verify your account.";
+                if (options?.buttonText && btnEl) btnEl.textContent = options.buttonText;
+                else if (btnEl) btnEl.textContent = 'Got it';
+                if (imgEl) imgEl.style.display = options?.showImage ? '' : 'none';
+                confirmPanel.style.display = 'flex';
+            }
+        } else if (panel === 'signedIn') {
             signedInPanel.style.display = 'block';
             const p = await window.auth.getProfile();
             if (p) {
@@ -50,6 +67,8 @@
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
         window.authOpenedFromFlowerPage = false;
+        window.authConfirmFlowerSaved = false;
+        window.authConfirmFlowerId = null;
     }
 
     function updateAuthButton(profile) {
@@ -124,15 +143,16 @@
         if (flowerId && typeof flowerDB !== 'undefined') {
             await flowerDB.updateFlowerUserId(flowerId);
         }
-        closeAuthModal();
         refreshAuthUI();
         (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
-        showToast('Your flower has been saved!');
-        setTimeout(() => {
-            if (typeof window.goToGardenWithFlower === 'function') {
-                window.goToGardenWithFlower(flowerId);
-            }
-        }, 2000);
+        window.authConfirmFlowerSaved = true;
+        window.authConfirmFlowerId = flowerId;
+        openAuthModal('confirm', {
+            title: 'Success!',
+            message: 'Your flower has been saved to the garden.',
+            buttonText: 'Go to garden',
+            showImage: true
+        });
     }
 
     if (signInForm) {
@@ -175,9 +195,26 @@
             if (window.authOpenedFromFlowerPage) {
                 await onAuthSuccessFromFlowerPage(user);
             } else {
-                closeAuthModal();
+                openAuthModal('confirm');
                 refreshAuthUI();
                 (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(user); } catch (_) {} });
+            }
+        });
+    }
+
+    const confirmCloseBtn = document.getElementById('authConfirmClose');
+    if (confirmCloseBtn) {
+        confirmCloseBtn.addEventListener('click', () => {
+            if (window.authConfirmFlowerSaved) {
+                const flowerId = window.authConfirmFlowerId;
+                window.authConfirmFlowerSaved = false;
+                window.authConfirmFlowerId = null;
+                closeAuthModal();
+                if (typeof window.goToGardenWithFlower === 'function') {
+                    window.goToGardenWithFlower(flowerId);
+                }
+            } else {
+                closeAuthModal();
             }
         });
     }

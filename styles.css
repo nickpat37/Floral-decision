@@ -129,6 +129,45 @@ body {
     opacity: 0.9;
 }
 
+/* Garden button below question header (homepage) */
+.question-garden-nav {
+    position: absolute;
+    top: 120px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+#homeGardenButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 86px;
+    height: 44px;
+    background-color: rgba(16, 116, 110, 0.3);
+    background-image: none;
+    backdrop-filter: blur(3.8px);
+    -webkit-backdrop-filter: blur(3.8px);
+}
+
+#homeGardenButton .garden-btn-flower {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    background: transparent;
+}
+
+#homeGardenButton .garden-btn-arrow {
+    color: rgba(255, 255, 255, 1);
+    font-size: 14px;
+    font-weight: 600;
+}
+
 
 /* Question Modal - Overlay */
 /* Viewport now uses --vh (above Safari bar); bottom is from visible edge. */
@@ -140,7 +179,7 @@ body {
     -webkit-backdrop-filter: blur(6px);
     border-radius: 12px;
     padding: 20px 12px 8px 12px;
-    height: 180px;
+    height: 156px;
     position: absolute;
     bottom: max(30px, env(safe-area-inset-bottom));
     left: 50%;
@@ -167,7 +206,7 @@ body {
 
 .question-input {
     width: 100%;
-    height: 115px;
+    height: 90px;
     padding: 12px;
     border: none;
     border-radius: 12px;
@@ -196,8 +235,7 @@ body {
 
 .done-button {
     position: absolute;
-    top: 90px;
-    transform: translateY(-50%);
+    top: 50px;
     right: 12px;
     padding: 8px;
     width: 32px;
@@ -225,11 +263,11 @@ body {
 
 .done-button:hover {
     background: rgba(180, 130, 180, 0.95);
-    transform: translateY(-50%) scale(1.05);
+    transform: scale(1.05);
 }
 
 .done-button:active {
-    transform: translateY(-50%) scale(0.98);
+    transform: scale(0.98);
 }
 
 /* Interactive Page Styles (Flower Page) */
@@ -1035,9 +1073,9 @@ body {
     position: relative;
     width: 100%;
     max-width: 360px;
-    background-color: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(9.7px);
-    -webkit-backdrop-filter: blur(9.7px);
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10.5px);
+    -webkit-backdrop-filter: blur(10.5px);
     border-radius: 20px;
     padding: 24px;
     box-shadow: none;
@@ -1073,10 +1111,21 @@ body {
 }
 
 #authSignInForm,
-#authSignUpForm {
+#authSignUpForm,
+#authConfirmContent {
     text-align: center;
     justify-content: flex-start;
     align-items: center;
+}
+
+#authConfirmContent {
+    height: 100%;
+}
+
+.auth-confirm-image {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
 }
 
 .auth-form input {
@@ -1092,7 +1141,10 @@ body {
 #authSignUpDisplayName,
 #authSignUpEmail,
 #authSignUpPassword {
+    background-color: rgba(245, 245, 245, 1);
     border: none;
+    border-color: rgba(0, 0, 0, 0);
+    border-image: none;
     width: 100%;
     font-size: 14px;
     color: rgba(79, 79, 79, 1);
@@ -1110,10 +1162,27 @@ body {
     font-size: 14px;
 }
 
+#authModalConfirm {
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    justify-content: flex-start;
+}
+
+.auth-confirm-message {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 1);
+    margin: 0;
+    line-height: 1.5;
+    width: 100%;
+}
+
 .auth-submit {
     padding: 12px 24px;
     width: 140px;
-    background-color: rgba(43, 120, 115, 1);
+    background-color: rgba(5, 82, 77, 1);
     border: none;
     border-radius: 8px;
     font-size: 14px;
@@ -1122,6 +1191,10 @@ body {
     cursor: pointer;
     font-family: inherit;
     -webkit-tap-highlight-color: transparent;
+}
+
+#authConfirmClose {
+    background-color: rgba(5, 82, 77, 1);
 }
 
 .auth-sign-out {
@@ -1563,10 +1636,11 @@ body {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    background-color: rgba(69, 146, 137, 1);
+    width: 86px;
+    background-color: rgba(5, 82, 77, 0.3);
     background-image: none;
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 #gardenButton .garden-btn-flower {

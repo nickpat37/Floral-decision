@@ -45,6 +45,17 @@
                 <h1>Ask me anything!</h1>
                 <p>And count ... for the answer</p>
             </div>
+
+            <!-- Garden button (homepage) -->
+            <div class="question-garden-nav">
+                <button id="homeGardenButton" class="nav-button">
+                    <img src="/Daisy_icon.png" alt="Garden" class="garden-btn-flower">
+                    <svg class="garden-btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
+            </div>
             
             <!-- Overlay: Question Modal -->
             <div class="question-modal" id="questionModal">
@@ -218,6 +229,14 @@
                     <button type="submit" class="auth-submit">Sign up</button>
                 </form>
                 <p class="auth-switch">Already have an account? <button type="button" id="authShowSignIn" class="auth-link">Sign in</button></p>
+            </div>
+            <div id="authModalConfirm" class="auth-form-panel" style="display:none;">
+                <h2 id="authConfirmTitle">Check your email</h2>
+                <div class="auth-form auth-confirm-content" id="authConfirmContent">
+                    <img src="/daisy_approved.png" alt="" class="auth-confirm-image" id="authConfirmImage">
+                    <p class="auth-confirm-message" id="authConfirmMessage">We've sent you a confirmation link. Click it to verify your account.</p>
+                    <button type="button" id="authConfirmClose" class="auth-submit">Got it</button>
+                </div>
             </div>
             <div id="authModalSignedIn" class="auth-form-panel" style="display:none;">
                 <h2>Account</h2>

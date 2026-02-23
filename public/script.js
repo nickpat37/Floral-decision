@@ -160,13 +160,21 @@ class FlowerComponent {
         // This prevents multiple discs/petals when FlowerComponent is initialized multiple times
         this.cleanupExistingElements();
         
+        // Homepage flower: 20px gap below garden button
+        this.isHomepageFlower = this.container.id === 'questionFlowerContainer';
+        
         // Refresh dimensions (container may not have been laid out when constructor ran)
         const containerRect = this.container.getBoundingClientRect();
         if (containerRect.width > 0 && containerRect.height > 0) {
             this.containerWidth = containerRect.width;
             this.containerHeight = containerRect.height;
             this.originalDiscX = this.containerWidth / 2;
-            this.originalDiscY = this.containerHeight * 0.4;
+            // Homepage: position flower so 20px gap below garden button (button top: 120px, height: 44px)
+            const gardenButtonBottom = 164; // 120 + 44
+            const gapToButton = 20;
+            const petalExtension = (this.petalRadius || 88) + 40; // petalRadius + petalHeight/2
+            const homepageDiscY = gardenButtonBottom + gapToButton + petalExtension;
+            this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * 0.4;
             this.discX = this.originalDiscX;
             this.discY = this.originalDiscY;
             this.stemBottomX = this.containerWidth / 2;
@@ -707,8 +715,10 @@ class FlowerComponent {
                 this.containerWidth = w;
                 this.containerHeight = h;
                 this.originalDiscX = this.containerWidth / 2;
+                const petalExt = (this.petalRadius || 88) + 40;
+                const homepageDiscY = 164 + 20 + petalExt;
                 const yFactor = (typeof this.discYFactor === 'number') ? this.discYFactor : 0.4;
-                this.originalDiscY = this.containerHeight * yFactor;
+                this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * yFactor;
                 this.discX = this.originalDiscX;
                 this.discY = this.originalDiscY;
                 this.stemBottomX = this.containerWidth / 2;
@@ -2492,8 +2502,10 @@ class FlowerComponent {
             
             // Center everything horizontally based on container
             this.originalDiscX = this.containerWidth / 2;
+            const petalExt = (this.petalRadius || 88) + 40;
+            const homepageDiscY = 164 + 20 + petalExt;
             const yFactor = (typeof this.discYFactor === 'number') ? this.discYFactor : 0.4;
-            this.originalDiscY = this.containerHeight * yFactor;
+            this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * yFactor;
             
             // Center stem bottom horizontally based on container
             this.stemBottomX = this.containerWidth / 2;

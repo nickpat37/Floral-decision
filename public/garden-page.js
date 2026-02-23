@@ -2663,30 +2663,38 @@ class GardenPage {
      */
     setupNavigation() {
         const gardenButton = document.getElementById('gardenButton');
+        const homeGardenButton = document.getElementById('homeGardenButton');
         const backButton = document.getElementById('backButton');
         const gardenPage = document.getElementById('gardenPage');
         const flowerPage = document.getElementById('flowerPage');
+        const questionPage = document.getElementById('questionPage');
+
+        const goToGarden = async () => {
+            if (flowerPage) flowerPage.classList.remove('active');
+            if (questionPage) questionPage.classList.remove('active');
+            if (gardenPage) gardenPage.classList.add('active');
+
+            requestAnimationFrame(async () => {
+                if (!this.canvas && this.container) {
+                    this.canvas = document.createElement('div');
+                    this.canvas.className = 'garden-canvas';
+                    this.canvas.style.width = `${this.canvasSize}px`;
+                    this.canvas.style.height = `${this.canvasSize}px`;
+                    this.canvas.style.position = 'absolute';
+                    this.canvas.style.top = '0';
+                    this.canvas.style.left = '0';
+                    this.container.appendChild(this.canvas);
+                }
+
+                await this.refreshGarden();
+            });
+        };
 
         if (gardenButton) {
-            gardenButton.addEventListener('click', async () => {
-                flowerPage.classList.remove('active');
-                gardenPage.classList.add('active');
-
-                requestAnimationFrame(async () => {
-                    if (!this.canvas && this.container) {
-                        this.canvas = document.createElement('div');
-                        this.canvas.className = 'garden-canvas';
-                        this.canvas.style.width = `${this.canvasSize}px`;
-                        this.canvas.style.height = `${this.canvasSize}px`;
-                        this.canvas.style.position = 'absolute';
-                        this.canvas.style.top = '0';
-                        this.canvas.style.left = '0';
-                        this.container.appendChild(this.canvas);
-                    }
-                    
-                    await this.refreshGarden();
-                });
-            });
+            gardenButton.addEventListener('click', goToGarden);
+        }
+        if (homeGardenButton) {
+            homeGardenButton.addEventListener('click', goToGarden);
         }
 
         if (backButton) {
