@@ -83,7 +83,7 @@
     function updateAuthButton(profile) {
         const updates = [
             [authAvatar, authLabel, 'Sign in'],
-            [null, document.getElementById('flowerPageAuthLabel'), 'Save your flower?']
+            [null, document.getElementById('flowerPageAuthLabel'), 'Sign in to link (optional)']
         ];
         updates.forEach(([avatar, label, signedOutLabel]) => {
             if (!label) return;
@@ -116,7 +116,7 @@
 
         const flowerPageAuthBtn = document.getElementById('flowerPageAuthButton');
         const signInBelowDisc = document.getElementById('signInBelowDisc');
-        if (flowerPageAuthBtn) flowerPageAuthBtn.title = profile ? 'Account' : 'Save your flower to the garden';
+        if (flowerPageAuthBtn) flowerPageAuthBtn.title = profile ? 'Account' : 'Sign in to link this flower to your account (optional)';
         if (signInBelowDisc) signInBelowDisc.style.display = profile ? 'none' : '';
     }
 
@@ -242,11 +242,17 @@
     }
 
     if (signOutBtn) {
-        signOutBtn.addEventListener('click', async () => {
-            await window.auth.signOut();
+        signOutBtn.addEventListener('click', () => {
             closeAuthModal();
             updateAuthButton(null);
             (window.onAuthStateChangedCallbacks || []).forEach(fn => { try { fn(null); } catch (_) {} });
+            (async () => {
+                try {
+                    if (typeof window.auth !== 'undefined') await window.auth.signOut();
+                } catch (err) {
+                    console.warn('Sign out:', err?.message || err);
+                }
+            })();
         });
     }
 

@@ -1908,11 +1908,11 @@ class FlowerComponent {
             const signInButton = document.createElement('button');
             signInButton.id = 'flowerPageAuthButton';
             signInButton.className = 'auth-button auth-button-compact';
-            signInButton.setAttribute('aria-label', 'Save your flower');
-            signInButton.title = 'Save your flower to the garden';
+            signInButton.setAttribute('aria-label', 'Sign in to link flower to account');
+            signInButton.title = 'Sign in to link this flower to your account (optional)';
             const signInLabel = document.createElement('span');
             signInLabel.id = 'flowerPageAuthLabel';
-            signInLabel.textContent = 'Save your flower?';
+            signInLabel.textContent = 'Sign in to link (optional)';
             signInButton.appendChild(signInLabel);
             signInButton.addEventListener('click', () => {
                 window.authOpenedFromFlowerPage = true;
@@ -1954,11 +1954,11 @@ class FlowerComponent {
                 const signInButton = document.createElement('button');
                 signInButton.id = 'flowerPageAuthButton';
                 signInButton.className = 'auth-button auth-button-compact';
-                signInButton.setAttribute('aria-label', 'Save your flower');
-                signInButton.title = 'Save your flower to the garden';
+                signInButton.setAttribute('aria-label', 'Sign in to link flower to account');
+                signInButton.title = 'Sign in to link this flower to your account (optional)';
                 const signInLabel = document.createElement('span');
                 signInLabel.id = 'flowerPageAuthLabel';
-                signInLabel.textContent = 'Save your flower?';
+                signInLabel.textContent = 'Sign in to link (optional)';
                 signInButton.appendChild(signInLabel);
                 signInButton.addEventListener('click', () => {
                     window.authOpenedFromFlowerPage = true;
