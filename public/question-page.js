@@ -116,31 +116,20 @@ document.addEventListener('DOMContentLoaded', () => {
             flowerContainer.querySelectorAll('.flower-disc, .flower-disc-wrapper, .flower-petal, .detached-petal').forEach(el => el.remove());
         }
 
-        // Generate a new flower for the question page
-        // Wait for layout (page is now active) before creating flower
-        let retries = 0;
-        const maxRetries = 30;
-        const initFlower = () => {
+        // Generate a new flower for the question page (layout uses viewport fallback when needed)
+        const createFlower = () => {
             const container = document.getElementById('questionFlowerContainer');
-            const rect = container?.getBoundingClientRect();
-            if (container && rect && rect.width > 0 && rect.height > 0) {
+            if (container && document.getElementById('questionStemSVG') && document.getElementById('questionStemPath')) {
                 questionFlowerInstance = new FlowerComponent({
                     containerId: 'questionFlowerContainer',
                     stemSVGId: 'questionStemSVG',
                     stemPathId: 'questionStemPath'
                 });
-            } else if (retries < maxRetries) {
-                retries++;
-                requestAnimationFrame(initFlower);
             } else {
-                questionFlowerInstance = new FlowerComponent({
-                    containerId: 'questionFlowerContainer',
-                    stemSVGId: 'questionStemSVG',
-                    stemPathId: 'questionStemPath'
-                });
+                setTimeout(createFlower, 50);
             }
         };
-        requestAnimationFrame(() => requestAnimationFrame(initFlower));
+        setTimeout(createFlower, 50);
     };
 
     // Back to homepage: flower page -> question page
@@ -151,32 +140,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Initialize flower component on question page
-    // Use double requestAnimationFrame to ensure layout is ready (avoids zero-dimension container on slow devices)
+    // Delay ensures layout is complete (particles, fonts, viewport) before creating flower
     if (questionPage && questionPage.classList.contains('active')) {
-        let retries = 0;
-        const maxRetries = 30; // ~500ms at 60fps
         const initHomepageFlower = () => {
             const container = document.getElementById('questionFlowerContainer');
-            const rect = container?.getBoundingClientRect();
-            if (container && rect && rect.width > 0 && rect.height > 0) {
-                questionFlowerInstance = new FlowerComponent({
-                    containerId: 'questionFlowerContainer',
-                    stemSVGId: 'questionStemSVG',
-                    stemPathId: 'questionStemPath'
-                });
-            } else if (retries < maxRetries) {
-                retries++;
-                requestAnimationFrame(initHomepageFlower);
-            } else {
-                // Fallback: create anyway (FlowerComponent uses viewport fallback for dimensions)
-                questionFlowerInstance = new FlowerComponent({
-                    containerId: 'questionFlowerContainer',
-                    stemSVGId: 'questionStemSVG',
-                    stemPathId: 'questionStemPath'
-                });
+            const stemSvg = document.getElementById('questionStemSVG');
+            const stemPath = document.getElementById('questionStemPath');
+            if (!container || !stemSvg || !stemPath) {
+                setTimeout(initHomepageFlower, 50);
+                return;
             }
+            questionFlowerInstance = new FlowerComponent({
+                containerId: 'questionFlowerContainer',
+                stemSVGId: 'questionStemSVG',
+                stemPathId: 'questionStemPath'
+            });
         };
-        requestAnimationFrame(() => requestAnimationFrame(initHomepageFlower));
+        // Use setTimeout to ensure layout/paint complete after DOMContentLoaded
+        setTimeout(initHomepageFlower, 50);
     }
     
     // Show Done button when user starts typing (multi-event for Safari compatibility)

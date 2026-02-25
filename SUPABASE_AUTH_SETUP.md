@@ -169,6 +169,19 @@ CREATE POLICY "Allow insert flowers (anonymous or authenticated)" ON flowers
     WITH CHECK (true);
 ```
 
+## Migration: Ensure Anonymous Users Can See Flowers in Garden
+
+Anonymous users must be able to SELECT from `flowers` to see the garden. Run this if anonymous users don't see flowers:
+
+```sql
+-- Allow anyone (including anonymous) to read all flowers
+CREATE POLICY "Allow public read access" ON flowers
+    FOR SELECT
+    USING (true);
+```
+
+If you get "policy already exists", the policy is fine. To replace: `DROP POLICY IF EXISTS "Allow public read access" ON flowers;` then run the CREATE above.
+
 ---
 
 ## Next Steps

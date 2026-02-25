@@ -83,7 +83,7 @@
     function updateAuthButton(profile) {
         const updates = [
             [authAvatar, authLabel, 'Sign in'],
-            [null, document.getElementById('flowerPageAuthLabel'), 'Sign in to link (optional)']
+            [null, document.getElementById('flowerPageAuthLabel'), 'Sign in to save?']
         ];
         updates.forEach(([avatar, label, signedOutLabel]) => {
             if (!label) return;
@@ -116,7 +116,7 @@
 
         const flowerPageAuthBtn = document.getElementById('flowerPageAuthButton');
         const signInBelowDisc = document.getElementById('signInBelowDisc');
-        if (flowerPageAuthBtn) flowerPageAuthBtn.title = profile ? 'Account' : 'Sign in to link this flower to your account (optional)';
+        if (flowerPageAuthBtn) flowerPageAuthBtn.title = profile ? 'Account' : 'Sign in to save?';
         if (signInBelowDisc) signInBelowDisc.style.display = profile ? 'none' : '';
     }
 
@@ -277,6 +277,7 @@
         openAuthModal,
         closeAuthModal,
         refreshAuthUI,
-        updateAuthButton
+        updateAuthButton,
+        showToast
     };
 })();

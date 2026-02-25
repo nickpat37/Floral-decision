@@ -416,8 +416,6 @@ class GardenPage {
         const canvasX = containerX - this.offsetX;
         const canvasY = containerY - this.offsetY;
 
-        // Hit area: wrapper uses translate(-50%,-50%) so center is at (canvasX, canvasY)
-        const hitRadius = 120;
         for (const [flowerId, flowerRef] of this.loadedFlowers) {
             if (!flowerRef?.wrapper || !flowerRef?.instance) continue;
             const data = flowerRef.data;
@@ -425,6 +423,7 @@ class GardenPage {
             const centerY = data.canvasY || 0;
             const dx = canvasX - centerX;
             const dy = canvasY - centerY;
+            const hitRadius = 120;
             if (dx * dx + dy * dy <= hitRadius * hitRadius) {
                 const instance = flowerRef.instance;
                 if (instance.triggerTapAnimation) instance.triggerTapAnimation();
@@ -611,11 +610,13 @@ class GardenPage {
         // Measure actual question bubble (inner div) position from DOM
         const bubbleEl = flowerRef?.wrapper?.querySelector('.garden-question-bubble');
         let offsetY;
+        let usedFallback = false;
         if (bubbleEl) {
             const bubbleRect = bubbleEl.getBoundingClientRect();
             const currentTop = bubbleRect.top;
             offsetY = this.offsetY + (targetBubbleTop - currentTop);
         } else {
+            usedFallback = true;
             const bubbleTopInCanvas = canvasY - 320;
             offsetY = targetBubbleTop - rect.top - bubbleTopInCanvas;
         }
@@ -632,6 +633,26 @@ class GardenPage {
             }
             this.updateVisibleFlowers();
             this.updateCenterFlower();
+        }
+        // When opened via disc tap, bubble didn't exist initially; after pan, flower becomes center
+        // and bubble is created. Run a second pass to snap accurately using the real bubble position.
+        if (usedFallback && flowerData.question) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const bubbleEl2 = flowerRef?.wrapper?.querySelector('.garden-question-bubble');
+                    if (bubbleEl2) {
+                        const bubbleRect = bubbleEl2.getBoundingClientRect();
+                        const currentTop = bubbleRect.top;
+                        const offsetY2 = this.offsetY + (targetBubbleTop - currentTop);
+                        this.offsetY = Math.max(-maxOffsetY, Math.min(0, offsetY2));
+                        this.canvas.style.transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+                        if (this.flowers.length > 0) {
+                            this.updateVisibleFlowers();
+                            this.updateCenterFlower();
+                        }
+                    }
+                });
+            });
         }
     }
 
@@ -1007,15 +1028,27 @@ class GardenPage {
                     // Load more flowers to ensure we get the newly created one
                     dbFlowers = await flowerDB.getAllFlowers({ offset: 0, limit: this.maxFlowersToShow + 10 });
                     console.log('🌸 Loaded flowers from database:', dbFlowers.length);
+
+                    // If we just created a flower (anonymous) and it's not in results, it may be in IndexedDB
+                    // (Supabase insert can fail for anonymous; fallback saves to IndexedDB)
+                    const targetId = window.lastCreatedFlowerId;
+                    if (targetId) {
+                        const found = dbFlowers.some(f => String(f.id) === String(targetId));
+                        if (!found) {
+                            try {
+                                const localFlower = await flowerDB.getFlower(String(targetId));
+                                if (localFlower) {
+                                    localFlower.creatorName = localFlower.creatorName || 'Anonymous';
+                                    dbFlowers = [localFlower, ...dbFlowers];
+                                    console.log('🌸 Included locally saved flower (from IndexedDB) in garden');
+                                }
+                            } catch (e) {
+                                console.warn('🌸 Could not fetch local flower:', e?.message);
+                            }
+                        }
+                    }
                     if (dbFlowers.length > 0) {
                         console.log('🌸 Database flower IDs:', dbFlowers.slice(0, 5).map(f => f.id));
-                        console.log('🌸 Looking for:', window.lastCreatedFlowerId);
-                        const found = dbFlowers.find(f => {
-                            const id = String(f.id);
-                            const targetId = String(window.lastCreatedFlowerId);
-                            return id === targetId || id === window.lastCreatedFlowerId;
-                        });
-                        console.log('🌸 Newly created flower found in database:', found ? 'YES' : 'NO');
                     }
                 } catch (dbError) {
                     console.error('🌸 Error loading from database:', dbError);
@@ -2315,7 +2348,25 @@ class GardenPage {
             align-items: center;
             opacity: 0;
             transition: opacity 0.15s ease-in;
+            cursor: pointer;
+            pointer-events: auto;
+            touch-action: manipulation;
         `;
+        bubbleContainer.setAttribute('role', 'button');
+        bubbleContainer.setAttribute('aria-label', 'Open comments');
+
+        // Tap/click on question bubble opens comment section (flowers with questions)
+        bubbleContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const flowerRef = this.loadedFlowers.get(String(flowerData.id));
+            if (flowerRef) {
+                const instance = flowerRef.instance;
+                if (instance?.triggerTapAnimation) instance.triggerTapAnimation();
+                const disc = flowerRef.wrapper?.querySelector('.flower-disc');
+                if (disc && flowerData.answer) this.addAnswerToDisc(disc, flowerData.answer, flowerData.discSize || 120);
+                this.showGardenCommentSection(flowerData.id, flowerRef);
+            }
+        });
 
         // Create the bubble element
         const bubble = document.createElement('div');
@@ -2337,6 +2388,9 @@ class GardenPage {
             textEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.showQuestionPopup(fullQuestion, flowerData);
+                // Also open comment section (tap on question area opens comments)
+                const flowerRef = this.loadedFlowers.get(String(flowerData.id));
+                if (flowerRef) this.showGardenCommentSection(flowerData.id, flowerRef);
             });
         }
 
