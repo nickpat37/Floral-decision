@@ -380,6 +380,12 @@ class GardenPage {
      * Pan the canvas by delta amounts
      */
     pan(deltaX, deltaY) {
+        if (deltaX !== 0 || deltaY !== 0) {
+            const section = document.getElementById('gardenCommentSection');
+            if (section?.classList.contains('visible')) {
+                this.hideGardenCommentSection();
+            }
+        }
         this.offsetX += deltaX;
         this.offsetY += deltaY;
 
