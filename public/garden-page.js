@@ -1007,15 +1007,27 @@ class GardenPage {
                     // Load more flowers to ensure we get the newly created one
                     dbFlowers = await flowerDB.getAllFlowers({ offset: 0, limit: this.maxFlowersToShow + 10 });
                     console.log('🌸 Loaded flowers from database:', dbFlowers.length);
+
+                    // If we just created a flower (anonymous) and it's not in results, it may be in IndexedDB
+                    // (Supabase insert can fail for anonymous; fallback saves to IndexedDB)
+                    const targetId = window.lastCreatedFlowerId;
+                    if (targetId) {
+                        const found = dbFlowers.some(f => String(f.id) === String(targetId));
+                        if (!found) {
+                            try {
+                                const localFlower = await flowerDB.getFlower(String(targetId));
+                                if (localFlower) {
+                                    localFlower.creatorName = localFlower.creatorName || 'Anonymous';
+                                    dbFlowers = [localFlower, ...dbFlowers];
+                                    console.log('🌸 Included locally saved flower (from IndexedDB) in garden');
+                                }
+                            } catch (e) {
+                                console.warn('🌸 Could not fetch local flower:', e?.message);
+                            }
+                        }
+                    }
                     if (dbFlowers.length > 0) {
                         console.log('🌸 Database flower IDs:', dbFlowers.slice(0, 5).map(f => f.id));
-                        console.log('🌸 Looking for:', window.lastCreatedFlowerId);
-                        const found = dbFlowers.find(f => {
-                            const id = String(f.id);
-                            const targetId = String(window.lastCreatedFlowerId);
-                            return id === targetId || id === window.lastCreatedFlowerId;
-                        });
-                        console.log('🌸 Newly created flower found in database:', found ? 'YES' : 'NO');
                     }
                 } catch (dbError) {
                     console.error('🌸 Error loading from database:', dbError);

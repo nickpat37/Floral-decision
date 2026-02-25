@@ -165,22 +165,24 @@ class FlowerComponent {
         
         // Refresh dimensions (container may not have been laid out when constructor ran)
         const containerRect = this.container.getBoundingClientRect();
-        if (containerRect.width > 0 && containerRect.height > 0) {
-            this.containerWidth = containerRect.width;
-            this.containerHeight = containerRect.height;
-            this.originalDiscX = this.containerWidth / 2;
-            // Homepage: position flower so 20px gap below garden button (button top: 120px, height: 44px)
-            const gardenButtonBottom = 164; // 120 + 44
-            const gapToButton = 20;
-            const petalExtension = (this.petalRadius || 88) + 40; // petalRadius + petalHeight/2
-            const homepageDiscY = gardenButtonBottom + gapToButton + petalExtension;
-            this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * 0.4;
-            this.discX = this.originalDiscX;
-            this.discY = this.originalDiscY;
-            this.stemBottomX = this.containerWidth / 2;
-            this.stemBottomY = this.containerHeight;
-        }
-        
+        const viewportW = window.innerWidth || 400;
+        const viewportH = window.innerHeight || 400;
+        const w = containerRect.width > 0 ? containerRect.width : viewportW;
+        const h = containerRect.height > 0 ? containerRect.height : viewportH;
+        this.containerWidth = w;
+        this.containerHeight = h;
+        this.originalDiscX = this.containerWidth / 2;
+        // Homepage: position flower so 20px gap below garden button (button top: 120px, height: 44px)
+        const gardenButtonBottom = 164; // 120 + 44
+        const gapToButton = 20;
+        const petalExtension = (this.petalRadius || 88) + 40; // petalRadius + petalHeight/2
+        const homepageDiscY = gardenButtonBottom + gapToButton + petalExtension;
+        this.originalDiscY = this.isHomepageFlower ? homepageDiscY : this.containerHeight * 0.4;
+        this.discX = this.originalDiscX;
+        this.discY = this.originalDiscY;
+        this.stemBottomX = this.containerWidth / 2;
+        this.stemBottomY = this.containerHeight;
+
         // Calculate fixed stem length based on original positions
         const dx = this.originalDiscX - this.stemBottomX;
         const dy = this.originalDiscY - this.stemBottomY;
@@ -1657,7 +1659,7 @@ class FlowerComponent {
             }
         }
         
-        // Save flower to database - always attempt if we have question and answer
+        // Save flower to database - always attempt if we have question and answer (works without sign-in as anonymous creator)
         if (question && answer) {
             this.saveFlowerToDatabase(question, answer).then(flowerId => {
                 if (flowerId) {
@@ -1908,11 +1910,11 @@ class FlowerComponent {
             const signInButton = document.createElement('button');
             signInButton.id = 'flowerPageAuthButton';
             signInButton.className = 'auth-button auth-button-compact';
-            signInButton.setAttribute('aria-label', 'Sign in to link flower to account');
-            signInButton.title = 'Sign in to link this flower to your account (optional)';
+            signInButton.setAttribute('aria-label', 'Sign in to save');
+            signInButton.title = 'Sign in to save?';
             const signInLabel = document.createElement('span');
             signInLabel.id = 'flowerPageAuthLabel';
-            signInLabel.textContent = 'Sign in to link (optional)';
+            signInLabel.textContent = 'Sign in to save?';
             signInButton.appendChild(signInLabel);
             signInButton.addEventListener('click', () => {
                 window.authOpenedFromFlowerPage = true;
@@ -1954,11 +1956,11 @@ class FlowerComponent {
                 const signInButton = document.createElement('button');
                 signInButton.id = 'flowerPageAuthButton';
                 signInButton.className = 'auth-button auth-button-compact';
-                signInButton.setAttribute('aria-label', 'Sign in to link flower to account');
-                signInButton.title = 'Sign in to link this flower to your account (optional)';
+                signInButton.setAttribute('aria-label', 'Sign in to save');
+                signInButton.title = 'Sign in to save?';
                 const signInLabel = document.createElement('span');
                 signInLabel.id = 'flowerPageAuthLabel';
-                signInLabel.textContent = 'Sign in to link (optional)';
+                signInLabel.textContent = 'Sign in to save?';
                 signInButton.appendChild(signInLabel);
                 signInButton.addEventListener('click', () => {
                     window.authOpenedFromFlowerPage = true;

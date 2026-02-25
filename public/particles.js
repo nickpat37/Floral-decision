@@ -29,7 +29,8 @@
 
     const canvas = document.createElement('canvas');
     canvas.className = 'particles-canvas';
-    container.insertBefore(canvas, container.firstChild);
+    // Append so flower container (first child) gets priority in layout; canvas has z-index: 0, flower has z-index: 1
+    container.appendChild(canvas);
 
     const ctx = canvas.getContext('2d');
     const palette = CONFIG.particleColors.map(hexToRgb);

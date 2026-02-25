@@ -64,10 +64,34 @@ class FlowerDatabase {
     async init() {
         // Try Supabase first (initSupabase returns early if already initialized)
         const supabaseReady = await this.initSupabase();
-        
+
+        const openIndexedDB = () => {
+            if (!this.useIndexedDB || this.db) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.dbName, this.dbVersion);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    this.db = request.result;
+                    resolve();
+                };
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(this.storeName)) {
+                        const objectStore = db.createObjectStore(this.storeName, {
+                            keyPath: 'id',
+                            autoIncrement: false
+                        });
+                        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+                        objectStore.createIndex('question', 'question', { unique: false });
+                    }
+                };
+            });
+        };
+
         if (supabaseReady) {
             console.log('✅ Using Supabase for storage');
-            // Test connection
+            // Also open IndexedDB so saveFlower can fall back if Supabase insert fails (e.g. RLS)
+            await openIndexedDB().catch(() => {});
             try {
                 const { count } = await this.supabaseClient
                     .from('flowers')
@@ -78,37 +102,14 @@ class FlowerDatabase {
             }
             return Promise.resolve();
         }
-        
-        // Fallback to IndexedDB
+
+        // No Supabase: use IndexedDB as primary
         if (this.useIndexedDB) {
             console.log('📦 Using IndexedDB for storage (local only)');
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(this.dbName, this.dbVersion);
-
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => {
-                    this.db = request.result;
-                    resolve();
-                };
-
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(this.storeName)) {
-                        // Use keyPath 'id' but don't auto-increment (we provide our own IDs)
-                        const objectStore = db.createObjectStore(this.storeName, {
-                            keyPath: 'id',
-                            autoIncrement: false
-                        });
-                        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-                        objectStore.createIndex('question', 'question', { unique: false });
-                    }
-                };
-            });
-        } else {
-            // Fallback to localStorage
-            console.warn('💾 IndexedDB not available, using localStorage');
-            return Promise.resolve();
+            return openIndexedDB();
         }
+        console.warn('💾 IndexedDB not available, using localStorage');
+        return Promise.resolve();
     }
 
     /**
@@ -179,7 +180,12 @@ class FlowerDatabase {
                     if (error.hint) console.error('❌ Supabase hint:', error.hint);
                     if (error.code) console.error('❌ Supabase code:', error.code);
                     if (attempt === 1) {
-                        if (error.code === '42703' || (error.message && String(error.message).includes('user_id'))) {
+                        // Retry without user_id: undefined column, RLS, or user_id-related errors
+                        if (
+                            error.code === '42703' ||
+                            error.code === '42501' ||
+                            (error.message && String(error.message).includes('user_id'))
+                        ) {
                             omitUserIdOnRetry = true;
                         }
                         continue;
@@ -288,6 +294,8 @@ class FlowerDatabase {
                     if (requestedPetals !== numPetals) {
                         console.warn(`🌸 Flower ${flower.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
                     }
+                    // Anonymous flowers (user_id = null) are shown as "Anonymous creator"; signed-in flowers get creator name from profiles
+                    const creatorName = flower.user_id ? undefined : 'Anonymous';
                     return {
                         id: flower.id.toString(),
                         question: flower.question,
@@ -297,7 +305,8 @@ class FlowerDatabase {
                         discSize: flower.disc_size,
                         seed: flower.seed,
                         timestamp: flower.timestamp,
-                        createdAt: flower.created_at
+                        createdAt: flower.created_at,
+                        creatorName: creatorName
                     };
                 });
             } catch (error) {
@@ -335,6 +344,7 @@ class FlowerDatabase {
                                 }
                                 flower.numPetals = numPetals;
                             }
+                            flower.creatorName = flower.creatorName || (!flower.userId && !flower.user_id ? 'Anonymous' : flower.creatorName);
                             flowers.push(flower);
                         }
                         count++;
@@ -428,8 +438,7 @@ class FlowerDatabase {
                 
                 if (error) throw error;
                 if (!data) {
-                    // Not in Supabase - fall through to IndexedDB (flower may have been saved there)
-                    if (!this.useIndexedDB || !this.db) return null;
+                    // Not in Supabase - fall through to IndexedDB or localStorage
                 } else {
                     // Convert Supabase format to app format
                     const requestedPetals = data.num_petals || 20;
@@ -437,6 +446,7 @@ class FlowerDatabase {
                     if (requestedPetals !== numPetals) {
                         console.warn(`🌸 Flower ${data.id}: Petal count clamped from ${requestedPetals} to ${numPetals} (valid range: 12-30)`);
                     }
+                    const creatorName = data.user_id ? undefined : 'Anonymous';
                     return {
                         id: data.id.toString(),
                         question: data.question,
@@ -446,7 +456,8 @@ class FlowerDatabase {
                         discSize: data.disc_size,
                         seed: data.seed,
                         timestamp: data.timestamp,
-                        createdAt: data.created_at
+                        createdAt: data.created_at,
+                        creatorName: creatorName
                     };
                 }
             } catch (error) {
@@ -479,7 +490,7 @@ class FlowerDatabase {
             });
         } else {
             const flowers = this.getAllFlowersSync();
-            const flower = flowers.find(f => f.id === id);
+            const flower = flowers.find(f => String(f.id) === String(id));
             if (flower && flower.numPetals !== undefined) {
                 // Clamp numPetals to valid range: 12-30
                 const requestedPetals = flower.numPetals;
