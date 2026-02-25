@@ -447,7 +447,7 @@ class GardenPage {
         section.setAttribute('aria-hidden', 'false');
         section.dataset.flowerId = String(flowerId);
         if (container) container.classList.add('comment-section-active');
-        this.commentPanelDragHeight = 400;
+        this.commentPanelDragHeight = Math.max(400, Math.round(window.innerHeight * 0.6));
         this.loadAndRenderComments(flowerId);
         this.updateCommentInputAuthState();
         requestAnimationFrame(() => {
@@ -456,7 +456,9 @@ class GardenPage {
             this.setupCommentPanelHeightListeners();
             requestAnimationFrame(() => {
                 this.setupCommentPanelDragHandle();
+                this.updateCommentPanelHeight();
             });
+            setTimeout(() => this.updateCommentPanelHeight(), 400);
         });
     }
 
@@ -474,7 +476,8 @@ class GardenPage {
     }
 
     /**
-     * Update comment panel height - expands on scroll until 32px spacing to the question div
+     * Update comment panel height - expands on scroll until 32px spacing to the question div.
+     * Ensures panel always opens to at least 60% of viewport to avoid clipping.
      */
     updateCommentPanelHeight() {
         if (this._isDraggingCommentPanel) return;
@@ -482,15 +485,18 @@ class GardenPage {
         const questionEl = this.commentModeFlowerRef?.wrapper?.querySelector('.question-bubble-text');
         const listEl = document.getElementById('gardenCommentList');
         if (!panelInner || !listEl) return;
+        const minOpenHeight = Math.round(window.innerHeight * 0.6);
         let maxHeight = window.innerHeight - 24;
         if (questionEl) {
             const questionRect = questionEl.getBoundingClientRect();
-            maxHeight = Math.min(maxHeight, window.innerHeight - questionRect.bottom - 32);
+            const questionBasedMax = window.innerHeight - questionRect.bottom - 32;
+            maxHeight = Math.min(maxHeight, Math.max(minOpenHeight, questionBasedMax));
         }
-        maxHeight = Math.max(200, maxHeight);
-        const baseHeight = Math.max(400, this.commentPanelDragHeight || 400);
+        maxHeight = Math.max(minOpenHeight, maxHeight);
+        const baseHeight = Math.max(minOpenHeight, this.commentPanelDragHeight || 400);
         const scrollTop = listEl.scrollTop;
-        const targetHeight = Math.min(baseHeight + scrollTop, maxHeight);
+        let targetHeight = Math.min(baseHeight + scrollTop, maxHeight);
+        targetHeight = Math.max(minOpenHeight, targetHeight);
         panelInner.style.height = `${targetHeight}px`;
     }
 
@@ -650,6 +656,7 @@ class GardenPage {
                             this.updateVisibleFlowers();
                             this.updateCenterFlower();
                         }
+                        this.updateCommentPanelHeight();
                     }
                 });
             });
